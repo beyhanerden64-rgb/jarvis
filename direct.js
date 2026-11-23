@@ -67,7 +67,8 @@
   // Claude keys start with sk-ant-. Google keys come in several formats (AIza…, AQ.…), so anything else that looks like a key is Gemini.
   const provider = () => { const k = getKey(); return /^sk-ant-[\w-]{20,}$/.test(k) ? 'claude' : /^[\w.\-]{30,200}$/.test(k) ? 'gemini' : null; };
   // Gemini free tier. Model names change between releases: try in order, remember the one that answers.
-  const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+  // Lite first: fastest answers for a voice assistant and the most generous free quota.
+  const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
   const geminiOrder = () => { const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS; };
   function geminiBody(body) {
@@ -80,11 +81,25 @@
     return { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: MAX_TOKENS[tier] * 2 } };
   }
   async function gemini(body, signal) {
-    let last;
+    let last = null;
     for (const model of geminiOrder()) {
-      const r = await fetch(GEMINI + model + ':streamGenerateContent?alt=sse', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(geminiBody(body)) });
-      // Missing model or that model's free quota used up: try the next one.
-      if (r.status === 404 || r.status === 429 || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      // Each model gets 20 s to start answering; a busy model is skipped instead of hanging the app.
+      const ac = new AbortController(), stop = () => ac.abort();
+      signal?.addEventListener('abort', stop, { once: true });
+      const timer = setTimeout(stop, 20000);
+      let r;
+      try {
+        r = await fetch(GEMINI + model + ':streamGenerateContent?alt=sse', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(geminiBody(body)) });
+      } catch (e) {
+        clearTimeout(timer); signal?.removeEventListener('abort', stop);
+        if (signal?.aborted) throw e;
+        last = json(503, { error: { message: 'timeout' } });
+        continue;
+      }
+      clearTimeout(timer); signal?.removeEventListener('abort', stop);
+      // Missing model, its free quota used up, or the model is overloaded: try the next one.
+      if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
       if (r.ok) localStorage.setItem('jarvisapp.geminiModel', model);
       return r;
     }
@@ -121,6 +136,7 @@
     if (r.status === 400 && /api key/i.test(m) || r.status === 401 || r.status === 403) return json(401, { error: 'Gemini anahtarı geçersiz. aistudio.google.com → Get API key bölümünden kontrol et.' });
     if (r.status === 429) return json(429, { error: 'Ücretsiz Gemini kotası şu an doldu; bir dakika sonra tekrar dene.' });
     if (r.status === 404) return json(502, { error: 'Gemini modeli bulunamadı; uygulamanın güncellenmesi gerekiyor.' });
+    if (r.status >= 500) return json(503, { error: 'Gemini şu an çok yoğun; birkaç saniye sonra tekrar dene.' });
     return json(502, { error: 'Gemini yanıt veremedi (' + r.status + ').' });
   }
   const anthropic = (body, signal) => fetch('https://api.anthropic.com/v1/messages', {
