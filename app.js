@@ -45,9 +45,12 @@ const voiceSel = $('voice');
   const w = document.createElement('div'); w.className = 'field';
   w.innerHTML = '<label for="autoListen">Açılınca dinle · “Jarvis” deyince uyan</label><select id="autoListen"><option value="1" selected>Açık</option><option value="0">Kapalı · yalnız mikrofona dokununca</option></select>';
   f.after(w);
+  const web = document.createElement('div'); web.className = 'field';
+  web.innerHTML = '<label for="web">İnternette arama (Gemini)</label><select id="web"><option value="1" selected>Otomatik · güncel sorularda</option><option value="2">Her soruda</option><option value="0">Kapalı</option></select>';
+  $('depth').closest('.field').after(web);
 })();
 voiceSel.innerHTML = '<option value="natural">Doğal ses · sunucu</option><option value="device" selected>Telefon/bilgisayar sesi</option>';
-for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen']) {
+for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen', 'web']) {
   const v = store.get('set.' + id, null);
   if (v !== null && [...$(id).options].some(o => o.value === v)) $(id).value = v;
   $(id).addEventListener('change', () => { store.set('set.' + id, $(id).value); sysInfo(); });
@@ -59,9 +62,23 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x === b)));
   document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'p-' + b.dataset.p);
 });
+function openDrawer(p) {
+  document.querySelector(`.tabs button[data-p="${p}"]`)?.click();
+  $('drawer').classList.add('open');
+  if (p === 'log') setTimeout(() => { const pane = $('p-log'); pane.scrollTop = pane.scrollHeight; }, 60);
+}
+document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openDrawer(b.dataset.open));
+$('drawerClose').onclick = () => $('drawer').classList.remove('open');
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('drawer').classList.remove('open'); });
+document.querySelectorAll('[data-proxy]').forEach(b => b.onclick = () => $(b.dataset.proxy).click());
 const nowText = () => now().toLocaleString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', ...TZ });
 const isoLocal = d => { const p = n => String(n).padStart(2, '0'); const t = new Date(d.toLocaleString('en-US', TZ)); return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`; };
-setInterval(() => { $('clock').textContent = nowText(); }, 20000); $('clock').textContent = nowText();
+function tickClock() {
+  const d = now();
+  $('clockTime').textContent = d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', ...TZ });
+  $('clock').textContent = d.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', ...TZ });
+}
+setInterval(tickClock, 10000); tickClock();
 
 let installEvent = null;
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -89,28 +106,100 @@ function setPhase(p, msg) {
   $('send').textContent = busy ? 'Durdur' : 'Gönder';
   $('send').classList.toggle('stop', busy);
 }
-(function orb() {
-  const c = $('orb'), g = c.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let t = 0, level = 0;
-  window.jarvisAvatarLevel = v => { level = Math.max(0, Math.min(1, Number(v) || 0)); };
+/* Holographic particle figure: a head-and-shoulders human made of points, rotating slowly.
+ * It breathes when idle, brightens and ripples when listening, orbits when thinking and its mouth/face pulse when speaking. */
+(function figure() {
+  const c = $('orb'), g = c.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const small = matchMedia('(max-width: 700px)').matches;
+  const N = small ? 2800 : 7000;
+  let level = 0, target = 0, t = 0, W = 0, H = 0, dpr = 1;
+  window.jarvisAvatarLevel = v => { target = Math.max(0, Math.min(1, Number(v) || 0)); };
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const P = [];
+  const add = (x, y, z, kind = 0) => P.push({ x, y, z, kind, ph: Math.random() * 6.283, sp: rnd(0.4, 1.4), orb: rnd(0, 6.283), r: rnd(0.32, 0.62) });
+  // head: ellipsoid surface, slight jaw taper; kind 1 = face front, 2 = mouth, 3 = eyes
+  for (let i = 0; i < N * 0.42; i++) {
+    const u = rnd(0, 6.283), v = Math.acos(rnd(-1, 1));
+    let x = Math.sin(v) * Math.cos(u) * 0.2, y = Math.cos(v) * 0.26, z = Math.sin(v) * Math.sin(u) * 0.22;
+    if (y < -0.05) { const k = 1 - (-0.05 - y) * 1.6; x *= k; z *= 0.92 + 0.08 * k; }
+    const front = z > 0.12;
+    const mouth = front && y > -0.17 && y < -0.1 && Math.abs(x) < 0.07;
+    const eye = front && y > 0.02 && y < 0.07 && Math.abs(Math.abs(x) - 0.075) < 0.035;
+    add(x, y + 0.98, z, mouth ? 2 : eye ? 3 : front ? 1 : 0);
+  }
+  // nose ridge
+  for (let i = 0; i < N * 0.02; i++) { const y = rnd(-0.08, 0.04); add(rnd(-0.012, 0.012), y + 0.98, 0.215 + (0.04 - y) * 0.25, 1); }
+  // neck
+  for (let i = 0; i < N * 0.06; i++) { const u = rnd(0, 6.283); add(Math.cos(u) * 0.085, rnd(0.6, 0.76), Math.sin(u) * 0.08); }
+  // shoulders + chest: superellipse rings
+  for (let i = 0; i < N * 0.4; i++) {
+    const y = rnd(-0.55, 0.6), k = (0.6 - y) / 1.15;
+    const wdt = y > 0.45 ? 0.12 + (0.6 - y) * 3.0 : 0.52 - k * 0.14;
+    const dep = 0.14 + Math.min(0.08, (0.6 - y) * 0.4);
+    const u = rnd(0, 6.283), cu = Math.cos(u), su = Math.sin(u);
+    const ex = 0.6;
+    add(Math.sign(cu) * Math.abs(cu) ** ex * wdt, y, Math.sign(su) * Math.abs(su) ** ex * dep);
+  }
+  // upper arms
+  for (let i = 0; i < N * 0.1; i++) {
+    const side = Math.random() < 0.5 ? -1 : 1, y = rnd(-0.5, 0.42), u = rnd(0, 6.283);
+    add(side * (0.56 + (0.42 - y) * 0.06) + Math.cos(u) * 0.07, y, Math.sin(u) * 0.08);
+  }
+  // holographic floor ring particles
+  for (let i = 0; i < N * 0.06; i++) { const u = rnd(0, 6.283), r = rnd(0.55, 0.95); add(Math.cos(u) * r, -0.72, Math.sin(u) * r * 0.9, 4); }
+  function resize() {
+    dpr = Math.min(1.75, devicePixelRatio || 1);
+    W = c.width = Math.round(innerWidth * dpr); H = c.height = Math.round(innerHeight * dpr);
+  }
+  addEventListener('resize', resize); resize();
+  const COLORS = { idle: [87, 211, 255], starting: [140, 220, 255], listening: [255, 190, 90], thinking: [150, 170, 255], speaking: [120, 235, 255], error: [255, 107, 107] };
+  let col = [87, 211, 255];
   (function draw() {
-    const css = getComputedStyle(document.documentElement);
-    const brass = css.getPropertyValue('--brass').trim(), steel = css.getPropertyValue('--steel').trim(), line = css.getPropertyValue('--line').trim();
-    const W = c.width, cx = W / 2, cy = W / 2;
-    g.clearRect(0, 0, W, W);
-    const energy = { idle: 0.15, starting: 0.4, listening: 0.75, thinking: 0.45, speaking: 1, error: 0.1 }[phase] ?? 0.2;
-    t += reduce ? 0 : 0.016 * (0.6 + energy * 1.6);
-    g.lineWidth = 2; g.strokeStyle = line; g.beginPath(); g.arc(cx, cy, W * 0.46, 0, Math.PI * 2); g.stroke();
-    for (let i = 0; i < 3; i++) {
-      const r = W * (0.40 - i * 0.075), start = t * (i % 2 ? -1 : 1) * (1 + i * 0.4);
-      g.strokeStyle = i === 1 ? steel : brass; g.lineWidth = 6 - i * 1.5; g.lineCap = 'round';
-      for (let s = 0; s < 3; s++) { g.beginPath(); g.arc(cx, cy, r, start + s * 2.094, start + s * 2.094 + 1.2 + energy * 0.5); g.stroke(); }
-    }
-    const pulse = 1 + level * 0.25 + (phase === 'speaking' ? Math.sin(t * 9) * 0.08 : phase === 'listening' ? Math.sin(t * 5) * 0.05 : 0);
-    const grad = g.createRadialGradient(cx, cy, 0, cx, cy, W * 0.16 * pulse);
-    grad.addColorStop(0, brass); grad.addColorStop(1, 'transparent');
-    g.fillStyle = grad; g.beginPath(); g.arc(cx, cy, W * 0.16 * pulse, 0, Math.PI * 2); g.fill();
     requestAnimationFrame(draw);
+    if (document.hidden) return;
+    const p = phase;
+    const dt = reduce ? 0.004 : 0.016;
+    t += dt;
+    if (p === 'speaking') target = Math.max(target * 0.9, 0.35 + 0.45 * Math.abs(Math.sin(t * 11) * Math.sin(t * 4.3)));
+    else if (p !== 'listening') target *= 0.92;
+    level += (target - level) * 0.25;
+    const want = COLORS[p] || COLORS.idle;
+    col = col.map((v, i) => v + (want[i] - v) * 0.06);
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const scale = small ? Math.min(W * 0.62, H * 0.5) : Math.min(W * 0.36, H * 0.42);
+    const cx = W / 2, cy = H * (small ? 0.4 : 0.5);
+    const yaw = Math.sin(t * 0.25) * 0.45 + (p === 'thinking' ? t * 0.6 : 0);
+    const cyaw = Math.cos(yaw), syaw = Math.sin(yaw);
+    const breath = 1 + Math.sin(t * 1.6) * 0.012;
+    g.globalCompositeOperation = 'lighter';
+    const [R, G, B] = col.map(Math.round);
+    const sz = Math.max(1, (small ? 1.5 : 1.8) * dpr);
+    for (const q of P) {
+      let x = q.x, y = q.y, z = q.z;
+      if (q.kind === 4) { const a = q.orb + t * 0.3; const rr = Math.hypot(x, z); x = Math.cos(a) * rr; z = Math.sin(a) * rr * 0.9; }
+      if (p === 'thinking' && q.kind !== 4 && q.ph < 0.5) { const a = q.orb + t * q.sp * 1.6; x = Math.cos(a) * q.r; z = Math.sin(a) * q.r; y = 0.98 + Math.sin(a * 2 + q.ph) * 0.08; }
+      const j = (reduce ? 0.001 : 0.004) * (1 + level * 3);
+      x += Math.sin(t * q.sp * 3 + q.ph) * j; y = (y - 0.2) * breath + 0.2 + Math.cos(t * q.sp * 2.4 + q.ph) * j;
+      if (q.kind === 2) { y -= level * 0.03 * Math.sin(q.ph * 3); z += level * 0.015; }
+      if (p === 'listening' && q.kind !== 4) { const wave = Math.sin(y * 18 - t * 7) * 0.008 * (0.5 + level); x *= 1 + wave; z *= 1 + wave; }
+      const rx = x * cyaw + z * syaw, rz = -x * syaw + z * cyaw;
+      const persp = 2.6 / (2.6 - rz);
+      const sx = cx + rx * scale * persp, sy = cy - (y - 0.25) * scale * persp;
+      const depth = (rz + 0.6) / 1.2;
+      let a = 0.18 + depth * 0.5;
+      if (q.kind === 1) a += 0.12; if (q.kind === 3) a += 0.45 + level * 0.3; if (q.kind === 2) a += level * 0.9; if (q.kind === 4) a = 0.12 + level * 0.2;
+      g.fillStyle = `rgba(${R},${G},${B},${Math.min(1, a)})`;
+      g.fillRect(sx, sy, sz, sz);
+    }
+    // scanning ring around the figure
+    g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = `rgba(${R},${G},${B},${0.25 + level * 0.3})`;
+    g.lineWidth = 1.2 * dpr;
+    const ry = cy - (0.98 - 0.25) * scale + Math.sin(t * 0.9) * scale * 0.9;
+    if (!reduce && p !== 'idle') { g.beginPath(); g.ellipse(cx, ry, scale * 0.42, scale * 0.06, 0, 0, Math.PI * 2); g.stroke(); }
+    g.beginPath(); g.ellipse(cx, cy + 0.97 * scale, scale * (0.7 + level * 0.1), scale * 0.08, 0, 0, Math.PI * 2); g.stroke();
   })();
 })();
 window.jarvisAvatarSpeech = () => {};
@@ -144,6 +233,100 @@ function renderChat() {
   for (const m of chat.messages.slice(-20)) { const b = bubble(m.role === 'user' ? 'me' : 'ai', m.content); if (m.role === 'assistant') answerTools(b.el, m.content); }
 }
 
+/* ================= caption, links ================= */
+let pendingLinks = [];
+function addLinks(el, links) {
+  if (!links?.length) return;
+  const box = document.createElement('div'); box.className = 'src';
+  for (const l of links) { if (!/^https:\/\//.test(l.url || '')) continue; const a = document.createElement('a'); a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = l.title || new URL(l.url).hostname; box.append(a); }
+  if (box.children.length) el.insertBefore(box, el.querySelector('.tool'));
+}
+// The caption under the figure mirrors the latest exchange from the log.
+new MutationObserver(() => {
+  const msgs = [...$('feed').querySelectorAll('.msg.ai, .msg.me, .msg.alarm')];
+  const last = msgs.at(-1); if (!last) return;
+  const cap = $('caption'); cap.replaceChildren();
+  const who = document.createElement('span'); who.className = 'who';
+  who.textContent = last.classList.contains('me') ? 'SEN' : last.classList.contains('alarm') ? 'HATIRLATMA' : 'JARVIS';
+  const body = document.createElement('div'); body.textContent = (last.querySelector('span:not(.who)') || last).textContent;
+  cap.append(who, body);
+  const src = last.querySelector('.src'); if (src) cap.append(src.cloneNode(true));
+  cap.scrollTop = cap.scrollHeight;
+}).observe($('feed'), { childList: true, subtree: true, characterData: true });
+
+/* ================= weather (Open-Meteo, no key) ================= */
+const WX = { 0: 'açık', 1: 'az bulutlu', 2: 'parçalı bulutlu', 3: 'kapalı', 45: 'sisli', 48: 'kırağılı sis', 51: 'hafif çisenti', 53: 'çisenti', 55: 'yoğun çisenti', 61: 'hafif yağmurlu', 63: 'yağmurlu', 65: 'kuvvetli yağmurlu', 66: 'dondurucu yağmur', 67: 'dondurucu yağmur', 71: 'hafif karlı', 73: 'karlı', 75: 'yoğun karlı', 77: 'kar taneleri', 80: 'sağanak', 81: 'sağanak', 82: 'şiddetli sağanak', 85: 'kar sağanağı', 86: 'kar sağanağı', 95: 'gök gürültülü', 96: 'dolu ve fırtına', 99: 'dolu ve fırtına' };
+const weather = {
+  text: '',
+  async load() {
+    try {
+      const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.33&longitude=42.19&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&timezone=Europe%2FIstanbul&forecast_days=2');
+      if (!r.ok) throw 0;
+      const d = await r.json(), c = d.current, dl = d.daily;
+      const now = `${Math.round(c.temperature_2m)}°, ${WX[c.weather_code] || 'değişken'}`;
+      this.text = `şu an ${now} (hissedilen ${Math.round(c.apparent_temperature)}°, rüzgâr ${Math.round(c.wind_speed_10m)} km/sa, nem %${c.relative_humidity_2m}); bugün en yüksek ${Math.round(dl.temperature_2m_max[0])}°, en düşük ${Math.round(dl.temperature_2m_min[0])}°, yağış olasılığı %${dl.precipitation_probability_max[0]}; yarın ${WX[dl.weather_code[1]] || ''} ${Math.round(dl.temperature_2m_min[1])}–${Math.round(dl.temperature_2m_max[1])}°`;
+      $('wx').textContent = 'Cizre · ' + now;
+    } catch { $('wx').textContent = 'Hava bilgisi alınamadı'; }
+  }
+};
+weather.load(); setInterval(() => weather.load(), 30 * 60000);
+
+/* ================= web search (Gemini Google Search grounding) ================= */
+const webSearch = {
+  allowed: () => server.provider === 'gemini' && setting('web') !== '0',
+  wanted(text) {
+    if (!this.allowed()) return false;
+    if (setting('web') === '2') return true;
+    return /\b(?:haber|son dakika|güncel|bugün(?:kü)?\s+(?:maç|dolar|euro|altın|borsa|gündem)|dolar|euro|altın|kur|borsa|bitcoin|fiyat(?:ı|lar)?|kimdir|kim kazandı|maç(?:ı)?|skor|seçim|deprem|yol durumu|nöbetçi eczane|açık mı|nerede|adres|telefon numarası|internette|araştır|ara(?:t)?\s|google|son çıkan|yeni çıkan|2025|2026|2027)\b/i.test(text);
+  }
+};
+
+/* ================= timers (local, spoken) ================= */
+const timers = [];
+function renderTimers() {
+  $('timerCard').hidden = !timers.length;
+  $('timers').replaceChildren(...timers.map(tm => {
+    const row = document.createElement('div'); row.className = 'timer';
+    const left = Math.max(0, tm.end - Date.now()), m = Math.floor(left / 60000), sec = Math.floor(left / 1000) % 60;
+    const label = document.createElement('span'); label.textContent = `${tm.label} · ${m}:${String(sec).padStart(2, '0')}`;
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Sayacı iptal et'); x.onclick = () => cancelTimer(tm.id);
+    row.append(label, x); return row;
+  }));
+}
+function startTimer(ms, label) {
+  const tm = { id: Math.random().toString(36).slice(2), end: Date.now() + ms, label };
+  tm.handle = setTimeout(() => {
+    cancelTimer(tm.id, true);
+    bubble('alarm', '⏰ ' + label + ' doldu.');
+    beep(); setTimeout(beep, 700); setTimeout(beep, 1400);
+    try { if (window.Notification?.permission === 'granted') navigator.serviceWorker?.ready.then(r => r.showNotification('JARVIS', { body: label + ' doldu.', icon: 'icon-192.png' })); } catch {}
+    if (setting('speakOn') === '1' && !answering) voiceSession.read('Beyhan, ' + label + ' doldu.');
+  }, ms);
+  timers.push(tm); renderTimers();
+}
+function cancelTimer(id, done) { const i = timers.findIndex(t => t.id === id); if (i >= 0) { if (!done) clearTimeout(timers[i].handle); timers.splice(i, 1); } renderTimers(); }
+setInterval(() => { if (timers.length) renderTimers(); }, 1000);
+const NUM = { bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, altı: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, onbeş: 15, yirmi: 20, otuz: 30, kırk: 40, kırkbeş: 45, elli: 50, altmış: 60, yarım: 0.5 };
+function parseTimer(t) {
+  const m = t.match(/(\d+(?:[.,]\d+)?|bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz|on beş|on|yirmi|otuz|kırk beş|kırk|elli|altmış|yarım)\s*(saniye|sn|dakika|dk|saat)(?:lık|lik)?\s*(?:sonra\s+)?(?:bir\s+)?(sayaç|zamanlayıcı|alarm|geri sayım|hatırlat|haber ver|uyar|söyle)/i);
+  if (!m) return null;
+  const n = Number(String(m[1]).replace(',', '.')) || NUM[m[1].replace(/\s+/g, '').toLocaleLowerCase('tr-TR')];
+  if (!n) return null;
+  const unit = /^(?:saniye|sn)$/i.test(m[2]) ? 1000 : /^(?:dakika|dk)$/i.test(m[2]) ? 60000 : 3600000;
+  const what = t.replace(m[0], '').replace(/^(?:jarvis[\s,]*)/i, '').replace(/\b(?:kur|başlat|ayarla|aç|lütfen)\b/gi, '').replace(/[.!?]+$/, '').replace(/\s+/g, ' ').trim();
+  return { ms: n * unit, label: `${m[1]} ${m[2]}${what && what.length < 40 ? ' · ' + what : ''} sayacı` };
+}
+
+/* ================= system HUD ================= */
+function hudNet() { $('hNet').textContent = navigator.onLine ? 'çevrimiçi' : 'ÇEVRİMDIŞI'; }
+addEventListener('online', hudNet); addEventListener('offline', hudNet); hudNet();
+navigator.getBattery?.().then(b => { const f = () => { $('hBat').textContent = Math.round(b.level * 100) + '%' + (b.charging ? ' · şarjda' : ''); }; f(); b.addEventListener('levelchange', f); b.addEventListener('chargingchange', f); }).catch(() => {});
+if (!navigator.getBattery) $('hBat').textContent = '—';
+function greeting() {
+  const h = Number(now().toLocaleString('en-US', { hour: 'numeric', hour12: false, ...TZ }));
+  return h < 5 ? 'İyi geceler' : h < 12 ? 'Günaydın' : h < 18 ? 'İyi günler' : 'İyi akşamlar';
+}
+
 /* ================= items ================= */
 const isLate = i => i.kind === 'task' && !i.done && i.due && new Date(i.due) <= now();
 function dueText(due) {
@@ -169,6 +352,11 @@ function renderItems() {
   $('tasks').replaceChildren(...tasks.map(row)); $('memory').replaceChildren(...mem.map(row)); $('notes').replaceChildren(...notes.map(row));
   $('tasksEmpty').hidden = tasks.length > 0; $('memoryEmpty').hidden = mem.length > 0; $('notesEmpty').hidden = notes.length > 0;
   const late = tasks.filter(isLate).length; $('lateBadge').hidden = !late; $('lateBadge').textContent = late;
+  $('dockBadge').hidden = !late; $('dockBadge').textContent = late;
+  const open = tasks.filter(i => !i.done);
+  $('hTasks').textContent = open.length + (late ? ` · ${late} gecikmiş` : '');
+  const next = open.filter(i => i.due && !isLate(i)).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
+  $('hNext').textContent = next ? `${dueText(next.due)} · ${next.text}` : late ? 'Gecikmiş görevlerin var.' : 'Yaklaşan görev yok.';
 }
 function persist() { updated = Date.now(); store.set('items', items); store.set('history', chat.messages.slice(-28)); store.set('summary', chat.summary); store.set('updated', updated); renderItems(); sysInfo(); scheduleSync(); }
 function saveItem(i) {
@@ -207,7 +395,7 @@ setInterval(() => { if (!document.hidden) pullSync(); }, 60000);
 
 /* ================= the brain ================= */
 const ACTION = /⟦(HAFIZA|GOREV|TAMAM|SIL|NOT|MOD)\|([^⟧]*)⟧/g;
-const cleanAnswer = t => { const cut = t.indexOf('⟦'); return (cut >= 0 ? t.slice(0, cut) : t).replace(/\s+$/, ''); };
+const cleanAnswer = t => { const cuts = [t.indexOf('⟦'), t.indexOf('\u0000')].filter(i => i >= 0); return (cuts.length ? t.slice(0, Math.min(...cuts)) : t).replace(/\s+$/, ''); };
 const PERSONA = {
   genel: 'Genel kişisel asistan: iş, günlük yaşam, plan, yazışma ve fikir konularında yardım et.',
   fizyo: 'Fizyoterapi uzmanı gibi düşün: kanıta dayalı rehabilitasyon, klinik akıl yürütme, egzersiz dozajı (set, tekrar, sıklık, ilerleme), kırmızı bayraklar. Hasta için yazarken sade dil kullan. Tanı koyma; yönlendirme gereken durumları belirt.',
@@ -221,9 +409,10 @@ function instructions(voiceTurn) {
   return `Sen JARVIS'sin: Fizyoterapist Beyhan Erden'in kişisel yapay zekâ asistanı. Beyhan, Cizre/Şırnak'ta FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'ni işletiyor.
 Şu an: ${nowText()} (Türkiye saati, ISO ${isoLocal(now())}).
 Rol: ${PERSONA[setting('persona')] || PERSONA.genel}
-Üslup: doğal, sıcak, akıcı Türkçe; "sen" diye hitap et; önce cevabı ver; gereksiz selam ve kapanış sorusu kullanma; yeri gelince kısa, zekice bir espri. ${LENGTH[setting('length')]} Bilmediğini uydurma. Yapmadığın bir işlemi (mesaj gönderme, arama yapma, internete bakma) yaptım deme; internete erişimin yok, güncel bilgi gerekiyorsa bunu söyle. Kesin tıbbi tanı veya ilaç dozu verme.
+Üslup: doğal, sıcak, akıcı Türkçe; "sen" diye hitap et; önce cevabı ver; gereksiz selam ve kapanış sorusu kullanma; yeri gelince kısa, zekice bir espri. ${LENGTH[setting('length')]} Bilmediğini uydurma. Yapmadığın bir işlemi (mesaj gönderme, telefon araması) yaptım deme.${webSearch.allowed() ? '' : ' İnternete erişimin yok; güncel bilgi gerekiyorsa bunu söyle.'} Kesin tıbbi tanı veya ilaç dozu verme.
 ${voiceTurn ? 'BU YANIT SESLİ OKUNACAK: 1-4 kısa cümle; liste, başlık, emoji, parantez, bağlantı, tablo kullanma; kısaltmaları açık yaz; yüzde ve para birimini sözcükle yaz.' : 'Yazılı yanıt: gerekirse kısa liste kullan.'}
 
+${weather.text ? 'Cizre hava durumu (canlı): ' + weather.text + '\n' : ''}${webSearch.allowed() ? 'İnternette arama yapabiliyorsun; güncel bilgi gerektiğinde ara ve kısaca kaynağını söyle.\n' : ''}
 GEÇMİŞ SOHBETLERİN ÖZETİ:
 ${chat.summary || '(yok)'}
 
@@ -268,6 +457,15 @@ function pickTier(text, voiceTurn, hasImage) {
 }
 function localCommand(text) {
   const t = text.toLocaleLowerCase('tr-TR').replace(/[.!?,]/g, '').trim();
+  const tm = parseTimer(t);
+  if (tm) { startTimer(tm.ms, tm.label); return `Tamam, ${tm.label.replace(/ sayacı$/, '')} için sayaç kurdum.`; }
+  if (/(?:sayac[ıi]|sayaçları|zamanlayıcıyı|alarmı)\s+(?:iptal et|kapat|durdur|sil)/.test(t)) { const n = timers.length; timers.slice().forEach(x => cancelTimer(x.id)); return n ? 'Sayaçları iptal ettim.' : 'Kurulu sayaç yok.'; }
+  let m;
+  if ((m = t.match(/^(?:jarvis\s+)?(?:google'?da|internette|webde)\s+(.+?)\s+(?:ara|arat|bul)$/))) { pendingLinks.push({ url: 'https://www.google.com/search?q=' + encodeURIComponent(m[1]), title: 'Google: ' + m[1] }); return `“${m[1]}” aramasını açmak için bağlantıya dokun.`; }
+  if ((m = t.match(/^(?:jarvis\s+)?youtube'?(?:da|ta)\s+(.+?)\s+(?:aç|ara|bul|oynat)$/))) { pendingLinks.push({ url: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(m[1]), title: 'YouTube: ' + m[1] }); return `YouTube'da “${m[1]}” için bağlantı hazır.`; }
+  if ((m = t.match(/^(?:jarvis\s+)?(?:haritada|haritadan)\s+(.+?)\s+(?:göster|bul|aç)$/))) { pendingLinks.push({ url: 'https://www.google.com/maps/search/' + encodeURIComponent(m[1]), title: 'Harita: ' + m[1] }); return `${m[1]} için harita bağlantısı hazır.`; }
+  const apps = { whatsapp: 'https://web.whatsapp.com/', instagram: 'https://www.instagram.com/', youtube: 'https://www.youtube.com/', gmail: 'https://mail.google.com/', takvim: 'https://calendar.google.com/', harita: 'https://www.google.com/maps' };
+  if ((m = t.match(/^(?:jarvis\s+)?(whatsapp|instagram|youtube|gmail|takvim|harita)(?:'?[ıiyu]?)?\s*(?:aç|başlat)$/))) { pendingLinks.push({ url: apps[m[1]], title: m[1][0].toLocaleUpperCase('tr-TR') + m[1].slice(1) }); return `${m[1][0].toLocaleUpperCase('tr-TR') + m[1].slice(1)} bağlantısı hazır; açmak için dokun.`; }
   const rate = v => { $('rate').value = v; store.set('set.rate', v); };
   if (/^(?:jarvis\s+)?(?:daha\s+)?yavaş konuş$/.test(t)) { rate('0.9'); return 'Daha yavaş konuşacağım.'; }
   if (/^(?:jarvis\s+)?normal hızda konuş$/.test(t)) { rate('1'); return 'Normal hızıma döndüm.'; }
@@ -280,7 +478,7 @@ function localCommand(text) {
 async function think(text, { voiceTurn = false, onDelta = () => {}, image = null } = {}) {
   const local = localCommand(text);
   bubble('me', text || '(görsel)', { image: image?.url });
-  if (local) { const b = bubble('ai', local); answerTools(b.el, local); return local; }
+  if (local) { const b = bubble('ai', local); if (pendingLinks.length) addLinks(b.el, pendingLinks.splice(0)); answerTools(b.el, local); return local; }
   const messages = chat.messages.slice(-12).map(m => ({ role: m.role, content: m.content }));
   while (messages.length && messages[0].role !== 'user') messages.shift();
   messages.push({ role: 'user', content: text || 'Bu görseli incele; ne gördüğünü ve varsa önemli noktaları söyle.' });
@@ -288,7 +486,7 @@ async function think(text, { voiceTurn = false, onDelta = () => {}, image = null
   answering = true; controller = new AbortController();
   let full = '', sent = 0;
   try {
-    const r = await api('/api/chat', { method: 'POST', signal: controller.signal, body: JSON.stringify({ system: instructions(voiceTurn), messages, tier: pickTier(text, voiceTurn, !!image), image: image ? { mediaType: image.type, data: image.data } : undefined }) });
+    const r = await api('/api/chat', { method: 'POST', signal: controller.signal, body: JSON.stringify({ system: instructions(voiceTurn), messages, tier: pickTier(text, voiceTurn, !!image), search: !image && webSearch.wanted(text), image: image ? { mediaType: image.type, data: image.data } : undefined }) });
     if (!r.ok) { let d = {}; try { d = await r.json(); } catch {} throw Object.assign(Error(d.error || 'Sunucu hatası ' + r.status), { status: r.status }); }
     const reader = r.body.getReader(), dec = new TextDecoder();
     while (true) {
@@ -302,7 +500,10 @@ async function think(text, { voiceTurn = false, onDelta = () => {}, image = null
     const marker = full.lastIndexOf('\u0000ERR:');
     if (marker >= 0) throw Error(full.slice(marker + 5) || 'Yanıt yarıda kesildi.');
     const c = cleanAnswer(full) || 'Tamam.';
-    out.body.textContent = c; answerTools(out.el, c);
+    out.body.textContent = c;
+    const si = full.indexOf('\u0000SRC:');
+    if (si >= 0) { try { addLinks(out.el, JSON.parse(full.slice(si + 5).split('\u0000')[0]).slice(0, 5)); } catch {} }
+    answerTools(out.el, c);
     applyActions(full);
     remember(text || '(görsel gönderdi)', c);
     return c;
@@ -582,6 +783,8 @@ function sysInfo() {
     ['Ses', setting('voice') === 'natural' && server.speech ? 'doğal ses (sunucu), sorun olursa cihaz sesi' : 'cihaz sesi · ' + (bestVoice()?.name || 'varsayılan')],
     ['Eşitleme', server.sync ? 'telefon ve bilgisayar ortak' : 'yalnız bu cihaz (sunucuda JARVIS_KV yok)'],
     ['Kayıtlar', ['task', 'memory', 'note'].map(k => items.filter(i => i.kind === k).length + ' ' + { task: 'görev', memory: 'hafıza', note: 'not' }[k]).join(' · ')],
+    ['İnternet', webSearch.allowed() ? 'Gemini Google araması · ' + $('web').selectedOptions[0].text : 'kapalı'],
+    ['Hava', weather.text ? 'Cizre · Open-Meteo' : 'alınamadı'],
     ['Uyandırma', wake.enabled() ? 'açık · “Jarvis” deyince dinler' : 'kapalı'],
     ['Kurulum', standalone ? 'uygulama olarak açık' : 'tarayıcıda açık'],
     ['Ses motoru', 'JARVIS 0.39.0']
@@ -609,6 +812,11 @@ function boot(info) {
   const late = items.filter(isLate).length;
   setPhase('idle', late ? `${late} gecikmiş görevin var. “Brifing”e dokunabilirsin.` : 'Mikrofona dokun ve konuş, ya da yaz.');
   setTimeout(() => wake.start(), 800);
+  setInterval(() => { $('hWake').textContent = wake.rec ? 'dinliyor' : wake.enabled() ? 'beklemede' : 'kapalı'; }, 1500);
+  if (!chat.messages.length || !$('caption').textContent) {
+    const open = items.filter(i => i.kind === 'task' && !i.done).length;
+    $('caption').textContent = `${greeting()} Beyhan. ${open ? open + ' açık görevin var. ' : ''}“Jarvis” diye seslen ya da yaz.`;
+  }
   if (new URLSearchParams(location.search).has('brifing')) { history.replaceState(null, '', location.pathname); $('brief').click(); }
 }
 (async () => {

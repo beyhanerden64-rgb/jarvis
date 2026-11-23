@@ -78,7 +78,9 @@
       parts: typeof m.content === 'string' ? [{ text: m.content }] : m.content.map(c => (c.type === 'image' ? { inlineData: { mimeType: c.source.media_type, data: c.source.data } } : { text: c.text }))
     }));
     const tier = ['quick', 'default', 'complex'].includes(body.tier) ? body.tier : 'default';
-    return { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: MAX_TOKENS[tier] * 2 } };
+    const out = { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: MAX_TOKENS[tier] * 2 } };
+    if (body.search) out.tools = [{ google_search: {} }];
+    return out;
   }
   async function gemini(body, signal) {
     let last = null;
@@ -99,6 +101,7 @@
       }
       clearTimeout(timer); signal?.removeEventListener('abort', stop);
       // Missing model, its free quota used up, or the model is overloaded: try the next one.
+      if (r.status === 400 && body.search) { body = { ...body, search: false }; return gemini(body, signal); } // model without search tool support
       if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
       if (r.ok) localStorage.setItem('jarvisapp.geminiModel', model);
       return r;
@@ -108,12 +111,16 @@
   function geminiStream(upstream) {
     const reader = upstream.body.getReader(), dec = new TextDecoder(), enc = new TextEncoder();
     let buffer = '';
+    const sources = new Map();
     return new ReadableStream({
       async pull(ctrl) {
         try {
           while (true) {
             const { value, done } = await reader.read();
-            if (done) { ctrl.close(); return; }
+            if (done) {
+              if (sources.size) ctrl.enqueue(enc.encode('\u0000SRC:' + JSON.stringify([...sources].map(([url, title]) => ({ url, title })))));
+              ctrl.close(); return;
+            }
             buffer += dec.decode(value, { stream: true });
             let at, out = '';
             while ((at = buffer.indexOf('\n')) >= 0) {
@@ -122,6 +129,7 @@
               let ev; try { ev = JSON.parse(line.slice(5)); } catch { continue; }
               if (ev.error) out += '\u0000ERR:' + (ev.error.code === 429 ? 'Ücretsiz kota doldu; biraz sonra dene.' : 'Yanıt yarıda kesildi.');
               for (const part of ev.candidates?.[0]?.content?.parts || []) if (typeof part.text === 'string' && !part.thought) out += part.text;
+              for (const ch of ev.candidates?.[0]?.groundingMetadata?.groundingChunks || []) if (ch.web?.uri) sources.set(ch.web.uri, ch.web.title || '');
             }
             if (out) { ctrl.enqueue(enc.encode(out)); return; }
           }
