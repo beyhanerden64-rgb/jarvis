@@ -8,7 +8,7 @@ onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarı
 import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '7.1.0'
+VERSION = '8.0.0'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -687,7 +687,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             return self.reply(400, {'ok': False, 'error': 'Geçersiz istek'})
         if self.path == '/eslestir':
-            cfg.update({k: v for k, v in {'gh': d.get('token'), 'gist': d.get('gist'), 'anahtar': d.get('anahtar'), 'ntfy': d.get('ntfy'), 'tam_erisim': d.get('tam_erisim'), 'gemini': d.get('gemini'), 'nobet_ai': d.get('nobet_ai')}.items() if v is not None}); save_cfg(cfg)
+            cfg.update({k: v for k, v in {'gh': d.get('token'), 'gist': d.get('gist'), 'anahtar': d.get('anahtar'), 'ntfy': d.get('ntfy'), 'tam_erisim': d.get('tam_erisim'), 'gemini': d.get('gemini'), 'nobet_ai': d.get('nobet_ai'), 'telegram': d.get('telegram')}.items() if v is not None}); save_cfg(cfg)
             print('Telefon köprüsü eşleştirildi.')
             return self.reply(200, {'ok': True})
         if self.path == '/run':
@@ -1292,11 +1292,127 @@ def nb_state():
             'olaylar': NB['incidents'][-60:]}
 
 
+
+# =====================================================================================
+#  TELEGRAM KANALI — Beyhan JARVIS'e Telegram'dan yazar; yardımcı Gemini ile cevaplar ve
+#  güvenli bilgisayar işlemlerini yapar. Riskli işlemler buradan yapılmaz (uygulamada onay ister).
+#  Eşleştirme: bota "/start ERİŞİM-KODU". Yalnız eşleşen sohbet cevap alır.
+# =====================================================================================
+TG_SAFE = ['durum', 'sistem_ozet', 'sistem', 'pil', 'wifi', 'programlar', 'surecler', 'pencereler', 'dosya_ara', 'son_dosyalar', 'klasor_listele',
+           'ag_bilgi', 'gunluk', 'pano_al', 'servisler', 'nobet', 'nobet_tara', 'ac', 'url', 'ses', 'medya', 'kilitle', 'bildirim', 'ses_ayarla', 'temizlik', 'monitor']
+TG_HIST = {}
+
+
+def tg_api(method, data=None, files=None, timeout=60):
+    url = f"https://api.telegram.org/bot{cfg['telegram']}/{method}"
+    if files:
+        b = '----jarvis' + secrets.token_hex(8); body = b''
+        for k, v in (data or {}).items():
+            body += f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
+        for k, (fn, content, ct) in files.items():
+            body += f'--{b}\r\nContent-Disposition: form-data; name="{k}"; filename="{fn}"\r\nContent-Type: {ct}\r\n\r\n'.encode() + content + b'\r\n'
+        body += f'--{b}--\r\n'.encode()
+        req = urllib.request.Request(url, data=body, method='POST', headers={'Content-Type': 'multipart/form-data; boundary=' + b})
+    else:
+        req = urllib.request.Request(url, data=json.dumps(data or {}).encode('utf-8'), method='POST', headers={'Content-Type': 'application/json'})
+    return json.load(urllib.request.urlopen(req, timeout=timeout))
+
+
+def tg_send(chat, text):
+    for i in range(0, max(1, len(text)), 3900):
+        tg_api('sendMessage', {'chat_id': chat, 'text': text[i:i + 3900] or '…'})
+
+
+def tg_gemini(chat, text):
+    key = cfg.get('gemini')
+    if not key:
+        return 'Gemini anahtarı yardımcıya verilmemiş. JARVIS → OTOMASYON → Telegram → “Bilgisayar yardımcısına bağla”ya bas.'
+    hist = TG_HIST.setdefault(chat, [])
+    hist.append({'role': 'user', 'parts': [{'text': text}]})
+    sysmsg = (f'Sen JARVIS’sin: fizyoterapist Beyhan Erden’in kişisel asistanı. Şu an Telegram’dan yazıyor; sen onun Windows bilgisayarındaki yardımcıda çalışıyorsun ({platform.node()}). '
+              f'Kısa, doğal Türkçe yaz. Bilgisayarla ilgili işler için pc aracını kullan. Silme, kurma, kapatma, PowerShell gibi riskli işleri buradan YAPAMAZSIN; '
+              f'bunları JARVIS uygulamasından onaylayarak yapmasını söyle. Saat: {datetime.datetime.now().strftime("%d.%m.%Y %H:%M")}.')
+    tools = [{'functionDeclarations': [{'name': 'pc', 'description': 'Bilgisayarda güvenli bir işlem yapar ve sonucu döndürür. ac: program/site aç; url: adres aç; ses: yukari/asagi/kapat; medya: oynat/sonraki/onceki; dosya_ara: sorgu; klasor_listele: yol; nobet: izleme ajanlarının raporu; bildirim: ekrana mesaj.',
+                                        'parameters': {'type': 'OBJECT', 'properties': {'komut': {'type': 'STRING', 'enum': TG_SAFE}, 'argumanlar': {'type': 'ARRAY', 'items': {'type': 'STRING'}}}, 'required': ['komut']}}]}]
+    contents = hist[-12:]
+    for _ in range(5):
+        body = json.dumps({'systemInstruction': {'parts': [{'text': sysmsg}]}, 'contents': contents, 'tools': tools, 'generationConfig': {'maxOutputTokens': 1200}}).encode('utf-8')
+        d = None
+        for model in ('gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'):
+            try:
+                req = urllib.request.Request(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent', data=body, method='POST', headers={'Content-Type': 'application/json', 'x-goog-api-key': key})
+                d = json.load(urllib.request.urlopen(req, timeout=45)); break
+            except Exception:
+                continue
+        if not d:
+            return 'Yapay zekâya şu an ulaşılamadı (kota dolmuş olabilir). /durum, /nobet, /ekran komutları yine çalışır.'
+        parts = d.get('candidates', [{}])[0].get('content', {}).get('parts', [])
+        calls = [p['functionCall'] for p in parts if 'functionCall' in p]
+        if not calls:
+            out = ''.join(p.get('text', '') for p in parts).strip() or 'Tamam.'
+            hist.append({'role': 'model', 'parts': [{'text': out}]}); del hist[:-12]
+            return out
+        contents = contents + [{'role': 'model', 'parts': parts}]
+        resp = []
+        for c in calls:
+            args = c.get('args', {}); cmd = fold(args.get('komut', '')).replace(' ', '_')
+            if cmd not in TG_SAFE:
+                res = 'Bu işlem Telegram’dan yapılamaz; JARVIS uygulamasından onaylayarak yap.'
+            else:
+                out = run_logged(cmd, args.get('argumanlar') or [], False)
+                res = out.get('text') if out.get('ok') else 'HATA: ' + str(out.get('error'))
+            resp.append({'functionResponse': {'name': 'pc', 'response': {'sonuc': str(res)[:3000]}}})
+        contents = contents + [{'role': 'user', 'parts': resp}]
+    return 'İşlem çok uzadı; daha kısa bir istekle dene.'
+
+
+def tg_handle(msg):
+    chat = msg['chat']['id']; text = (msg.get('text') or '').strip()
+    if text.startswith('/start'):
+        code = text[6:].strip().upper()
+        if code and hmac.compare_digest(code, cfg['kod']):
+            cfg['tg_chat'] = chat; save_cfg(cfg)
+            return tg_send(chat, 'Eşleşme tamam, Beyhan. Ben JARVIS. Bana buradan yaz. Komutlar: /durum /nobet /ekran /kilitle')
+        return tg_send(chat, 'Eşleşmek için: /start ERİŞİM-KODU (JARVIS yardımcısının kodu)')
+    if chat != cfg.get('tg_chat'):
+        return tg_send(chat, 'Bu sohbet JARVIS’e bağlı değil.')
+    if text == '/ekran':
+        d = tool('ekran', [], False)
+        return tg_api('sendPhoto', {'chat_id': chat, 'caption': 'Ekran'}, {'photo': ('ekran.jpg', base64.b64decode(d['image']), 'image/jpeg')})
+    if text in ('/durum', '/nobet', '/kilitle'):
+        return tg_send(chat, run_logged({'/durum': 'sistem_ozet', '/nobet': 'nobet', '/kilitle': 'kilitle'}[text], [], False).get('text') or 'tamam')
+    if text:
+        tg_api('sendChatAction', {'chat_id': chat, 'action': 'typing'}, timeout=10)
+        tg_send(chat, tg_gemini(chat, text))
+
+
+def telegram_loop():
+    off = 0
+    while True:
+        if not cfg.get('telegram'):
+            time.sleep(20); continue
+        try:
+            r = tg_api('getUpdates', {'offset': off, 'timeout': 50, 'allowed_updates': ['message']}, timeout=65)
+            for u in r.get('result', []):
+                off = u['update_id'] + 1
+                if 'message' in u:
+                    try:
+                        tg_handle(u['message'])
+                    except Exception as e:
+                        try:
+                            tg_send(u['message']['chat']['id'], 'Hata: ' + str(e)[:200])
+                        except Exception:
+                            pass
+        except urllib.error.HTTPError as e:
+            time.sleep(300 if e.code in (401, 404) else 30)
+        except Exception:
+            time.sleep(15)
+
 THREADS = {}
 
 
 def start_thread(name):
-    t = threading.Thread(target={'relay': relay_loop, 'watch': watch_loop, 'nobet': nobet_loop}[name], daemon=True, name=name)
+    t = threading.Thread(target={'relay': relay_loop, 'watch': watch_loop, 'nobet': nobet_loop, 'telegram': telegram_loop}[name], daemon=True, name=name)
     t.start(); THREADS[name] = t
 
 
@@ -1308,7 +1424,7 @@ def main():
     print('  JARVIS → BAĞLANTI → “Yardımcı erişim kodu” kutusuna yaz.')
     print('  Bu pencere açık kaldıkça JARVIS bilgisayarını kullanabilir.')
     print('=' * 56)
-    for n in ('relay', 'watch', 'nobet'):
+    for n in ('relay', 'watch', 'nobet', 'telegram'):
         start_thread(n)
     push('JARVIS', f'Bilgisayar yardımcısı başladı ({platform.node()})')
     try:
