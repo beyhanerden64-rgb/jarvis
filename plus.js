@@ -231,7 +231,8 @@ async function cryptoAnalysis(sym) {
   const s = String(sym || 'BTC').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/USDT$/, '') + 'USDT';
   const r = await withTimeout(fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${s}&interval=1d&limit=300`), 12000, 'Borsa verisi zaman aşımı');
   if (!r.ok) throw Error(s + ' bulunamadı');
-  const k = await r.json(); const c = k.map(x => +x[4]), h = k.map(x => +x[2]), lo = k.map(x => +x[3]), v = k.map(x => +x[5]);
+  const k = await r.json().catch(() => null); if (!Array.isArray(k) || k.length < 35) throw Error(s + ' için borsa verisi alınamadı (Binance geçici olarak yanıt vermiyor olabilir)');
+  const c = k.map(x => +x[4]), h = k.map(x => +x[2]), lo = k.map(x => +x[3]), v = k.map(x => +x[5]);
   const last = c.at(-1), f = x => (x >= 100 ? x.toFixed(0) : x >= 1 ? x.toFixed(2) : x.toPrecision(4));
   const e12 = ema(c, 12), e26 = ema(c, 26), macd = e12.map((x, i) => x - e26[i]), sig = ema(macd, 9);
   const rets = c.slice(-31).map((x, i, a) => (i ? Math.log(x / a[i - 1]) : 0)).slice(1);
@@ -246,7 +247,8 @@ async function fxRates(base = 'USD') {
   const b = String(base || 'USD').toUpperCase().slice(0, 3);
   const r = await withTimeout(fetch(`https://api.frankfurter.app/latest?from=${b}&to=TRY,USD,EUR,GBP`), 10000, 'Döviz zaman aşımı');
   if (!r.ok) throw Error('Döviz verisi alınamadı');
-  const d = await r.json(); return `${d.date} (ECB) 1 ${b} = ` + Object.entries(d.rates).map(([k, v]) => `${v} ${k}`).join(', ');
+  const d = await r.json().catch(() => null); if (!d?.rates || !Object.keys(d.rates).length) throw Error('Döviz verisi alınamadı (kur servisi geçici olarak yanıt vermiyor olabilir)');
+  return `${d.date} (ECB) 1 ${b} = ` + Object.entries(d.rates).map(([k, v]) => `${v} ${k}`).join(', ');
 }
 async function readPage(url) {
   if (!/^https?:\/\//.test(url)) throw Error('Geçerli bir adres değil');

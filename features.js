@@ -149,7 +149,7 @@
   renderKasa(); renderStock();
 
   /* ================= 6) kripto: risk puanı, emir defteri, backtest, sanal portföy ================= */
-  const kl = async (s, n = 500) => { const sym = String(s || 'BTC').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/USDT$/, '') + 'USDT'; const r = await withTimeout(fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${sym}&interval=1d&limit=${n}`), 12000, 'Borsa verisi zaman aşımı'); if (!r.ok) throw Error(sym + ' bulunamadı'); return { sym, k: await r.json() }; };
+  const kl = async (s, n = 500) => { const sym = String(s || 'BTC').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/USDT$/, '') + 'USDT'; const r = await withTimeout(fetch(`https://data-api.binance.vision/api/v3/klines?symbol=${sym}&interval=1d&limit=${n}`), 12000, 'Borsa verisi zaman aşımı'); if (!r.ok) throw Error(sym + ' bulunamadı'); const k = await r.json().catch(() => null); if (!Array.isArray(k) || k.length < 35) throw Error(sym + ' için borsa verisi alınamadı (Binance geçici olarak yanıt vermiyor olabilir)'); return { sym, k }; };
   let pf = store.get('portfolio', { cash: 10000, pos: {}, trades: [] });
   Object.assign(TOOLS, {
     kripto_risk: { d: 'kripto_risk|BTC — risk puanı (0-100), maksimum düşüş, emir defteri dengesizliği', run: async ([s]) => {
@@ -176,7 +176,7 @@
     } },
     portfoy: { d: 'portfoy|al veya sat veya durum|sembol|USDT tutarı — sanal (gerçek para yok) kripto portföyü', run: async ([act = 'durum', s, amt]) => {
       const a = fold(act);
-      const price = async sym => +(await (await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}USDT`)).json()).price;
+      const price = async sym => { const v = +(await (await fetch(`https://data-api.binance.vision/api/v3/ticker/price?symbol=${sym}USDT`)).json().catch(() => ({}))).price; if (!(v > 0)) throw Error(sym + ' fiyatı alınamadı'); return v; };
       if (a === 'al' || a === 'sat') {
         const sym = String(s).toUpperCase().replace(/USDT$/, ''), p = await price(sym), usd = +amt;
         if (!(p > 0) || !(usd > 0)) throw Error('Sembol veya tutar geçersiz');
