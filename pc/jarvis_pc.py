@@ -5,10 +5,10 @@ Yalnız bu bilgisayardan (127.0.0.1) erişilebilir. JARVIS web uygulaması komut
 listesindeki işlemleri yapar. Tehlikeli işlemler (kapatma, PowerShell, silme, tarama, yedek, klavye) uygulamada
 onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarıyla imzalanmış olarak GitHub Gist üzerinden gelir.
 """
-import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
+import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, socket, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '8.0.1'
+VERSION = '8.0.2'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -29,7 +29,7 @@ APPS = {  # izin listesi: sesli ad → komut
 PROC = {'notepad': 'notepad.exe', 'chrome': 'chrome.exe', 'msedge': 'msedge.exe', 'winword': 'WINWORD.EXE', 'excel': 'EXCEL.EXE',
         'powerpnt': 'POWERPNT.EXE', 'mspaint': 'mspaint.exe', 'code': 'Code.exe', 'spotify:': 'Spotify.exe', 'whatsapp:': 'WhatsApp.exe',
         'calc': 'CalculatorApp.exe', 'firefox': 'firefox.exe', 'tg:': 'Telegram.exe', 'obs64': 'obs64.exe', 'taskmgr': 'Taskmgr.exe'}
-RISKY = {'nobet_onay', 'servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet'}
+RISKY = {'kendini_guncelle', 'nobet_onay', 'servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet'}
 TEXT_EXT = ('.txt', '.md', '.csv', '.json', '.log', '.py', '.js', '.html', '.css', '.ini', '.xml', '.yaml', '.yml')
 
 
@@ -610,6 +610,19 @@ def tool(name, args, onay):
         ps("Add-Type -AssemblyName System.Windows.Forms; $n=New-Object System.Windows.Forms.NotifyIcon; $n.Icon=[System.Drawing.SystemIcons]::Information; $n.Visible=$true; "
            f"$n.ShowBalloonTip(10000,'JARVIS','{msg}',[System.Windows.Forms.ToolTipIcon]::Info); Start-Sleep -Seconds 6; $n.Dispose()", 20)
         return {'text': 'Bilgisayarda bildirim gösterildi'}
+    if name == 'kendini_guncelle':
+        code = urllib.request.urlopen('https://beyhanerden64-rgb.github.io/jarvis/pc/jarvis_pc.py?v=' + str(int(time.time())), timeout=30).read()
+        compile(code, 'jarvis_pc.py', 'exec')  # bozuk indirme kurulmaz
+        latest = (code.decode('utf-8', 'replace').split("VERSION = '", 1)[1].split("'", 1)[0]) if b"VERSION = '" in code else '?'
+        me = os.path.abspath(__file__)
+        shutil.copy2(me, me + '.eski')
+        with open(me, 'wb') as f:
+            f.write(code)
+        vbs = os.path.join(BASE, 'JARVIS-PC.vbs')
+        if WIN and os.path.isfile(vbs):  # 3 sn sonra yeni sürümü başlat; bu kopya 1 sn sonra çıkar
+            subprocess.Popen(['powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command', f"Start-Sleep 3; wscript.exe '{vbs}'"], creationflags=NO_WINDOW)
+        threading.Timer(1, lambda: os._exit(0)).start()
+        return {'text': f'{VERSION} → {latest} kuruldu; yardımcı birkaç saniye içinde yeni sürümle açılıyor.'}
     if name == 'nobet':
         st = nb_state(); bad = [a for a in st['ajanlar'] if a['durum'] == 'sorun']
         open_inc = [i for i in st['olaylar'] if i['durum'] in ('açık', 'onay bekliyor')]
@@ -1436,6 +1449,17 @@ def start_thread(name):
     t.start(); THREADS[name] = t
 
 
+class Server(ThreadingHTTPServer):
+    """Windows'ta SO_REUSEADDR aynı portu ikinci kopyaya da açar; özel kullanım ile tek kopya garanti edilir."""
+    allow_reuse_address = not WIN
+    daemon_threads = True
+
+    def server_bind(self):
+        if WIN and hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def main():
     os.makedirs(WORK, exist_ok=True)
     print('=' * 56)
@@ -1444,13 +1468,14 @@ def main():
     print('  JARVIS → BAĞLANTI → “Yardımcı erişim kodu” kutusuna yaz.')
     print('  Bu pencere açık kaldıkça JARVIS bilgisayarını kullanabilir.')
     print('=' * 56)
-    for n in ('relay', 'watch', 'nobet', 'telegram'):
-        start_thread(n)
-    push('JARVIS', f'Bilgisayar yardımcısı başladı ({platform.node()})')
     try:
-        srv = ThreadingHTTPServer(('127.0.0.1', PORT), Handler)
+        srv = Server(('127.0.0.1', PORT), Handler)
     except OSError:
         print('Yardımcı zaten çalışıyor.'); return
+    # yalnız portu alan tek kopya arka plan işlerini başlatır (bekçi görevi her 10 dk yeni kopya denese de çoğalmaz)
+    for n in ('relay', 'watch', 'nobet', 'telegram'):
+        start_thread(n)
+    push('JARVIS', f'Bilgisayar yardımcısı başladı ({platform.node()}, {VERSION})')
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
