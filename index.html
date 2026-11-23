@@ -36,6 +36,17 @@ button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--holo); outline-offset: 2px; }
 [hidden] { display: none !important; }
 canvas#orb { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 0; }
+canvas#hud2d { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; z-index: 1; pointer-events: none; }
+.grid-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(rgb(87 211 255 / .05) 1px, transparent 1px), linear-gradient(90deg, rgb(87 211 255 / .05) 1px, transparent 1px); background-size: 44px 44px; mask-image: radial-gradient(70% 60% at 50% 45%, #000 20%, transparent 80%); -webkit-mask-image: radial-gradient(70% 60% at 50% 45%, #000 20%, transparent 80%); }
+.frame { position: fixed; inset: 8px; z-index: 1; pointer-events: none; }
+.frame i { position: absolute; width: 26px; height: 26px; border: 2px solid rgb(87 211 255 / .55); filter: drop-shadow(0 0 6px rgb(87 211 255 / .6)); }
+.frame i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+.frame i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+.frame i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+.frame i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+.card { position: relative; }
+.card::before { content: ""; position: absolute; top: -1px; left: -1px; width: 12px; height: 12px; border-top: 2px solid var(--holo); border-left: 2px solid var(--holo); border-radius: var(--r) 0 0 0; }
+.card::after { content: ""; position: absolute; bottom: -1px; right: -1px; width: 12px; height: 12px; border-bottom: 2px solid var(--holo); border-right: 2px solid var(--holo); border-radius: 0 0 var(--r) 0; }
 .scan { position: fixed; inset: 0; pointer-events: none; z-index: 1; background: repeating-linear-gradient(0deg, rgb(87 211 255 / .025) 0 1px, transparent 1px 3px); }
 .hud { position: fixed; inset: 0; z-index: 2; display: grid; grid-template-rows: auto 1fr auto; padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
 .hud > * { pointer-events: auto; }
@@ -186,7 +197,10 @@ textarea#prompt::placeholder { color: var(--muted); }
 </style>
 </head>
 <body>
+<div class="grid-bg" aria-hidden="true"></div>
 <canvas id="orb" aria-hidden="true"></canvas>
+<canvas id="hud2d" aria-hidden="true"></canvas>
+<div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <div class="scan" aria-hidden="true"></div>
 <div class="gate" id="gate" hidden>
   <form id="gateForm">
@@ -204,7 +218,7 @@ textarea#prompt::placeholder { color: var(--muted); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 2.1.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 2.2.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -381,7 +395,7 @@ textarea#prompt::placeholder { color: var(--muted); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=2.1.0"></script>
-<script src="direct.js?v=2.1.0"></script><script src="app.js?v=2.1.0"></script>
+<script src="voice-engine.js?v=2.2.0"></script>
+<script src="direct.js?v=2.2.0"></script><script src="app.js?v=2.2.0"></script><script src="figure.js?v=2.2.0"></script>
 </body>
 </html>
