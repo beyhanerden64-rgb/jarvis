@@ -55,20 +55,15 @@
 
   /* ---------- mikrofon (16 kHz PCM) ---------- */
   async function startMic() {
-    S.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
-    const AC = window.AudioContext || window.webkitAudioContext;
-    S.inCtx = new AC();
-    const src = S.inCtx.createMediaStreamSource(S.stream), proc = S.inCtx.createScriptProcessor(4096, 1, 1), ratio = S.inCtx.sampleRate / 16000;
-    proc.onaudioprocess = e => {
+    const stream = await AudioHub.mic();
+    if (!S) return;
+    S.cap = AudioHub.capture(stream, (f, rate) => {
       if (!S?.ready || S.muted) return;
-      const d = e.inputBuffer.getChannelData(0), out = new Int16Array(Math.floor(d.length / ratio)); let peak = 0;
-      for (let i = 0; i < out.length; i++) { const v = Math.max(-1, Math.min(1, d[Math.floor(i * ratio)])); out[i] = v < 0 ? v * 0x8000 : v * 0x7fff; peak = Math.max(peak, Math.abs(v)); }
+      S.lastFrame = Date.now();
+      const out = AudioHub.to16k(f, rate); let peak = 0; for (let i = 0; i < f.length; i += 32) peak = Math.max(peak, Math.abs(f[i]));
       if (!S.sources.size) window.jarvisAvatarLevel?.(Math.min(1, peak * 3));
-      try { S.ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64(out.buffer), mimeType: 'audio/pcm;rate=16000' } } })); } catch {}
-    };
-    const mute = S.inCtx.createGain(); mute.gain.value = 0; // işlemcinin çalışması için hedefe bağlı ama sessiz
-    src.connect(proc); proc.connect(mute); mute.connect(S.inCtx.destination);
-    S.proc = proc;
+      try { S.ws?.send(JSON.stringify({ realtimeInput: { audio: { data: b64(out.buffer), mimeType: 'audio/pcm;rate=16000' } } })); } catch {}
+    });
   }
 
   /* ---------- sohbet balonları ---------- */
@@ -180,21 +175,20 @@
     try { voiceSession.stop(''); } catch {} try { recorder?.active && recorder.stop?.(); } catch {}
     S = { sources: new Set(), playAt: 0, userText: '', aiText: '', started: Date.now(), attempts: [] };
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch {} // iPhone: sessiz anahtara rağmen çal
-    const AC = window.AudioContext || window.webkitAudioContext;
-    try { S.out = new AC({ sampleRate: 24000 }); } catch { S.out = new AC(); }
-    S.out.resume?.().catch(() => {}); // beklemeden: iPhone'da dokunuş dışında asla çözülmeyebilir
+    AudioHub.prime(); S.out = AudioHub.ctx; // dokunuş anında uyandırılmış tek ses bağlamı (iPhone kuralı)
     document.body.classList.add('live-on'); $('liveBtn')?.setAttribute('aria-pressed', 'true');
     setPhase('thinking', 'Canlı bağlantı kuruluyor…');
     connect(); // bağlantı mikrofon izniyle paralel kurulur (daha hızlı)
     try { await withTimeout(startMic(), 15000, 'mikrofon'); } catch (e) { stop(/mikrofon/.test(e.message) ? 'Mikrofon açılamadı (izin penceresi cevaplanmadı).' : 'Mikrofon izni verilmedi. iPhone: Ayarlar → Safari → Mikrofon → İzin Ver.'); return; }
-    if (S?.out?.state === 'suspended') note('Sesi duyamıyorsan CANLI düğmesine bir kez dokun.');
+    // bağlandıktan sonra 4 sn içinde mikrofondan ses gelmezse sessizce beklemek yerine söyle
+    setTimeout(() => { if (S?.ready && !S.lastFrame) { AudioHub.ctx?.resume?.().catch(() => {}); note('Mikrofondan ses gelmiyor; CANLI düğmesine bir kez dokun.'); } }, 6000);
   }
   function stop(msg) {
     if (!S) return;
     const s = S; s.stopping = true; S = null;
     try { s.ws?.close(); } catch {}
     for (const x of s.sources) { try { x.stop(); } catch {} }
-    try { s.proc?.disconnect(); s.stream?.getTracks().forEach(t => t.stop()); s.inCtx?.close(); s.out?.close(); } catch {}
+    try { s.cap?.stop(); AudioHub.releaseMic(); } catch {} // ortak ses bağlamı kapatılmaz
     try { if (navigator.audioSession) navigator.audioSession.type = 'auto'; } catch {}
     document.body.classList.remove('live-on'); $('liveBtn')?.setAttribute('aria-pressed', 'false');
     window.jarvisAvatarLevel?.(0);
@@ -204,7 +198,7 @@
   }
 
   /* ---------- arayüz ---------- */
-  const btn = el('button', { type: 'button', class: 'livebtn', id: 'liveBtn', 'aria-pressed': 'false', title: 'Canlı sohbet (Gemini Live): akıcı, doğal ses; sözünü kesebilirsin', onclick: () => { window.jarvisUnlock?.(); if (S && S.out?.state === 'suspended') { S.out.resume().catch(() => {}); return; } S ? stop('Canlı mod kapandı.') : start(); } }, el('span', { class: 'dot' }), 'CANLI');
+  const btn = el('button', { type: 'button', class: 'livebtn', id: 'liveBtn', 'aria-pressed': 'false', title: 'Canlı sohbet (Gemini Live): akıcı, doğal ses; sözünü kesebilirsin', onclick: () => { window.jarvisUnlock?.(); AudioHub.prime(); if (S && !S.ready) return stop('Canlı mod iptal edildi.'); if (S && S.ready && !S.lastFrame) { AudioHub.ctx?.resume?.().catch(() => {}); return; } S ? stop('Canlı mod kapandı.') : start(); } }, el('span', { class: 'dot' }), 'CANLI');
   $('mic')?.after(btn);
   const vs = el('select', { id: 'liveVoice' }); for (const [v, t] of VOICES) vs.append(new Option(t, v));
   vs.value = store.get('set.liveVoice', 'Puck') || 'Puck'; vs.onchange = () => store.set('set.liveVoice', vs.value);

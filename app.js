@@ -606,50 +606,63 @@ const voiceSession = new JarvisVoice({
 
 /* Recording fallback for browsers without speech recognition (needs server speech-to-text). */
 const recorder = {
-  active: false, stream: null, rec: null, ctx: null, timer: null,
+  // iPhone dahil her yerde çalışan kayıt: Ses Merkezi (AudioHub) ile PCM toplanır, konuşma bitince WAV → Gemini yazıya çevirir.
+  active: false, cap: null, chunks: [], rate: 48000, timer: null,
   async start() {
+    AudioHub.prime(); // dokunuşun içinde, her "await"ten önce
     if (!server.stt) { note('Sesi yazıya çevirmek için ücretsiz Gemini anahtarı gerekli (Bağlantı sekmesi). O zamana kadar yazarak konuşabilirsin.'); return; }
-    try {
-      this.stream ||= await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-    } catch { note('Mikrofon izni verilmedi.'); return; }
-    const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'].find(x => window.MediaRecorder?.isTypeSupported(x)) || '';
-    const chunks = []; this.rec = new MediaRecorder(this.stream, mime ? { mimeType: mime } : undefined);
-    this.rec.ondataavailable = e => e.data.size && chunks.push(e.data);
-    this.rec.onstop = async () => {
-      clearInterval(this.timer); this.ctx?.close().catch(() => {}); this.ctx = null;
-      if (!this.active) return; this.active = false; micOn = false;
-      const blob = new Blob(chunks, { type: (this.rec.mimeType || mime || 'audio/webm').split(';')[0] });
-      if (blob.size < 2000) { setPhase('idle', 'Ses algılanmadı.'); return; }
-      setPhase('thinking', 'Sözlerini yazıya çeviriyorum…');
-      try {
-        const b64 = await blobToBase64(blob);
-        const r = await api('/api/stt', { method: 'POST', body: JSON.stringify({ mimeType: blob.type, data: b64 }) });
-        const d = await r.json();
-        if (!r.ok || !d.text) { setPhase('idle', d.error || 'Konuşma anlaşılamadı.'); if (continuous) this.start(); return; }
-        await typedTurn(d.text, true);
-        if (continuous && !document.hidden) this.start();
-      } catch { setPhase('error', 'Ses gönderilemedi.'); }
-    };
-    this.rec.start(250); this.active = true; micOn = true;
-    setPhase('listening', 'Dinliyorum… Sözün bitince gönderirim.');
-    // adaptive end-of-speech (same rule as JARVIS 0.39 recording path)
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) return;
-    this.ctx = new AC(); const an = this.ctx.createAnalyser(); an.fftSize = 1024; this.ctx.createMediaStreamSource(this.stream).connect(an);
-    const buf = new Float32Array(an.fftSize); const floor = { blocks: [], min: Infinity, ticks: 0, noise: 0.004 };
-    let heard = false, voiced = 0, last = Date.now(); const begun = Date.now();
-    this.timer = setInterval(() => {
-      an.getFloatTimeDomainData(buf); const rms = Math.sqrt(buf.reduce((s, x) => s + x * x, 0) / buf.length);
-      window.jarvisAvatarLevel(rms * 12);
+    if (this.active) return;
+    this.active = true; micOn = true; this.chunks = [];
+    setPhase('starting', 'Mikrofon açılıyor…');
+    let stream;
+    try { stream = await AudioHub.mic(); } catch (e) { this.active = false; micOn = false; setPhase('idle', 'Hazır.'); note(e.message); return; }
+    if (!this.active) return;
+    const floor = { min: Infinity, blocks: [], noise: 0.004, ticks: 0 };
+    let heard = false, voiced = 0, last = Date.now(), lastFrameAt = Date.now();
+    const begun = Date.now();
+    this.cap = AudioHub.capture(stream, (f, rate) => {
+      if (!this.active) return;
+      this.rate = rate; lastFrameAt = Date.now();
+      this.chunks.push(f);
+      let s = 0; for (let i = 0; i < f.length; i++) s += f[i] * f[i];
+      const rms = Math.sqrt(s / f.length);
+      window.jarvisAvatarLevel?.(Math.min(1, rms * 12));
       floor.min = Math.min(floor.min, rms);
       if (++floor.ticks >= 3) { floor.blocks.push(floor.min); if (floor.blocks.length > 6) floor.blocks.shift(); if (floor.blocks.length >= 3) floor.noise = Math.min(0.03, Math.min(...floor.blocks) * 1.1); floor.min = Infinity; floor.ticks = 0; }
-      if (rms > Math.max(0.008, floor.noise * 2.8)) { voiced += 100; if (voiced >= 200) heard = true; last = Date.now(); }
-      else if (heard && Date.now() - last > JarvisLiveDictation.endPause(Number(setting('pause')), '')) this.finish();
-      if (Date.now() - begun > 30000 || (!heard && Date.now() - begun > 12000)) this.finish();
-    }, 100);
+      const ms = f.length / rate * 1000;
+      if (rms > Math.max(0.008, floor.noise * 2.8)) { voiced += ms; if (voiced >= 180) heard = true; last = Date.now(); }
+      else if (heard && Date.now() - last > JarvisLiveDictation.endPause(Number(setting('pause')) || 1000, '')) this.finish();
+      if (Date.now() - begun > 30000 || (!heard && Date.now() - begun > 10000)) this.finish();
+    });
+    setPhase('listening', 'Dinliyorum… Sözün bitince gönderirim.');
+    // ses gelmiyorsa (iPhone'da ses sistemi askıda) sessizce beklemek yerine söyle ve düzelt
+    clearInterval(this.timer);
+    this.timer = setInterval(() => {
+      if (!this.active) return clearInterval(this.timer);
+      if (Date.now() - lastFrameAt > 2500) { AudioHub.ctx?.resume?.().catch(() => {}); if (!this.warned) { this.warned = true; note('Mikrofondan ses gelmiyor. Mikrofon düğmesine bir kez daha dokun.'); } this.stop(); setPhase('idle', 'Mikrofona tekrar dokun.'); }
+    }, 800);
   },
-  finish() { clearInterval(this.timer); try { if (this.rec?.state === 'recording') this.rec.stop(); } catch {} },
-  stop() { this.active = false; micOn = false; this.finish(); this.stream?.getTracks().forEach(t => t.stop()); this.stream = null; window.jarvisAvatarLevel(0); }
+  finish() {
+    if (!this.active) return;
+    this.active = false; micOn = false; clearInterval(this.timer); this.cap?.stop(); this.cap = null; window.jarvisAvatarLevel?.(0);
+    const chunks = this.chunks; this.chunks = [];
+    const secs = chunks.reduce((s, c) => s + c.length, 0) / this.rate;
+    let peak = 0; for (const c of chunks) for (let i = 0; i < c.length; i += 64) peak = Math.max(peak, Math.abs(c[i]));
+    if (secs < 0.4 || peak < 0.01) { setPhase('idle', 'Ses algılanmadı.'); note('Sesini duyamadım. Mikrofona dokunup biraz daha yüksek sesle konuş.'); if (continuous && !document.hidden) setTimeout(() => this.start(), 400); return; }
+    this.transcribe(AudioHub.wav(chunks, this.rate));
+  },
+  async transcribe(blob) {
+    setPhase('thinking', 'Sözlerini yazıya çeviriyorum…');
+    try {
+      const b64 = await blobToBase64(blob);
+      const r = await api('/api/stt', { method: 'POST', body: JSON.stringify({ mimeType: 'audio/wav', data: b64 }) });
+      let d = {}; try { d = await r.json(); } catch {}
+      if (!r.ok || !d.text) { setPhase('idle', 'Hazır.'); note((d.error || 'Konuşma anlaşılamadı.') + (r.status === 429 ? ' (Gemini ücretsiz kotası doldu.)' : '')); if (continuous && !document.hidden && r.ok) this.start(); return; }
+      await typedTurn(d.text, true);
+      if (continuous && !document.hidden) this.start();
+    } catch (e) { setPhase('idle', 'Hazır.'); note('Ses gönderilemedi: ' + (e.message || 'ağ hatası')); }
+  },
+  stop() { this.active = false; micOn = false; clearInterval(this.timer); this.cap?.stop(); this.cap = null; this.chunks = []; window.jarvisAvatarLevel?.(0); AudioHub.releaseMic(); }
 };
 const blobToBase64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
 
