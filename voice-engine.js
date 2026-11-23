@@ -1615,6 +1615,13 @@ class JarvisWakeGate {
       this.touch();
       return text.replace(/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis)[\s,:.!-]*/iu, '').trim() || null;
     }
+    // isim cümlenin herhangi bir yerinde: "saat kaç Jarvis", "bugün hava nasıl jarvis?"
+    const any = /(^|[\s,;:])(?:hey\s+)?(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis)(?=[\s,;:.!?]|$)/iu;
+    if (any.test(t)) {
+      const rest = text.replace(/(^|[\s,;:])(?:hey\s+)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis)(?=[\s,;:.!?]|$)[\s,;:.!?]*/iu, '$1').replace(/[\s,;:]+$/u, '').trim();
+      this.touch();
+      return rest.length > 1 ? rest : null;
+    }
     if (this.clock() < this.awakeUntil) {
       this.touch();
       return text;

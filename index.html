@@ -316,6 +316,11 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 :root[data-theme="light"] .scan { opacity: .3; }
 @media (prefers-reduced-motion: reduce) { .mic[data-on="1"]::after { animation: none; } .drawer { transition: none; } }
 
+/* JARVIS 9 */
+.ultrabox { display: grid; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.chatchart { display: block; width: 100%; max-width: 520px; height: auto; margin-top: 8px; background: rgb(87 211 255 / .04); border: 1px solid var(--line); border-radius: 8px; }
+.kvs.doctor { margin-top: 8px; } .kvs.doctor b.bad { color: var(--bad); }
+body.guest .brand::after { content: 'MİSAFİR MODU'; display: block; margin-top: 6px; font: 700 10px var(--f-display); letter-spacing: .25em; color: var(--amber); text-shadow: none; }
 /* OTOMASYON */
 .polgrid { display: grid; gap: 4px; }
 .polrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font: 12px var(--f-mono); color: var(--muted); }
@@ -358,7 +363,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 8.1.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 9.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -524,7 +529,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <h3>DURUM</h3>
         <dl class="kv" id="sys"></dl>
         <h3>KOMUTLAR</h3>
-        <p class="muted">“Dur / sus / acil dur” · “Daha yavaş / hızlı konuş” · “Kısa cevap ver / detaylı anlat” · “Sesli yanıtı kapat / aç” · “Bunu hatırla: …” · “Not al: …” · “… hatırlat” · “… tamamlandı” · “Nerede kalmıştık?” · “Brifing ver” · “Bilgisayarda Word’ü aç” · “Ekranıma bak” · “BTC analizi” · “Şu sayfayı özetle: https://…” · “Ahmet Yılmaz’ı hasta olarak kaydet” · “Yarın 10’da toplantıyı takvime ekle” · “Işıkları aç kestirmesini çalıştır” · “Telefonumdaki takvimi oku”. Konuşurken araya girmek için ekrana dokun ya da “Jarvis” de.</p>
+        <p class="muted">“Dur / sus / acil dur” · “Daha yavaş / hızlı konuş” · “Kısa cevap ver / detaylı anlat” · “Sesli yanıtı kapat / aç” · “Bunu hatırla: …” · “Not al: …” · “… hatırlat” · “… tamamlandı” · “Nerede kalmıştık?” · “Brifing ver” · “Bilgisayarda Word’ü aç” · “Ekranıma bak” · “BTC analizi” · “Şu sayfayı özetle: https://…” · “Ahmet Yılmaz’ı hasta olarak kaydet” · “Yarın 10’da toplantıyı takvime ekle” · “Işıkları aç kestirmesini çalıştır” · “Telefonumdaki takvimi oku” · “Kendini kontrol et” · “500 ml su içtim” · “Misafir modunu aç”. Konuşurken araya girmek için ekrana dokun ya da “Jarvis” de.</p>
         <h3>UYGULAMA</h3>
         <p class="muted">Telefonda ve bilgisayarda “Uygulamayı yükle” ile kurulur. Sesli konuşma için Android ve bilgisayarda Chrome/Edge, iPhone’da Safari kullan.</p>
         <div class="row"><button type="button" class="btn" id="logout">Bu cihazda çıkış yap</button></div>
@@ -535,7 +540,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=8.1.0"></script>
-<script src="direct.js?v=8.1.0"></script><script src="app.js?v=8.1.0"></script><script src="plus.js?v=8.1.0"></script><script src="hud.js?v=8.1.0"></script><script src="features.js?v=8.1.0"></script><script src="control.js?v=8.1.0"></script><script src="voices.js?v=8.1.0"></script><script src="social.js?v=8.1.0"></script><script src="agent.js?v=8.1.0"></script><script src="figure.js?v=8.1.0"></script><script src="sentinel.js?v=8.1.0"></script><script src="brain.js?v=8.1.0"></script><script src="pro.js?v=8.1.0"></script>
+<script src="voice-engine.js?v=9.0.0"></script>
+<script src="direct.js?v=9.0.0"></script><script src="app.js?v=9.0.0"></script><script src="plus.js?v=9.0.0"></script><script src="hud.js?v=9.0.0"></script><script src="features.js?v=9.0.0"></script><script src="control.js?v=9.0.0"></script><script src="voices.js?v=9.0.0"></script><script src="social.js?v=9.0.0"></script><script src="agent.js?v=9.0.0"></script><script src="figure.js?v=9.0.0"></script><script src="sentinel.js?v=9.0.0"></script><script src="brain.js?v=9.0.0"></script><script src="pro.js?v=9.0.0"></script><script src="ultra.js?v=9.0.0"></script>
 </body>
 </html>

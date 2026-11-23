@@ -8,7 +8,7 @@ onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarı
 import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, socket, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '8.0.2'
+VERSION = '9.0.0'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -610,6 +610,14 @@ def tool(name, args, onay):
         ps("Add-Type -AssemblyName System.Windows.Forms; $n=New-Object System.Windows.Forms.NotifyIcon; $n.Icon=[System.Drawing.SystemIcons]::Information; $n.Visible=$true; "
            f"$n.ShowBalloonTip(10000,'JARVIS','{msg}',[System.Windows.Forms.ToolTipIcon]::Info); Start-Sleep -Seconds 6; $n.Dispose()", 20)
         return {'text': 'Bilgisayarda bildirim gösterildi'}
+    if name == 'web_al':  # takvim (iCal) gibi tarayıcının CORS yüzünden okuyamadığı metni getirir; yalnız https, en fazla 3 MB
+        if not a0.lower().startswith('https://'):
+            raise ValueError('Yalnız https adresleri okunabilir')
+        req = urllib.request.Request(a0, headers={'User-Agent': 'JARVIS-PC/' + VERSION})
+        data = urllib.request.urlopen(req, timeout=25).read(3_000_001)
+        if len(data) > 3_000_000:
+            raise ValueError('Sayfa çok büyük (3 MB üstü)')
+        return {'text': data.decode('utf-8', 'replace')}
     if name == 'kendini_guncelle':
         code = urllib.request.urlopen('https://beyhanerden64-rgb.github.io/jarvis/pc/jarvis_pc.py?v=' + str(int(time.time())), timeout=30).read()
         compile(code, 'jarvis_pc.py', 'exec')  # bozuk indirme kurulmaz
