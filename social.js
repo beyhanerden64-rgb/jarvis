@@ -7,6 +7,7 @@
   const proxy = (u, fmt = 'html') => withTimeout(fetch('https://r.jina.ai/' + u, { headers: { 'X-Return-Format': fmt } }), 20000, 'YouTube yanıt vermedi');
   const n = x => Number(x || 0).toLocaleString('tr-TR');
   if (!store.get('set.ytChannel', '')) store.set('set.ytChannel', 'UCKm59sazrexGNvR-85-4zWQ');
+  if (!store.get('set.igProfile', '')) store.set('set.igProfile', 'https://www.instagram.com/fizyo_vitaaa/');
   const channelId = () => { const v = opt('ytChannel'); const m = v.match(/UC[\w-]{22}/); return m ? m[0] : v.trim(); };
 
   /* ================= YouTube ================= */
