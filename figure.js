@@ -176,7 +176,7 @@
   }
   addEventListener('resize', resize); resize();
   const COLORS = { idle: [0.34, 0.83, 1], starting: [0.55, 0.88, 1], listening: [1, 0.72, 0.32], thinking: [0.62, 0.62, 1], speaking: [0.45, 0.95, 1], error: [1, 0.4, 0.4] };
-  let col = [0.34, 0.83, 1], think = 0, listen = 0, speak = 0, yawExtra = 0;
+  let pointerYaw = 0, col = [0.34, 0.83, 1], think = 0, listen = 0, speak = 0, yawExtra = 0;
   const mix = (a, b, f) => a + (b - a) * f;
 
   function frame() {
@@ -192,7 +192,8 @@
     listen = mix(listen, ph === 'listening' || ph === 'starting' ? 1 : 0, 0.08);
     speak = mix(speak, ph === 'speaking' ? 1 : 0, 0.1);
     yawExtra += think * 0.012;
-    const yaw = Math.sin(t * 0.22) * 0.5 + yawExtra;
+    pointerYaw += ((window.jarvisPointer || 0) * 0.45 - pointerYaw) * 0.04;
+    const yaw = Math.sin(t * 0.22) * 0.35 + yawExtra + pointerYaw;
     const aspect = W / H;
     const scale = small ? Math.min(1.1, 1.6 * aspect) : Math.min(1.0, 1.25 * aspect);
     const cyOff = small ? 0.22 : 0.1;
