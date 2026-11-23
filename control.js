@@ -72,9 +72,10 @@
     ['JARVIS WiFi', 'Wi-Fi’yi Ayarla (Set Wi-Fi) → Aç/Kapat', 'wifi|aç'],
     ['JARVIS Hatırlatıcı', 'Hatırlatıcı Ekle (Add New Reminder) → Kestirme Girdisi', 'hatirlatici|Süt al'],
     ['JARVIS Not', 'Not Oluştur (Create Note) → Kestirme Girdisi', 'not|Toplantı notu'],
+    ['JARVIS Takvim Oku', 'Takvim Etkinliklerini Bul (Find Calendar Events: Başlangıç Tarihi önümüzdeki 7 gün içinde, sırala: Başlangıç Tarihi) → Hatırlatıcıları Bul (Find Reminders: Tamamlanmamış) → Metin: “TAKVİM:” + Takvim Etkinlikleri + “ANIMSATICILAR:” + Hatırlatıcılar → URL Kodla (URL Encode) → URL’yi Aç: bu site adresi + ?takvim= + Kodlanmış Metin. Her sabah otomatik okusun istersen Otomasyon → Günün Saati → bu kestirmeyi çalıştır', 'takvim'],
     ['JARVIS Pil', 'Pil Düzeyini Al (Get Battery Level) → URL’yi Aç: bu site adresi + ?q=pil%20durumum%20 + Pil Düzeyi', 'pil']
   ];
-  const IPH = { fener: 'JARVIS Fener', ses: 'JARVIS Ses', parlaklik: 'JARVIS Parlaklık', odak: 'JARVIS Odak', alarm: 'JARVIS Alarm', mesaj: 'JARVIS Mesaj', ara: 'JARVIS Ara', muzik: 'JARVIS Müzik', wifi: 'JARVIS WiFi', hatirlatici: 'JARVIS Hatırlatıcı', not: 'JARVIS Not', pil: 'JARVIS Pil' };
+  const IPH = { fener: 'JARVIS Fener', ses: 'JARVIS Ses', parlaklik: 'JARVIS Parlaklık', odak: 'JARVIS Odak', alarm: 'JARVIS Alarm', mesaj: 'JARVIS Mesaj', ara: 'JARVIS Ara', muzik: 'JARVIS Müzik', wifi: 'JARVIS WiFi', hatirlatici: 'JARVIS Hatırlatıcı', not: 'JARVIS Not', pil: 'JARVIS Pil', takvim: 'JARVIS Takvim Oku' };
   function iphone([cmd, ...rest]) {
     const name = IPH[fold(cmd)];
     if (!name) throw Error('Bilinmeyen telefon komutu. Olanlar: ' + Object.keys(IPH).join(', '));
@@ -107,7 +108,7 @@
   Object.assign(TOOLS, {
     ekran_tikla: { d: 'ekran_tikla|tıklanacak öğenin tarifi|tek veya cift — bilgisayar ekranına bakar, öğeyi bulur, onayla tıklar ve sonucu yeni ekran görüntüsüyle doğrular', risky: false, run: async (args, ctx) => { const out = await screenClick(args, ctx); if (typeof out === 'string') return out; ctx.lastImage = out.image; return out.text; } },
     telefona_bildir: { d: 'telefona_bildir|mesaj|zaman (isteğe bağlı YYYY-MM-DDTHH:MM, en fazla 3 gün sonrası) — Beyhan’ın telefonuna anlık bildirim (JARVIS kapalıyken de gelir)', run: async ([m, at]) => { if (!m) throw Error('Mesaj boş'); await pushPhone(m, { at: at || null }); return at ? `Bildirim ${at} için zamanlandı.` : 'Bildirim telefona gönderildi.'; } },
-    iphone: { d: 'iphone|komut|değer — iPhone’u kontrol eder (Kestirmeler): fener, ses, parlaklik, odak, alarm, mesaj (kişi|mesaj), ara, muzik, wifi, hatirlatici, not, pil', pending: true, run: iphone },
+    iphone: { d: 'iphone|komut|değer — iPhone’u kontrol eder (Kestirmeler): fener, ses, parlaklik, odak, alarm, mesaj (kişi|mesaj), ara, muzik, wifi, hatirlatici, not, pil, takvim (iPhone takvimini ve anımsatıcıları JARVIS’e okutur; bilgi eskiyse ya da hiç yoksa öner)', pending: true, run: iphone },
     konum: { d: 'konum — bu cihazın şu anki konumu ve adresi', run: async () => { const c = await geo(); let addr = ''; try { const d = await (await withTimeout(fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=tr&lat=${c.latitude}&lon=${c.longitude}`), 8000)).json(); addr = d.display_name || ''; } catch {} pendingLinks.push({ url: (isApple ? 'https://maps.apple.com/?ll=' : 'https://www.google.com/maps?q=') + c.latitude + ',' + c.longitude, title: 'Haritada aç' }); return `${addr || 'adres bulunamadı'} (${c.latitude.toFixed(5)}, ${c.longitude.toFixed(5)}, ±${Math.round(c.accuracy)} m)`; } },
     konum_hatirlat: { d: 'konum_hatirlat|yer (adres veya “burası”)|hatırlatma metni|yarıçap metre — o yere varınca hatırlatır (uygulama açıkken)', run: async ([place, text, r]) => {
       if (!text) throw Error('Hatırlatma metni gerekli');
@@ -165,6 +166,16 @@ CİHAZ HÂKİMİYETİ: Bilgisayarda bir şeyi göremediğin bir yerde yapmak ger
   // share the phone-notification channel with the PC helper so the PC can alert the phone (disk full, memory, start-up)
   async function pairNtfy() { if (!pcLocal || !topic() || store.get('ntfyPaired', '') === topic()) return; try { const r = await fetch(PC + '/eslestir', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ ntfy: topic() }) }); if (r.ok) store.set('ntfyPaired', topic()); } catch {} }
   setInterval(pairNtfy, 30000); setTimeout(pairNtfy, 3000);
+
+  /* ================= 7b) iPhone takvim köprüsü: ?takvim=… (JARVIS Takvim Oku kestirmesi gönderir) ================= */
+  const calIn = new URLSearchParams(location.search).get('takvim');
+  if (calIn !== null) {
+    history.replaceState(null, '', location.pathname);
+    const text = String(calIn).replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 8000);
+    store.set('phoneCal', { text, at: Date.now() });
+    const go = () => { if ($('gate').hidden && $('cBrain').dataset.s === 'on' && !answering) { window.jarvisUnlock?.(); note('iPhone takvimi ve anımsatıcılar alındı.'); typedTurn('iPhone takvimimi ve anımsatıcılarımı az önce aldın. Bugünü ve yaklaşan günleri kısaca özetle; çakışma, gecikmiş anımsatıcı ya da hazırlık gereken bir şey varsa söyle.', opt('speakOn') === '1'); } else setTimeout(go, 500); };
+    setTimeout(go, 1800);
+  }
 
   /* ================= 8) Siri / Asistan / ana ekran derin bağlantısı: ?q=komut ================= */
   const q = new URLSearchParams(location.search).get('q');

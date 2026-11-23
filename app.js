@@ -376,6 +376,12 @@ const PERSONA = {
   akademik: 'Akademik danışman gibi düşün (ZOİ çalışmaları dahil): hipotez, yöntem, istatistik, literatür; emin olmadığın kaynağı uydurma, doğrulanması gerektiğini söyle.'
 };
 const LENGTH = { kisa: 'Yanıtları kısa ve öz tut.', normal: 'Yanıt uzunluğunu soruya göre ayarla.', detay: 'Konu gerektiriyorsa ayrıntılı ve yapılandırılmış yanıt ver.' };
+function phoneCalText() {
+  const c = store.get('phoneCal', null);
+  if (!c || !c.text) return '(henüz okunmadı; takvim sorulursa iphone|takvim aracıyla okutmayı öner)';
+  const age = Math.round((Date.now() - c.at) / 3600000);
+  return `(okunma: ${isoLocal(new Date(c.at)).replace('T', ' ')}${age >= 12 ? ' — ESKİ, yenilemeyi öner' : ''})\n${c.text}`;
+}
 function instructions(voiceTurn) {
   const fmt = arr => arr.map(i => `- [${i.id}] ${i.kind === 'memory' ? '(' + isoLocal(new Date(i.created)).slice(0, 10) + ') ' : ''}${i.text}${i.due ? ' (zaman: ' + i.due + (isLate(i) ? ', GECİKTİ' : '') + ')' : ''}`).join('\n') || '(yok)';
   return `Sen JARVIS'sin: Fizyoterapist Beyhan Erden'in kişisel yapay zekâ asistanı. Beyhan, Cizre/Şırnak'ta FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'ni işletiyor.
@@ -399,6 +405,9 @@ ${items.filter(i => i.kind === 'doc').slice(-15).map(i => '- ' + i.title).join('
 
 AÇIK GÖREVLER VE HATIRLATMALAR:
 ${fmt(items.filter(i => i.kind === 'task' && !i.done))}
+
+iPHONE TAKVİMİ VE ANIMSATICILAR (telefondan okunan gerçek kayıtlar):
+${phoneCalText()}
 
 SON TAMAMLANANLAR:
 ${fmt(items.filter(i => i.kind === 'task' && i.done).slice(-5))}
@@ -739,7 +748,7 @@ $('prompt').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shift
 function autosize() { const t = $('prompt'); t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; }
 $('prompt').addEventListener('input', () => { autosize(); setPhase(phase); });
 document.querySelectorAll('.suggest button').forEach(b => b.onclick = () => { window.jarvisUnlock(); if (b.dataset.p) { $('persona').value = b.dataset.p; store.set('set.persona', b.dataset.p); } typedTurn(b.dataset.q, false); });
-$('brief').onclick = () => { window.jarvisUnlock(); typedTurn('Bana kısa bir brifing ver: bugünün tarihi, gecikmiş ve bugünkü görevlerim, yaklaşan hatırlatmalar ve dikkat etmem gereken bir şey varsa o.', true); };
+$('brief').onclick = () => { window.jarvisUnlock(); typedTurn('Bana kısa bir brifing ver: bugünün tarihi, iPhone takvimimdeki bugünkü ve yarınki randevular, gecikmiş ve bugünkü görevlerim, yaklaşan hatırlatmalar ve dikkat etmem gereken bir şey varsa o.', true); };
 $('clearChat').onclick = () => { chat.messages = []; persist(); renderChat(); note('Sohbet temizlendi. Özet, hafıza, notlar ve görevler duruyor.'); };
 $('testVoice').onclick = () => { window.jarvisUnlock(); stopAll(); voiceSession.read('Merhaba Beyhan, ben Jarvis. Sesim böyle; hızımı ve tonumu buradan değiştirebilirsin.'); };
 

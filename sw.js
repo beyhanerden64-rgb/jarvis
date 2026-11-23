@@ -1,7 +1,7 @@
 'use strict';
 // JARVIS uygulama kabuğu: arayüz çevrimdışı da açılır; /api/ istekleri asla önbelleğe alınmaz.
-const CACHE = 'jarvis-app-8.0.3';
-const SHELL = ['./', 'app.js?v=8.0.3', 'plus.js?v=8.0.3', 'hud.js?v=8.0.3', 'features.js?v=8.0.3', 'control.js?v=8.0.3', 'voices.js?v=8.0.3', 'social.js?v=8.0.3', 'agent.js?v=8.0.3', 'figure.js?v=8.0.3', 'sentinel.js?v=8.0.3', 'brain.js?v=8.0.3', 'pro.js?v=8.0.3', 'voice-engine.js?v=8.0.3', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=8.0.3'];
+const CACHE = 'jarvis-app-8.1.0';
+const SHELL = ['./', 'app.js?v=8.1.0', 'plus.js?v=8.1.0', 'hud.js?v=8.1.0', 'features.js?v=8.1.0', 'control.js?v=8.1.0', 'voices.js?v=8.1.0', 'social.js?v=8.1.0', 'agent.js?v=8.1.0', 'figure.js?v=8.1.0', 'sentinel.js?v=8.1.0', 'brain.js?v=8.1.0', 'pro.js?v=8.1.0', 'voice-engine.js?v=8.1.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=8.1.0'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
