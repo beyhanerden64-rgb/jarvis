@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>JARVIS</title>
+<meta name="description" content="Beyhan'ın sesli kişisel asistanı">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b1118">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+
+/* Layout: one-screen console — stage (reactor + conversation + composer) left, control drawer right; stacks on phones. */
+:root {
+  --bg: #e9edf2; --panel: #f8fafc; --raised: #ffffff; --ink: #142030; --muted: #586779; --line: #d3dbe5;
+  --brass: #b8741a; --brass-soft: #f3e3c8; --steel: #1d6a86; --steel-soft: #d6eaf2;
+  --ok: #2f7d4f; --warn: #a5541b; --bad: #b3352f;
+  --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1118; --panel: #111a24; --raised: #172331; --ink: #e4ebf3; --muted: #8b9aac; --line: #22324a;
+    --brass: #e0a443; --brass-soft: #3a2b14; --steel: #57b4d3; --steel-soft: #12303d;
+    --ok: #5fbf86; --warn: #e09452; --bad: #ef7a70; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1118; --panel: #111a24; --raised: #172331; --ink: #e4ebf3; --muted: #8b9aac; --line: #22324a;
+  --brass: #e0a443; --brass-soft: #3a2b14; --steel: #57b4d3; --steel-soft: #12303d;
+  --ok: #5fbf86; --warn: #e09452; --bad: #ef7a70; color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 16px; box-sizing: border-box;
+}
+*, *::before, *::after { box-sizing: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--steel); outline-offset: 2px; }
+.app { max-width: 1220px; margin: 0 auto; display: grid; gap: 14px; }
+header.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { font: 700 22px/1 var(--f-display); letter-spacing: .16em; }
+.brand small { font: 500 11px var(--f-mono); letter-spacing: .08em; color: var(--muted); margin-left: 8px; }
+.clock { margin-left: auto; font: 500 13px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font: 500 11px var(--f-mono); letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--panel); }
+.chip[data-s="on"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.chip[data-s="off"] { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); display: grid; min-width: 0; }
+.reactor { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+canvas#orb { width: 120px; height: 120px; display: block; }
+.phase { font: 600 13px var(--f-display); letter-spacing: .22em; color: var(--brass); }
+.status { margin-top: 4px; color: var(--muted); min-height: 1.5em; }
+.partial { margin-top: 6px; font-style: italic; color: var(--steel); min-height: 1.5em; overflow-wrap: anywhere; }
+.modes { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--raised); }
+.seg button { border: 0; background: none; padding: 4px 11px; font-size: 12.5px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--brass-soft); color: var(--ink); font-weight: 600; }
+.seg button:disabled { opacity: .45; cursor: not-allowed; }
+.seg select { border: 0; background: none; padding: 4px 8px; font-size: 12.5px; }
+.feed { overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; height: min(58vh, 560px); min-height: 260px; }
+.msg { max-width: 84%; padding: 10px 13px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.me { align-self: flex-end; background: var(--steel-soft); border-bottom-right-radius: 4px; }
+.msg.ai { align-self: flex-start; background: var(--raised); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.msg.note { align-self: center; max-width: 100%; font: 12px var(--f-mono); color: var(--muted); background: none; padding: 2px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.msg.alarm { align-self: stretch; max-width: 100%; background: var(--brass-soft); border: 1px solid var(--brass); font-weight: 500; }
+.msg .who { display: block; font: 600 10px var(--f-display); letter-spacing: .18em; color: var(--muted); margin-bottom: 3px; }
+.msg.ai .who { color: var(--brass); }
+.msg img { display: block; max-width: 220px; max-height: 160px; border-radius: 8px; margin-bottom: 6px; }
+.tool { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.tool button, .undo { border: 1px solid var(--line); background: none; border-radius: 6px; padding: 1px 8px; font: 11px var(--f-mono); color: var(--muted); }
+.tool button:hover, .undo:hover { color: var(--ink); border-color: var(--steel); }
+.empty { margin: auto; text-align: center; color: var(--muted); max-width: 46ch; display: grid; gap: 10px; }
+.empty b { font: 600 16px var(--f-display); letter-spacing: .06em; color: var(--ink); }
+.suggest { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.suggest button { border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 5px 11px; font-size: 13px; }
+.suggest button:hover { border-color: var(--steel); }
+.composer { border-top: 1px solid var(--line); padding: 12px 14px; display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.mic { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--brass); background: var(--brass-soft); color: var(--brass); display: grid; place-items: center; position: relative; }
+.mic svg { width: 24px; height: 24px; }
+.mic[data-on="1"] { background: var(--brass); color: var(--panel); }
+.mic[data-on="1"]::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; border: 2px solid var(--brass); opacity: .5; animation: ring 1.4s ease-out infinite; }
+@keyframes ring { from { transform: scale(.92); opacity: .6; } to { transform: scale(1.18); opacity: 0; } }
+.attach { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--raised); display: grid; place-items: center; color: var(--muted); }
+.attach svg { width: 20px; height: 20px; }
+.inputwrap { display: grid; gap: 6px; min-width: 0; }
+.pending-img { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.pending-img img { height: 40px; border-radius: 6px; }
+textarea#prompt { width: 100%; min-height: 44px; max-height: 140px; resize: none; border: 1px solid var(--line); border-radius: 10px; background: var(--raised); padding: 10px 12px; }
+.send { height: 44px; padding: 0 16px; border-radius: 10px; border: 0; background: var(--steel); color: var(--panel); font-weight: 600; }
+.send.stop { background: var(--bad); }
+.hint { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+@media (max-width: 520px) { .composer { grid-template-columns: auto auto minmax(0, 1fr); } .send { grid-column: 1 / -1; } }
+
+.drawer { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line); }
+.tabs button { background: none; border: 0; padding: 11px 4px; font: 600 11px var(--f-display); letter-spacing: .12em; color: var(--muted); border-bottom: 2px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--brass); }
+.badge { display: inline-block; min-width: 16px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--bad); color: var(--panel); font: 600 10px/16px var(--f-mono); }
+.pane { padding: 14px; display: grid; gap: 12px; align-content: start; max-height: calc(58vh + 300px); overflow-y: auto; }
+.pane[hidden] { display: none; }
+.pane h3 { margin: 4px 0 0; font: 600 12px var(--f-display); letter-spacing: .16em; color: var(--muted); }
+.list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; padding: 8px 10px; background: var(--raised); border: 1px solid var(--line); border-radius: 8px; }
+.item p { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.item small { display: block; color: var(--muted); font: 11px var(--f-mono); }
+.item.late small { color: var(--bad); font-weight: 600; }
+.item.done p { text-decoration: line-through; color: var(--muted); }
+.item details summary { cursor: pointer; font-weight: 500; }
+.x { border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; padding: 2px 4px; }
+.x:hover { color: var(--bad); }
+.add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.add.two { grid-template-columns: minmax(0, 1fr) auto; }
+.add.two input[type="datetime-local"] { grid-column: 1 / -1; grid-row: 2; }
+.add input, .field select { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); padding: 8px 10px; min-width: 0; }
+.add button, .btn { border: 1px solid var(--line); background: var(--raised); border-radius: 8px; padding: 7px 12px; font-weight: 500; }
+.add button:hover, .btn:hover { border-color: var(--steel); }
+.field { display: grid; gap: 4px; }
+.field label { font-size: 13px; color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.muted { color: var(--muted); font-size: 13px; margin: 0; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); font-size: 12px; overflow-wrap: anywhere; }
+.link { color: var(--steel); overflow-wrap: anywhere; font: 12px var(--f-mono); }
+.summary { font-size: 13px; background: var(--raised); border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .mic[data-on="1"]::after { animation: none; } }
+
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.install { border: 1px solid var(--brass); background: var(--brass-soft); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: 600 12px var(--f-body); }
+.gate { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; z-index: 50; padding: 24px max(16px, env(safe-area-inset-left, 0px)); }
+.gate form { width: min(380px, 100%); display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+.gate h1 { margin: 0; font: 700 26px/1 var(--f-display); letter-spacing: .18em; }
+.gate input { border: 1px solid var(--line); border-radius: 10px; background: var(--raised); padding: 12px; font-size: 16px; }
+.gate button { height: 46px; border: 0; border-radius: 10px; background: var(--steel); color: var(--panel); font-weight: 600; }
+.gate .err { color: var(--bad); font-size: 13px; min-height: 1.2em; margin: 0; }
+.sheet { position: fixed; inset: auto 0 0 0; z-index: 40; background: var(--panel); border-top: 1px solid var(--line); padding: 16px max(16px, env(safe-area-inset-left, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; box-shadow: 0 -8px 24px rgb(0 0 0 / .18); }
+.sheet ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+@media (max-width: 520px) { .feed { height: 52vh; } .brand small { display: none; } .clock { width: 100%; margin-left: 0; } }
+</style>
+</head>
+<body>
+<div class="gate" id="gate" hidden>
+  <form id="gateForm">
+    <h1>JARVIS</h1>
+    <p class="muted">Kişisel asistanına giriş. Şifre yalnızca bu cihazda saklanır.</p>
+    <input id="gateKey" type="password" autocomplete="current-password" placeholder="Uygulama şifresi" aria-label="Uygulama şifresi" required>
+    <button>Giriş</button>
+    <p class="err" id="gateErr" role="alert"></p>
+  </form>
+</div>
+<div class="sheet" id="iosSheet" hidden>
+  <b>iPhone'a uygulama olarak ekle</b>
+  <ol><li>Alttaki Paylaş düğmesine dokun (kare ve yukarı ok).</li><li>“Ana Ekrana Ekle”yi seç.</li><li>“Ekle”ye dokun. JARVIS ana ekranda uygulama olarak açılır.</li></ol>
+  <button type="button" class="btn" id="iosClose">Tamam</button>
+</div>
+
+
+<div class="app">
+  <header class="top">
+    <div class="brand">JARVIS<small>uygulama 1.0 · ses motoru 0.39</small></div>
+    <button type="button" class="install" id="install" hidden>Uygulamayı yükle</button>
+    <div class="chips" aria-label="Bağlantı durumu">
+      <span class="chip" id="cBrain">Beyin: bekleniyor</span>
+      <span class="chip" id="cMic">Mikrofon: bekleniyor</span>
+      <span class="chip" id="cVoice">Ses: bekleniyor</span>
+      <span class="chip" id="cMem">Hafıza: bekleniyor</span>
+    </div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <div class="grid">
+    <section class="stage" aria-label="Konuşma">
+      <div class="reactor">
+        <canvas id="orb" width="240" height="240" aria-hidden="true"></canvas>
+        <div style="min-width:0">
+          <div class="phase" id="phase">HAZIR</div>
+          <div class="status" id="status">Bağlantılar hazırlanıyor…</div>
+          <div class="partial" id="partial" aria-live="polite"></div>
+          <div class="modes">
+            <div class="seg" role="group" aria-label="Dinleme biçimi">
+              <button type="button" id="mPush" aria-pressed="true">Bas-konuş</button>
+              <button type="button" id="mLive" aria-pressed="false" title="Mikrofon açık kalır; kulaklıkla en iyi çalışır">Sürekli sohbet</button>
+            </div>
+            <div class="seg"><select id="persona" aria-label="Uzman modu">
+              <option value="genel">Genel asistan</option>
+              <option value="fizyo">Fizyoterapi uzmanı</option>
+              <option value="klinik">Klinik yönetimi</option>
+              <option value="icerik">İçerik ve sosyal medya</option>
+              <option value="akademik">Akademik · ZOİ</option>
+            </select></div>
+            <div class="seg"><button type="button" id="brief">Brifing</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="feed" id="feed" aria-live="polite">
+        <div class="empty" id="empty">
+          <b>Merhaba Beyhan.</b>
+          <span>Mikrofona dokun (boşluk tuşu) ya da yaz. Görevlerini, notlarını ve sana dair bildiklerimi kullanarak yanıtlarım; zamanı gelen hatırlatmaları sesli söylerim.</span>
+          <div class="suggest">
+            <button type="button" data-q="Bugünün brifingini ver.">Bugün ne var?</button>
+            <button type="button" data-q="Yarın saat 10'da Ahmet Bey'i aramamı hatırlat.">Hatırlatma kur</button>
+            <button type="button" data-q="Lomber disk hernisi olan hasta için sade bir ev egzersizi ve eğitim metni hazırla." data-p="fizyo">Hasta eğitimi</button>
+            <button type="button" data-q="Kliniğin Instagram hesabı için bu haftaya 3 paylaşım fikri ve kısa metinleri." data-p="icerik">Paylaşım fikri</button>
+          </div>
+        </div>
+      </div>
+      <form class="composer" id="composer">
+        <button type="button" class="mic" id="mic" aria-label="Konuş" data-on="0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3" fill="none"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none"/></svg>
+        </button>
+        <button type="button" class="attach" id="attach" aria-label="Fotoğraf ekle" title="Fotoğraf ekle (rapor, egzersiz, ekran görüntüsü)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.5 12.6 21a5 5 0 0 1-7.1-7.1l8.9-8.9a3.3 3.3 0 0 1 4.7 4.7l-8.9 8.9a1.7 1.7 0 0 1-2.4-2.4l8.2-8.2" fill="none"/></svg>
+        </button>
+        <div class="inputwrap">
+          <div class="pending-img" id="pendingImg" hidden><img id="pendingThumb" alt=""><span id="pendingName"></span><button type="button" class="x" id="dropImg" aria-label="Görseli kaldır">×</button></div>
+          <textarea id="prompt" rows="1" placeholder="Jarvis'e yaz…" aria-label="Mesaj"></textarea>
+        </div>
+        <button type="submit" class="send" id="send">Gönder</button>
+        <input type="file" id="file" accept="image/*" hidden>
+        <div class="hint" id="hint">Boşluk: konuş · Enter: gönder · Esc: sus · “Dur” dersen susarım.</div>
+      </form>
+    </section>
+
+    <aside class="drawer" aria-label="Kontrol">
+      <div class="tabs" role="tablist">
+        <button role="tab" id="t-tasks" aria-selected="true" data-p="tasks">GÖREV<span class="badge" id="lateBadge" hidden></span></button>
+        <button role="tab" id="t-memory" aria-selected="false" data-p="memory">HAFIZA</button>
+        <button role="tab" id="t-settings" aria-selected="false" data-p="settings">AYAR</button>
+        <button role="tab" id="t-system" aria-selected="false" data-p="system">SİSTEM</button>
+      </div>
+      <div class="pane" id="p-tasks" role="tabpanel">
+        <h3>GÖREV VE HATIRLATMALAR</h3>
+        <ul class="list" id="tasks"></ul>
+        <p class="muted" id="tasksEmpty">Görev yok. “Jarvis, yarın 10'da Ahmet Bey'i aramamı hatırlat” diyebilirsin.</p>
+        <form class="add two" id="addTask">
+          <input id="taskInput" placeholder="Yeni görev" aria-label="Yeni görev">
+          <button>Ekle</button>
+          <input id="taskDue" type="datetime-local" aria-label="Zaman (isteğe bağlı)">
+        </form>
+        <p class="muted">Zamanı gelen görevi sayfa açıkken sesli söylerim.</p>
+      </div>
+      <div class="pane" id="p-memory" role="tabpanel" hidden>
+        <h3>SANA DAİR BİLDİKLERİM</h3>
+        <ul class="list" id="memory"></ul>
+        <p class="muted" id="memoryEmpty">Henüz kayıt yok. “Bunu hatırla: …” de; kalıcı bir bilgi söylediğinde ben de kaydederim (geri alınabilir).</p>
+        <form class="add" id="addMemory"><input id="memoryInput" placeholder="Hatırlanacak bilgi" aria-label="Hatırlanacak bilgi"><button>Kaydet</button></form>
+        <h3>NOTLAR</h3>
+        <ul class="list" id="notes"></ul>
+        <p class="muted" id="notesEmpty">Not yok. “Not al: …” de ya da bir yanıtın altındaki “Not olarak kaydet”e dokun.</p>
+        <h3>UZUN DÖNEM ÖZET</h3>
+        <div class="summary" id="summary">Sohbetler uzadıkça eski kısımları buraya özetlerim.</div>
+        <div class="row"><button type="button" class="btn" id="exportNotes">Notları indir</button><button type="button" class="btn" id="exportChat">Sohbeti indir</button></div>
+      </div>
+      <div class="pane" id="p-settings" role="tabpanel" hidden>
+        <h3>SES</h3>
+        <div class="field"><label for="speakOn">Sesli yanıt</label>
+          <select id="speakOn"><option value="1">Açık</option><option value="0">Kapalı · yalnız yazı</option></select></div>
+        <div class="field"><label for="voice">Jarvis'in sesi</label>
+          <select id="voice"><option value="rounded">Tok</option><option value="buttery">Yumuşak</option><option value="glassy">Net</option><option value="airy">Hafif</option><option value="device">Cihaz sesi</option></select></div>
+        <div class="field"><label for="rate">Konuşma hızı</label>
+          <select id="rate"><option value="0.9">Yavaş</option><option value="1" selected>Normal</option><option value="1.12">Hızlı</option></select></div>
+        <div class="field"><label for="pause">Sözün bitti sayma süresi</label>
+          <select id="pause"><option value="1000">Kısa · 1,0 sn</option><option value="1400" selected>Dengeli · 1,4 sn</option><option value="2100">Rahat · 2,1 sn</option></select></div>
+        <div class="field"><label for="length">Yanıt uzunluğu</label>
+          <select id="length"><option value="kisa">Kısa ve öz</option><option value="normal" selected>Normal</option><option value="detay">Ayrıntılı</option></select></div>
+        <div class="row"><button type="button" class="btn" id="testVoice">Sesi dene</button></div>
+        <h3>DÜŞÜNME</h3>
+        <div class="field"><label for="depth">Model seçimi</label>
+          <select id="depth"><option value="auto" selected>Otomatik · soruya göre</option><option value="quick">Hep hızlı</option><option value="default">Hep dengeli</option><option value="complex">Hep derin</option></select></div>
+        <div class="field"><label for="learn">Hafıza</label>
+          <select id="learn"><option value="1" selected>Kalıcı bilgileri kendim kaydedeyim (geri alınabilir)</option><option value="0">Yalnız “hatırla” deyince kaydet</option></select></div>
+        <div class="row"><button type="button" class="btn" id="clearChat">Sohbeti temizle</button></div>
+      </div>
+      <div class="pane" id="p-system" role="tabpanel" hidden>
+        <h3>DURUM</h3>
+        <dl class="kv" id="sys"></dl>
+        <h3>KOMUTLAR</h3>
+        <p class="muted">“Dur / sus” · “Daha yavaş / hızlı konuş” · “Sesli yanıtı kapat / aç” · “Bunu hatırla: …” · “Not al: …” · “… hatırlat” · “… tamamlandı” · “Brifing ver” · “Fizyoterapi moduna geç”</p>
+        <h3>UYGULAMA</h3>
+        <p class="muted">Telefonda ve bilgisayarda “Uygulamayı yükle” ile kurulur. Sesli konuşma için Android ve bilgisayarda Chrome/Edge, iPhone’da Safari kullan.</p>
+        <div class="row"><button type="button" class="btn" id="logout">Bu cihazda çıkış yap</button></div>
+        <h3>ESKİ JARVIS</h3>
+        <p class="muted">ChatGPT'deki 0.38 sitesi bu sayfadan bağımsız; oradaki kayıtlar buraya taşınmadı.</p>
+        <span class="link">jarvis-beyhan-asistan.beyhan-erden-9256.chatgpt.site</span>
+        <h3>KLİNİK MESAJLARI</h3>
+        <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+
+<script src="voice-engine.js?v=1.0.0"></script>
+<script src="direct.js?v=1.0.0"></script><script src="app.js?v=1.0.0"></script>
+</body>
+</html>
