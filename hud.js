@@ -223,7 +223,7 @@
     renderTicker();
   }
   function renderTicker() {
-    const parts = [`CİZRE ${$('wx').textContent}`, tk.btc, tk.fx, tk.quake, '▸ ' + $('hNext').textContent, `GÖREV ${items.filter(i => i.kind === 'task' && !i.done).length} AÇIK`, `HAFIZA ${items.filter(i => i.kind === 'memory').length}`, `HASTA ${patients.length}`].filter(Boolean);
+    const parts = [`CİZRE ${$('wx').textContent}`, tk.btc, tk.fx, tk.quake, '▸ ' + $('hNext').textContent, `GÖREV ${items.filter(i => i.kind === 'task' && !i.done).length} AÇIK`, `HAFIZA ${items.filter(i => i.kind === 'memory').length}`, `HASTA ${patients.length}`, ...(window.jarvisTickerExtra?.() || [])].filter(Boolean);
     const line = parts.join('   ◆   ');
     $('tkTrack').replaceChildren(el('span', {}, line), el('span', { 'aria-hidden': 'true' }, line));
     $('tkTrack').style.animationDuration = Math.max(30, line.length * 0.22) + 's';
@@ -361,5 +361,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v5.1.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v5.2.0`;
 })();
