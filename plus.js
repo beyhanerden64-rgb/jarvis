@@ -287,7 +287,7 @@ function linkChip(url, title) { pendingLinks.push({ url, title }); }
 
 /* ================= bilgisayar yardımcısı (Windows) ================= */
 const PC = 'http://127.0.0.1:8765';
-const PC_RISKY = new Set(['kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir']);
+const PC_RISKY = new Set(['kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet']);
 let pcLocal = false;
 async function pcLocalCall(tool, args, onay) {
   const r = await withTimeout(fetch(PC + '/run', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ tool, args, onay }) }), tool === 'powershell' || tool === 'tarama' ? 70000 : 30000, 'Bilgisayar yanıt vermedi');
@@ -302,8 +302,8 @@ async function pcPing() {
   return pcLocal;
 }
 async function pcPair() { // give the helper the sync settings so the phone can send commands through the gist
-  if (!sync.ready() || store.get('pcPaired', '') === sync.gistId + '|' + opt('pcToken')) return;
-  try { await fetch(PC + '/eslestir', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ token: opt('ghToken'), gist: sync.gistId, anahtar: await sync.hmacKeyHex() }) }); store.set('pcPaired', sync.gistId + '|' + opt('pcToken')); note('Bilgisayar yardımcısı telefon köprüsüne bağlandı.'); } catch {}
+  if (!sync.ready() || store.get('pcPaired', '') === sync.gistId + '|' + opt('pcToken') + '|' + opt('ntfyTopic')) return;
+  try { await fetch(PC + '/eslestir', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ token: opt('ghToken'), gist: sync.gistId, anahtar: await sync.hmacKeyHex(), ntfy: opt('ntfyTopic') || undefined }) }); store.set('pcPaired', sync.gistId + '|' + opt('pcToken') + '|' + opt('ntfyTopic')); note('Bilgisayar yardımcısı telefon köprüsüne bağlandı.'); } catch {}
 }
 async function pcRemoteCall(tool, args, onay) {
   if (!sync.ready()) throw Error('Bilgisayar bu cihazdan görünmüyor. Bilgisayarda JARVIS yardımcısını çalıştır; telefondan kullanmak için Bağlantı → Eşitleme kur.');
@@ -368,7 +368,7 @@ const TOOLS = {
   takvim: { d: 'takvim|başlık|YYYY-MM-DDTHH:MM|süre dk — telefon/bilgisayar takvimine eklenecek etkinlik dosyası', run: ([t, s, m]) => { const u = icsLink(t, s, Number(m) || 30); linkChip(u, 'Takvime ekle: ' + t); return 'Takvim dosyası hazır; Beyhan bağlantıya dokununca takvimine eklenir (henüz eklenmedi).'; }, pending: true },
   ac: { d: 'ac|hedef|arama/numara — hedef: whatsapp, instagram, youtube, muzik, spotify, harita, yol, ara, sms, eposta, takvim, google, haber, radyo, podcast, film veya https adresi', run: ([t, q = '']) => { const u = appLink(t, q); if (!u) throw Error('Bu uygulama için bağlantı yok: ' + t); linkChip(u, short((t + ' ' + q).trim(), 40)); return `Bağlantı hazır (${t}); tarayıcı kuralı gereği açmak için Beyhan'ın dokunması gerekiyor.`; }, pending: true },
   kestirme: { d: 'kestirme|kestirme adı|girdi — iPhone Kestirmeler uygulamasında o kestirmeyi çalıştırır (ışık, alarm, mesaj, odak modu vb. Beyhan kestirmeyi önceden oluşturmalı)', run: ([n, q = '']) => { linkChip('shortcuts://run-shortcut?name=' + encodeURIComponent(n) + (q ? '&input=text&text=' + encodeURIComponent(q) : ''), 'Kestirme: ' + n); return 'Kestirme bağlantısı hazır; dokununca iPhone çalıştırır.'; }, pending: true },
-  pc: { d: 'pc|komut|argüman — Windows bilgisayarda: ac (program: not defteri, hesap makinesi, chrome, edge, word, excel, powerpoint, paint, dosyalar, vscode, ayarlar, spotify, whatsapp), kapat (program), sistem (CPU/RAM/disk/süreçler), baslangic, dosya_ara (sorgu), dosya_oku (yol), dosya_olustur (ad|içerik), klasor_ac (yol), ekran (ekran görüntüsü alır ve görürsün), ses (yukari/asagi/kapat), medya (oynat/sonraki/onceki), kilitle, url (adres), pano (metni bilgisayar panosuna koy), pano_al, gunluk (sistem hata kayıtları), guncelleme, tarama (Defender hızlı tarama), temizlik (geçici dosya boyutu), temizlik_sil, yedekle (klasör), yazici, monitor, powershell (komut), yaz (metni klavyeyle yazar), word_olustur (ad|metin → .docx), excel_olustur (ad|CSV satırları → .xlsx), donustur (dosya yolu → PDF; Word/Excel/PowerPoint), tikla (x|y), kur (winget paket adı), yazdir (dosya yolu), kaldir (eşleşmeyi iptal)', run: null },
+  pc: { d: 'pc|komut|argüman — Windows bilgisayarda: ac (program: not defteri, hesap makinesi, chrome, edge, word, excel, powerpoint, paint, dosyalar, vscode, ayarlar, spotify, whatsapp), kapat (program), sistem (CPU/RAM/disk/süreçler), baslangic, dosya_ara (sorgu), dosya_oku (yol), dosya_olustur (ad|içerik), klasor_ac (yol), ekran (ekran görüntüsü alır ve görürsün), ses (yukari/asagi/kapat), medya (oynat/sonraki/onceki), kilitle, url (adres), pano (metni bilgisayar panosuna koy), pano_al, gunluk (sistem hata kayıtları), guncelleme, tarama (Defender hızlı tarama), temizlik (geçici dosya boyutu), temizlik_sil, yedekle (klasör), yazici, monitor, powershell (komut), yaz (metni klavyeyle yazar), word_olustur (ad|metin → .docx), excel_olustur (ad|CSV satırları → .xlsx), donustur (dosya yolu → PDF; Word/Excel/PowerPoint), tikla (x|y), kur (winget paket adı), yazdir (dosya yolu), kaldir (eşleşmeyi iptal), pencereler, pencere (odakla/küçült/büyüt/kapat|başlık), surecler, surec_kapat (ad), ses_ayarla (0-100), parlaklik (0-100), guc (uyku/yeniden_baslat/kapat/iptal), wifi, pil, kisayol (ör. ctrl+c, alt+tab, win+d), fare (git|x|y, kaydir|adım, sagtik, ciftik), klasor_listele (yol), son_dosyalar, dosya_tasi (kaynak|hedef), dosya_kopyala (kaynak|hedef), dosya_sil (yol → Geri Dönüşüm), dosya_al (yol → Beyhan’a indirme bağlantısı), bildirim (metin → bilgisayar ekranında). Ekranda bir şeye tıklamak için ekran_tikla aracını kullan.', run: null },
   ev: { d: 'ev|alan.servis|varlık_id — Home Assistant (ör. light.turn_on|light.salon, climate.set_temperature|climate.klima)', run: async ([s, ent, val]) => { const [dom, srv] = String(s).split('.'); const body = { entity_id: ent }; if (val) body[dom === 'climate' ? 'temperature' : 'brightness_pct'] = Number(val); await ha(`services/${dom}/${srv}`, body); const st = await ha('states/' + ent).catch(() => null); return `${s} → ${ent} gönderildi${st ? '; şimdiki durum: ' + st.state : ''}.`; } },
   ev_durum: { d: 'ev_durum|varlık_id veya boş — Home Assistant cihaz durumları', run: async ([ent]) => { if (ent) { const s = await ha('states/' + ent); return `${ent}: ${s.state}`; } const all = await ha('states'); return all.filter(s => /^(light|switch|climate|cover|lock|binary_sensor|sensor|vacuum|media_player)\./.test(s.entity_id)).slice(0, 40).map(s => `${s.entity_id}: ${s.state}`).join('\n'); } },
   uzman: { d: 'uzman|ajan|görev — ajanlar: arastirma, matematik, finans, icerik, ceviri, kod, saglik, planlama, klinik, denetci (aynı adımda birden çok uzman paralel çalışır)', run: async ([n, t]) => runAgent(n, t) },
@@ -390,7 +390,7 @@ ${isIOS ? 'Beyhan şu an iPhone kullanıyor: uygulama açmak için ac veya kesti
 /** Runs the tool calls of one step. Calls of the same step run in parallel. Returns text for the model and an optional image. */
 // Tools that change something (asked first when autonomy is "always ask"); read-only tools never ask.
 const WRITE_TOOLS = new Set(['pc', 'ev', 'hasta_ekle', 'seans_ekle', 'program_kaydet', 'kasa', 'envanter', 'portfoy', 'izle']);
-const PC_READONLY = new Set(['sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran']);
+const PC_READONLY = new Set(['sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran', 'pencereler', 'surecler', 'wifi', 'pil', 'klasor_listele', 'son_dosyalar', 'dosya_al']);
 window.jarvisRunTools = async (calls, ctx) => {
   const results = await Promise.all(calls.map(async raw => {
     const [name0, ...args] = raw.split('|').map(s => s.trim());
@@ -413,7 +413,12 @@ window.jarvisRunTools = async (calls, ctx) => {
       let text, image;
       for (let attempt = 0; ; attempt++) {
         try {
-          if (name === 'pc') { const d = await pcCall(sub, args.slice(1), onay); text = d.text || 'tamam'; if (d.image) image = { mediaType: 'image/jpeg', data: d.image }; }
+          if (name === 'pc') {
+            const d = await pcCall(sub, args.slice(1), onay); text = d.text || 'tamam';
+            if (d.image) image = { mediaType: 'image/jpeg', data: d.image };
+            if (d.screen) window.jarvisLastScreen = d.screen;
+            if (d.file) { const bytes = Uint8Array.from(atob(d.file.data), c => c.charCodeAt(0)); pendingLinks.push({ url: URL.createObjectURL(new Blob([bytes])), title: '⬇ ' + d.file.name, download: d.file.name }); text += ' — indirme bağlantısı hazır'; }
+          }
           else text = await tool.run(args, ctx);
           break;
         } catch (e) {

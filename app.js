@@ -168,7 +168,7 @@ let pendingLinks = [];
 function addLinks(el, links) {
   if (!links?.length) return;
   const box = document.createElement('div'); box.className = 'src';
-  for (const l of links) { if (!/^(?:https:\/\/|tel:|sms:|mailto:|shortcuts:|blob:|calshow:|ms-settings:|App-prefs:)/.test(l.url || '')) continue; const a = document.createElement('a'); a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = l.title || new URL(l.url).hostname; box.append(a); }
+  for (const l of links) { if (!/^(?:https:\/\/|tel:|sms:|mailto:|shortcuts:|blob:|calshow:|ms-settings:|App-prefs:)/.test(l.url || '')) continue; const a = document.createElement('a'); a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; if (l.download) a.download = l.download; a.textContent = l.title || new URL(l.url).hostname; box.append(a); }
   if (box.children.length) el.insertBefore(box, el.querySelector('.tool'));
 }
 // The caption under the figure mirrors the latest exchange from the log.
