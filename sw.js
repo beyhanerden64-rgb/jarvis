@@ -1,7 +1,7 @@
 'use strict';
 // JARVIS uygulama kabuğu: arayüz çevrimdışı da açılır; /api/ istekleri asla önbelleğe alınmaz.
-const CACHE = 'jarvis-app-10.0.0';
-const SHELL = ['./', 'app.js?v=10.0.0', 'plus.js?v=10.0.0', 'hud.js?v=10.0.0', 'features.js?v=10.0.0', 'control.js?v=10.0.0', 'voices.js?v=10.0.0', 'social.js?v=10.0.0', 'agent.js?v=10.0.0', 'figure.js?v=10.0.0', 'sentinel.js?v=10.0.0', 'brain.js?v=10.0.0', 'pro.js?v=10.0.0', 'ultra.js?v=10.0.0', 'klinik.js?v=10.0.0', 'live.js?v=10.0.0', 'research.js?v=10.0.0', 'voice-engine.js?v=10.0.0', 'audiohub.js?v=10.0.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=10.0.0'];
+const CACHE = 'jarvis-app-10.1.0';
+const SHELL = ['./', 'app.js?v=10.1.0', 'plus.js?v=10.1.0', 'hud.js?v=10.1.0', 'features.js?v=10.1.0', 'control.js?v=10.1.0', 'voices.js?v=10.1.0', 'social.js?v=10.1.0', 'agent.js?v=10.1.0', 'figure.js?v=10.1.0', 'sentinel.js?v=10.1.0', 'brain.js?v=10.1.0', 'pro.js?v=10.1.0', 'ultra.js?v=10.1.0', 'klinik.js?v=10.1.0', 'live.js?v=10.1.0', 'research.js?v=10.1.0', 'research2.js?v=10.1.0', 'voice-engine.js?v=10.1.0', 'audiohub.js?v=10.1.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=10.1.0'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

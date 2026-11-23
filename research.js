@@ -39,6 +39,7 @@
       const level = types.some(t => /Meta-Analysis/.test(t)) ? 'meta-analiz' : types.some(t => /Systematic Review/.test(t)) ? 'sistematik derleme' : types.some(t => /Guideline/.test(t)) ? 'kılavuz' : types.some(t => /Randomized Controlled Trial/.test(t)) ? 'RKÇ' : types.some(t => /Review/.test(t)) ? 'derleme' : 'çalışma';
       return {
         src: 'PubMed', id: 'PMID:' + pmid, url: `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`, level,
+        authors: [...a.querySelectorAll('AuthorList Author')].slice(0, 3).map(x => [x.querySelector('LastName')?.textContent, (x.querySelector('Initials')?.textContent || '')].filter(Boolean).join(' ')).filter(Boolean), more: a.querySelectorAll('AuthorList Author').length > 3, doi: [...a.querySelectorAll('ArticleId')].find(x => x.getAttribute('IdType') === 'doi')?.textContent || '',
         title: clean(a.querySelector('ArticleTitle')?.textContent), journal: clean(a.querySelector('Journal ISOAbbreviation, Journal Title')?.textContent),
         year: a.querySelector('PubDate Year')?.textContent || (a.querySelector('PubDate MedlineDate')?.textContent || '').slice(0, 4),
         abstract: clean([...a.querySelectorAll('AbstractText')].map(x => (x.getAttribute('Label') ? x.getAttribute('Label') + ': ' : '') + x.textContent).join(' ')).slice(0, 1800)
@@ -92,18 +93,18 @@
   /* ---------- DERİN ARAŞTIRMA ---------- */
   let busy = false;
   const anonym = q => { let s = String(q); for (const p of (typeof patients !== 'undefined' ? patients : [])) { if (!p.ad) continue; const re = new RegExp(p.ad.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'), 'giu'); s = s.replace(re, aiName(p)); } return s; };
-  async function deep(question, { voice = false, status = t => setPhase('thinking', t) } = {}) {
+  async function deep(question, { voice = false, years = Number(opt('resYears')) || 12, strongOnly = opt('resStrong') === '1', status = t => setPhase('thinking', t) } = {}) {
     if (busy) throw Error('Bir araştırma zaten sürüyor');
     question = anonym(question);
     busy = true; const t0 = Date.now();
     try {
       status('Araştırma planı yapıyorum…');
-      const plan = parseJson(await ask('Sen tıbbi bilgi uzmanı bir araştırma planlayıcısısın. Soruyu bilimsel veritabanlarında aranacak İNGİLİZCE terimlere çevir. Hasta adı veya kişisel bilgi ASLA yazma. YALNIZCA JSON: {"pubmed":"MeSH/serbest terimlerle PubMed sorgusu (AND/OR)","genel":"Europe PMC için 3-6 kelimelik İngilizce sorgu","klinik_calisma":true/false,"gen":"gen sembolü veya null","ilac":"ilacın İngilizce jenerik adı veya null","ansiklopedi":"Vikipedi başlığı (Türkçe) veya null","alan":"fizyoterapi/ortopedi/nöroloji/genetik/farmakoloji/… "}', question, 'quick'));
+      const plan = parseJson(await ask('Sen tıbbi bilgi uzmanı bir araştırma planlayıcısısın. Soruyu bilimsel veritabanlarında aranacak İNGİLİZCE terimlere çevir. Hasta adı veya kişisel bilgi ASLA yazma. YALNIZCA JSON: {"pico":{"P":"hasta/popülasyon (Türkçe)","I":"müdahale","C":"karşılaştırma veya -","O":"sonuç ölçütü"},"pubmed":"MeSH/serbest terimlerle PubMed sorgusu (AND/OR)","genel":"Europe PMC için 3-6 kelimelik İngilizce sorgu","klinik_calisma":true/false,"gen":"gen sembolü veya null","ilac":"ilacın İngilizce jenerik adı veya null","ansiklopedi":"Vikipedi başlığı (Türkçe) veya null","alan":"fizyoterapi/ortopedi/nöroloji/genetik/farmakoloji/… "}', question, 'quick'));
       const pq = plan.pubmed || question, gq = plan.genel || pq;
       status('PubMed, Europe PMC ve diğer kaynakları tarıyorum…');
       const jobs = [
-        pubmed(pq, 6, true, 12).catch(() => []),
-        sleep(400).then(() => pubmed(pq, 4, false, 6)).catch(() => []),
+        pubmed(pq, strongOnly ? 9 : 6, true, years).catch(() => []),
+        strongOnly ? [] : sleep(400).then(() => pubmed(pq, 4, false, Math.min(years, 6))).catch(() => []),
         europepmc(gq, 5).catch(() => []),
         plan.klinik_calisma ? trials(gq, 3).catch(() => []) : [],
         plan.gen ? sleep(900).then(() => gene(plan.gen)).catch(() => null) : null,
@@ -124,7 +125,8 @@ KIRMIZI BAYRAKLAR VE SINIRLAR: sevk gerektiren durumlar, kontrendikasyonlar, kan
 JARVIS'İN DEĞERLENDİRMESİ: tüm kanıtı tartarak kendi net sonucun ve güven düzeyin (yüksek/orta/düşük) — gerekçesiyle.
 Uzunluk en fazla 650 kelime. Son satır: "${DISCLAIMER}"`,
         `SORU: ${question}\nALAN: ${plan.alan || '-'}\n\nKAYNAKLAR:\n${corpus || '(veritabanlarından sonuç gelmedi; yalnız güncel web aramasına ve genel bilgine dayan ve bunu belirt)'}`, 'complex', true);
-      const out = { question, report, sources: src, plan, ms: Date.now() - t0 };
+      const pico = plan.pico && plan.pico.P ? `PICO · P: ${plan.pico.P} · I: ${plan.pico.I || '-'} · C: ${plan.pico.C || '-'} · O: ${plan.pico.O || '-'}` : '';
+      const out = { question, report: (pico ? pico + '\n\n' : '') + report, sources: src, plan, ms: Date.now() - t0 };
       store.set('research', [{ t: Date.now(), q: question, report, sources: src.map(({ title, url, id, level, year }) => ({ title, url, id, level, year })) }, ...store.get('research', [])].slice(0, 30));
       logOp('derin araştırma', [short(question, 80)], 'başarılı', `${src.length} kaynak · ${Math.round(out.ms / 1000)} sn`);
       return out;
@@ -134,8 +136,23 @@ Uzunluk en fazla 650 kelime. Son satır: "${DISCLAIMER}"`,
     const n = bubble('ai', r.report);
     addLinks(n.el, r.sources.slice(0, 12).map((s, i) => ({ url: s.url, title: `[${i + 1}] ${short(s.title, 60)}${s.year ? ' (' + s.year + ')' : ''}` })));
     answerTools(n.el, r.report);
+    const bar = el('div', { class: 'tool' },
+      el('button', { type: 'button', onclick: () => { const t = vancouver(r.sources); navigator.clipboard?.writeText(t).then(() => note('Kaynakça (Vancouver) kopyalandı.'), () => { const b = bubble('ai', t); answerTools(b.el, t); }); } }, 'Kaynakça (Vancouver)'),
+      el('button', { type: 'button', onclick: () => patientSheet(r).catch(e => note(e.message)) }, 'Hasta için sade anlatım'),
+      el('button', { type: 'button', onclick: () => { window.jarvisResearch2?.follow(r.question); } }, 'Konuyu takibe al'));
+    n.el.append(bar);
     setPhase('idle', `Araştırma tamam · ${r.sources.length} kaynak · ${Math.round(r.ms / 1000)} sn`);
     if (voice && setting('speakOn') === '1') { const k = (r.report.match(/KISA CEVAP:?\s*([\s\S]*?)(?:\n[A-ZÇĞİÖŞÜ' ]{6,}:|$)/) || [])[1]; if (k) voiceSession.read(k.trim() + ' Ayrıntılı rapor ve kaynaklar ekranda.'); }
+  }
+  function vancouver(src) {
+    return src.map((x, i) => `${i + 1}. ${x.authors?.length ? x.authors.join(', ') + (x.more ? ', et al' : '') + '. ' : ''}${x.title}${/[.?!]$/.test(x.title || '') ? '' : '.'} ${x.journal ? x.journal + '. ' : ''}${x.year ? x.year + '. ' : ''}${x.doi ? 'doi:' + x.doi + '. ' : ''}${/^PMID/.test(x.id || '') ? x.id.replace(':', ': ') + '.' : x.id ? x.id + '.' : ''} ${x.url || ''}`.trim()).join('\n');
+  }
+  async function patientSheet(r) {
+    setPhase('thinking', 'Hasta için sade anlatım hazırlıyorum…');
+    try {
+      const t = await ask('Sen FİZYOVİTA Fizik Tedavi Merkezi için hasta bilgilendirme metni yazan bir fizyoterapistsin. Aşağıdaki kanıt raporundan HASTANIN anlayacağı, tıbbi terim içermeyen (gerekirse parantezle açıkla), sıcak ve cesaretlendirici bir TÜRKÇE bilgi notu yaz: 1) Durumunuz hakkında kısaca, 2) Tedavide ne yapacağız ve neden, 3) Evde yapmanız gerekenler (madde), 4) Ne zaman hemen haber vermelisiniz (kırmızı bayraklar), 5) Ne kadar sürede düzelme beklenir. En fazla 250 kelime. Kaynak numarası, yüzde, istatistik yazma. Sonuna: "Sorularınız için: FİZYOVİTA — Fzt. Beyhan Erden"', r.report, 'default');
+      const n = bubble('ai', t); answerTools(n.el, t); setPhase('idle', 'Hazır.');
+    } catch (e) { setPhase('idle', 'Hazır.'); throw e; }
   }
   async function runDeep(q, voice = false) {
     if (window.jarvisUltra?.guest?.()) return note('Misafir modunda araştırma merkezi kapalı.');
@@ -202,6 +219,9 @@ Son satır: "Bu bir ön değerlendirmedir; kesin yorum radyolog raporuna aittir.
     el('h3', {}, 'DERİN ARAŞTIRMA'),
     el('p', { class: 'muted' }, 'PubMed · Europe PMC · ClinicalTrials.gov · FDA ilaç etiketi · NCBI Gene/ClinVar · Vikipedi · güncel web. Kanıt düzeyiyle Türkçe rapor ve JARVIS’in kendi değerlendirmesi. Sesle: “Jarvis, araştır: …”'),
     qIn,
+    el('div', { class: 'row resfilters' },
+      (() => { const s = el('select', { id: 'resYears', 'aria-label': 'Yayın yılı aralığı' }); for (const [v, t] of [['5', 'Son 5 yıl'], ['12', 'Son 12 yıl'], ['30', 'Son 30 yıl']]) s.append(new Option(t, v)); s.value = store.get('set.resYears', '12') || '12'; s.onchange = () => store.set('set.resYears', s.value); return s; })(),
+      (() => { const s = el('select', { id: 'resStrong', 'aria-label': 'Kanıt düzeyi' }); for (const [v, t] of [['0', 'Tüm kanıt'], ['1', 'Yalnız güçlü kanıt (meta-analiz, SR, RKÇ, kılavuz)']]) s.append(new Option(t, v)); s.value = store.get('set.resStrong', '0') || '0'; s.onchange = () => store.set('set.resStrong', s.value); return s; })()),
     el('div', { class: 'row' },
       el('button', { type: 'button', class: 'btn', onclick: () => { const q = qIn.value.trim(); if (q.length < 4) return note('Araştırılacak soruyu yaz.'); $('drawer').classList.remove('open'); runDeep(q); } }, 'Derin araştır'),
       el('button', { type: 'button', class: 'btn ghost', onclick: async () => { const q = qIn.value.trim(); if (q.length < 3) return; try { const r = await pubmed(q, 8, true); const n = bubble('ai', r.length ? r.map((x, i) => `[${i + 1}] ${x.title} — ${x.journal} ${x.year} · ${x.level}`).join('\n') : 'Sonuç yok (sorguyu İngilizce dene).'); addLinks(n.el, r.map((x, i) => ({ url: x.url, title: `[${i + 1}] ${short(x.title, 60)}` }))); $('drawer').classList.remove('open'); } catch (e) { note(e.message); } } }, 'Hızlı PubMed (güçlü kanıt)')),
@@ -215,5 +235,5 @@ Son satır: "Bu bir ön değerlendirmedir; kesin yorum radyolog raporuna aittir.
     const h = store.get('research', []);
     $('resHist').replaceChildren(...(h.length ? h.map(r => el('li', { class: 'item' }, el('span', {}, '🔬'), el('div', {}, el('p', {}, r.q), el('small', {}, dateTR(r.t) + ' · ' + r.sources.length + ' kaynak')), el('button', { type: 'button', class: 'btn ghost', onclick: () => { $('drawer').classList.remove('open'); showReport({ ...r, ms: 0, report: r.report, sources: r.sources }, false); } }, 'Aç'))) : [el('li', { class: 'muted' }, 'Henüz araştırma yok.')]));
   }
-  window.jarvisResearch = { pubmed, europepmc, trials, drug, gene, wiki, deep, runDeep, imageRead };
+  window.jarvisResearch = { ask, vancouver, patientSheet, showReport, pubmed, europepmc, trials, drug, gene, wiki, deep, runDeep, imageRead };
 })();
