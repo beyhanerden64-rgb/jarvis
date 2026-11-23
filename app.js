@@ -42,9 +42,12 @@ const voiceSel = $('voice');
   const f = document.createElement('div'); f.className = 'field';
   f.innerHTML = '<label for="micMode">Mikrofon yöntemi</label><select id="micMode"><option value="auto">Otomatik · tarayıcı tanıma</option><option value="record">Ses kaydı · sunucuda yazıya çevir</option></select>';
   $('pause').closest('.field').after(f);
+  const w = document.createElement('div'); w.className = 'field';
+  w.innerHTML = '<label for="autoListen">Açılınca dinle · “Jarvis” deyince uyan</label><select id="autoListen"><option value="1" selected>Açık</option><option value="0">Kapalı · yalnız mikrofona dokununca</option></select>';
+  f.after(w);
 })();
 voiceSel.innerHTML = '<option value="natural">Doğal ses · sunucu</option><option value="device" selected>Telefon/bilgisayar sesi</option>';
-for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode']) {
+for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen']) {
   const v = store.get('set.' + id, null);
   if (v !== null && [...$(id).options].some(o => o.value === v)) $(id).value = v;
   $(id).addEventListener('change', () => { store.set('set.' + id, $(id).value); sysInfo(); });
@@ -413,6 +416,58 @@ async function typedTurn(text, voiceTurn = false) {
   } catch (e) { stream && voiceSession.stop(); setPhase('error', e.status === 429 ? 'Kullanım sınırı; biraz bekle.' : 'Yanıt alınamadı. Bağlantını kontrol et.'); }
 }
 
+/* ================= wake word: listen from the moment the app opens ================= */
+const wake = {
+  rec: null, blocked: false, gate: new JarvisWakeGate({ windowMs: 8000 }),
+  enabled() { return !!Recognition && setting('autoListen') === '1' && setting('micMode') !== 'record' && $('gate').hidden; },
+  idle() { return !voiceSession.active && !recorder.active && !answering && !document.hidden; },
+  start() {
+    if (this.rec || this.blocked || !this.enabled() || !this.idle()) return;
+    const r = new Recognition();
+    r.lang = 'tr-TR'; r.continuous = true; r.interimResults = true; r.maxAlternatives = 1;
+    r.onresult = e => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const text = e.results[i][0]?.transcript || '';
+        if (!e.results[i].isFinal) { if (this.gate.awakeUntil > Date.now() || /^\s*(?:hey\s+)?[jcç][ae]rv/i.test(text)) $('partial').textContent = text; continue; }
+        this.heard(text.trim());
+      }
+    };
+    r.onerror = e => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        this.blocked = true;
+        setPhase('idle', 'Dinlemeye başlamam için sayfaya bir kez dokun (tarayıcı ilk seferde izin istiyor).');
+      }
+    };
+    r.onend = () => { if (this.rec === r) this.rec = null; };
+    try { r.start(); this.rec = r; if (phase === 'idle') setPhase('idle', 'Dinliyorum. “Jarvis” diye seslen.'); }
+    catch { this.rec = null; }
+  },
+  stop() {
+    const r = this.rec; this.rec = null;
+    if (r) { r.onend = r.onresult = r.onerror = null; try { r.abort(); } catch {} }
+  },
+  heard(text) {
+    if (!text || JarvisHandsFree.hallucination(text)) return;
+    const wasAwake = this.gate.awakeUntil > Date.now();
+    const command = this.gate.accept(text);
+    $('partial').textContent = '';
+    if (command === null && !wasAwake) {
+      // Only the wake word: answer with a chime and listen for the request.
+      if (this.gate.awakeUntil > Date.now()) { this.stop(); beep(); window.jarvisUnlock(); voiceSession.start(); }
+      return;
+    }
+    if (!command) return;
+    this.gate.reset(); this.stop(); window.jarvisUnlock();
+    if (/^(?:\S+\s+)?(?:dur|sus|yeter)[.!]*$/i.test(command)) { stopAll(); return; }
+    typedTurn(command, true);
+  }
+};
+// Resume listening whenever JARVIS is quiet again (after answering, after the user stops the mic, after returning to the app).
+setInterval(() => { if (wake.enabled() && wake.idle()) wake.start(); else if (!wake.idle()) wake.stop(); }, 1500);
+document.addEventListener('visibilitychange', () => { if (document.hidden) wake.stop(); });
+document.addEventListener('pointerdown', () => { if (wake.blocked) { wake.blocked = false; wake.start(); } }, true);
+$('autoListen').addEventListener('change', () => { if (setting('autoListen') !== '1') { wake.stop(); setPhase('idle', 'Mikrofona dokunarak konuşabilirsin.'); } });
+
 /* ================= controls ================= */
 function setMode(cont) {
   continuous = cont; store.set('set.continuous', cont);
@@ -425,6 +480,7 @@ $('mPush').onclick = () => setMode(false); $('mLive').onclick = () => setMode(tr
 setMode(continuous);
 $('mic').onclick = () => {
   window.jarvisUnlock();
+  wake.stop();
   if (recorder.active) { recorder.finish(); return; }
   if (!Recognition || setting('micMode') === 'record') { recorder.start(); return; }
   if (voiceSession.active) {
@@ -448,7 +504,7 @@ $('composer').onsubmit = e => {
   e.preventDefault(); window.jarvisUnlock();
   if (phase === 'thinking' || phase === 'speaking') { stopAll(); return; }
   const v = $('prompt').value.trim(); if (!v && !pendingImage) return;
-  $('prompt').value = ''; autosize(); voiceSession.stop(''); typedTurn(v, false);
+  $('prompt').value = ''; autosize(); wake.stop(); voiceSession.stop(''); typedTurn(v, false);
 };
 $('prompt').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); $('composer').requestSubmit(); } });
 function autosize() { const t = $('prompt'); t.style.height = 'auto'; t.style.height = Math.min(140, t.scrollHeight) + 'px'; }
@@ -526,6 +582,7 @@ function sysInfo() {
     ['Ses', setting('voice') === 'natural' && server.speech ? 'doğal ses (sunucu), sorun olursa cihaz sesi' : 'cihaz sesi · ' + (bestVoice()?.name || 'varsayılan')],
     ['Eşitleme', server.sync ? 'telefon ve bilgisayar ortak' : 'yalnız bu cihaz (sunucuda JARVIS_KV yok)'],
     ['Kayıtlar', ['task', 'memory', 'note'].map(k => items.filter(i => i.kind === k).length + ' ' + { task: 'görev', memory: 'hafıza', note: 'not' }[k]).join(' · ')],
+    ['Uyandırma', wake.enabled() ? 'açık · “Jarvis” deyince dinler' : 'kapalı'],
     ['Kurulum', standalone ? 'uygulama olarak açık' : 'tarayıcıda açık'],
     ['Ses motoru', 'JARVIS 0.39.0']
   ];
@@ -551,6 +608,7 @@ function boot(info) {
   pullSync().then(checkReminders);
   const late = items.filter(isLate).length;
   setPhase('idle', late ? `${late} gecikmiş görevin var. “Brifing”e dokunabilirsin.` : 'Mikrofona dokun ve konuş, ya da yaz.');
+  setTimeout(() => wake.start(), 800);
   if (new URLSearchParams(location.search).has('brifing')) { history.replaceState(null, '', location.pathname); $('brief').click(); }
 }
 (async () => {

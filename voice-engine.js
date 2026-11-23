@@ -1584,3 +1584,39 @@ class JarvisHandsFree {
   }
 }
 if (typeof module !== 'undefined') module.exports = JarvisHandsFree;
+
+/* ---- JARVIS 0.39.0 · wake-core.js ---- */
+
+class JarvisWakeGate {
+  constructor({ enabled = () => true, clock = () => Date.now(), windowMs = 60000 } = {}) {
+    Object.assign(this, { enabled, clock, windowMs });
+    this.awakeUntil = 0;
+  }
+  reset() {
+    this.awakeUntil = 0;
+  }
+  touch() {
+    this.awakeUntil = this.clock() + this.windowMs;
+  }
+  accept(input) {
+    const text = String(input || '').trim();
+    if (!this.enabled()) return text;
+    const t = text.toLocaleLowerCase('tr-TR');
+    if (
+      /^(?:(?:(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis))[\s,:.!-]*)?(?:dur|sus|konuşmayı bitir|sesli modu kapat|mikrofonu kapat|dinlemeyi durdur)[.!?]*$/u.test(
+        t
+      )
+    )
+      return text;
+    if (/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis)(?:[\s,:.!-]|$)/u.test(t)) {
+      this.touch();
+      return text.replace(/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis)[\s,:.!-]*/iu, '').trim() || null;
+    }
+    if (this.clock() < this.awakeUntil) {
+      this.touch();
+      return text;
+    }
+    return null;
+  }
+}
+if (typeof module !== 'undefined') module.exports = JarvisWakeGate;
