@@ -370,13 +370,13 @@ class JarvisVoice {
   // Natural (cloud) voices: shorter pieces start faster and stay well inside the synthesis timeout.
   // Device voices: Chrome silently stops remote voices after ~15 s, so keep them short.
   static limit(synth) {
-    return synth?.natural ? 320 : 170;
+    return synth?.natural ? 480 : 170; // doğal ses: daha az ama daha uzun parça → ücretsiz ses kotası daha geç dolar
   }
   // Returns the next speakable prefix of a streaming buffer, or null if more text is needed.
   // A sentence ends at . ! ? … or a newline that is FOLLOWED by whitespace; the end of the buffer is
   // never treated as a boundary because "1." or "Dr." may still be continued by the next delta.
   static take(buffer, batch = false) {
-    const min = batch ? 130 : 1;
+    const min = batch ? 180 : 1;
     const re = /[.!?…]+(?=\s)|\n/g;
     let m;
     while ((m = re.exec(buffer))) {
@@ -387,8 +387,8 @@ class JarvisVoice {
       const piece = buffer.slice(0, end + after);
       if (piece.trim()) return piece;
     }
-    const soft = batch ? 420 : 180,
-      hard = batch ? 260 : 100;
+    const soft = batch ? 560 : 180,
+      hard = batch ? 340 : 100;
     if (buffer.length < soft) return null;
     const window = buffer.slice(0, soft);
     const clause = Math.max(window.lastIndexOf(', '), window.lastIndexOf('; '), window.lastIndexOf(': '));
@@ -605,6 +605,7 @@ if (typeof module !== 'undefined') module.exports = JarvisVoiceRecovery;
 /* ---- JARVIS 0.39.0 · speech-player.js ---- */
 
 class JarvisSpeechPlayer {
+  static SILENT = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
   constructor({
     synth,
     fetcher = (...args) => fetch(...args),
@@ -617,7 +618,9 @@ class JarvisSpeechPlayer {
     status = () => {},
     timers = globalThis,
     recovery = null,
-    fetchTimeout = 8500
+    fetchTimeout = 8500,
+    sharedAudio = null, // iPhone: tek, dokunuşla kilidi açılmış ses öğesi (yeni öğeler otomatik çalmayı engeller)
+    preferMedia = false // iPhone: Web Audio sessiz anahtarında susar; medya öğesi susmaz
   }) {
     Object.assign(this, {
       synth,
@@ -631,8 +634,11 @@ class JarvisSpeechPlayer {
       status,
       timers,
       recovery,
-      fetchTimeout
+      fetchTimeout,
+      sharedAudio,
+      preferMedia
     });
+    this.mediaUnlocked = false;
     this.serial = 0;
     this.playSerial = 0;
     this.pending = new Map();
@@ -676,6 +682,14 @@ class JarvisSpeechPlayer {
     return this.recovery?.snapshot() || { naturalReady: Date.now() > this.coolUntil };
   }
   async unlock() {
+    if (this.sharedAudio && !this.mediaUnlocked) {
+      try {
+        this.sharedAudio.src = JarvisSpeechPlayer.SILENT;
+        const p = this.sharedAudio.play();
+        if (p?.then) p.then(() => { this.mediaUnlocked = true; this.sharedAudio.pause(); }).catch(() => {});
+        else this.mediaUnlocked = true;
+      } catch {}
+    }
     try {
       if (!this.context && this.AudioContextClass) this.context = new this.AudioContextClass();
       if (this.context?.state === 'suspended') await this.context.resume();
@@ -835,7 +849,7 @@ class JarvisSpeechPlayer {
         const rate = Math.max(0.8, Math.min(1.2, Number(utterance.rate) || 1));
         // AudioBufferSource.playbackRate also shifts pitch ("chipmunk" voice). Only use Web Audio at normal
         // speed; otherwise the media element keeps the voice's pitch while changing tempo.
-        if (Math.abs(rate - 1) < 0.01 && this.context?.state === 'running' && this.context.createBufferSource) {
+        if (!this.preferMedia && Math.abs(rate - 1) < 0.01 && this.context?.state === 'running' && this.context.createBufferSource) {
           const buffer = await this.context.decodeAudioData(await blob.arrayBuffer());
           if (!live() || finished) return;
           const source = this.context.createBufferSource(),
@@ -861,7 +875,8 @@ class JarvisSpeechPlayer {
         }
         const url = this.URLApi.createObjectURL(blob);
         this.url = url;
-        const audio = new this.AudioClass(url);
+        const audio = this.sharedAudio || new this.AudioClass(url);
+        if (this.sharedAudio) { audio.onplaying = audio.onended = audio.onerror = null; audio.src = url; }
         this.audio = audio;
         audio.preservesPitch = audio.mozPreservesPitch = audio.webkitPreservesPitch = true;
         audio.playbackRate = rate;

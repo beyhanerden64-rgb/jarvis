@@ -40,7 +40,7 @@ $('logout').onclick = () => { store.set('key', ''); location.reload(); };
 const voiceSel = $('voice');
 (() => { // microphone method: browser recognition or recording + server speech-to-text (iPhone home-screen fallback)
   const f = document.createElement('div'); f.className = 'field';
-  f.innerHTML = '<label for="micMode">Mikrofon yöntemi</label><select id="micMode"><option value="auto">Otomatik · tarayıcı tanıma</option><option value="record">Ses kaydı · sunucuda yazıya çevir</option></select>';
+  f.innerHTML = '<label for="micMode">Mikrofon yöntemi</label><select id="micMode"><option value="auto">Otomatik · tarayıcı tanıma</option><option value="record">Ses kaydı · Gemini yazıya çevirir (iPhone için önerilen)</option></select>';
   $('pause').closest('.field').after(f);
   const w = document.createElement('div'); w.className = 'field';
   w.innerHTML = '<label for="autoListen">Açılınca dinle · “Jarvis” deyince uyan</label><select id="autoListen"><option value="1" selected>Açık</option><option value="0">Kapalı · yalnız mikrofona dokununca</option></select>';
@@ -71,6 +71,11 @@ for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn
   $(id).addEventListener('change', () => { store.set('set.' + id, $(id).value); sysInfo(); });
 }
 const setting = id => $(id).value;
+// iPhone/iPad: ana ekrana eklenen uygulamada Safari konuşma tanıması çoğu zaman hiç metin döndürmüyor →
+// bir kez, otomatik olarak “ses kaydı → Gemini ile yazıya çevir” yöntemine geçilir (Ayarlar'dan geri alınabilir).
+if (/iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+  if (!store.get('iosMic2', false)) { store.set('iosMic2', true); store.set('set.micMode', 'record'); $('micMode').value = 'record'; }
+}
 
 /* ================= tabs, clock, install ================= */
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
@@ -558,8 +563,10 @@ async function remember(q, a) {
 /* ================= voice: JARVIS 0.39 engine ================= */
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recovery = new JarvisVoiceRecovery({ load: () => store.get('voiceRecovery', null), save: d => store.set('voiceRecovery', d) });
+const iosAudio = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const player = new JarvisSpeechPlayer({
   synth: window.speechSynthesis, fetcher: authFetch, recovery,
+  sharedAudio: iosAudio ? Object.assign(new Audio(), { playsInline: true, preload: 'auto' }) : null, preferMedia: iosAudio,
   mode: () => server.speech && setting('voice') === 'natural',
   voice: () => store.get('set.ttsVoice', 'Charon') || 'Charon',
   status: t => { $('naturalStatus') && ($('naturalStatus').textContent = t); }
@@ -593,7 +600,7 @@ const voiceSession = new JarvisVoice({
 const recorder = {
   active: false, stream: null, rec: null, ctx: null, timer: null,
   async start() {
-    if (!server.stt) { note('Bu tarayıcıda konuşma tanıma yok ve sunucuda yazıya çevirme ayarlı değil. Chrome/Edge/Safari kullan veya GROQ_API_KEY ekle.'); return; }
+    if (!server.stt) { note('Sesi yazıya çevirmek için ücretsiz Gemini anahtarı gerekli (Bağlantı sekmesi). O zamana kadar yazarak konuşabilirsin.'); return; }
     try {
       this.stream ||= await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     } catch { note('Mikrofon izni verilmedi.'); return; }
@@ -866,6 +873,7 @@ function boot(info) {
   if (!Recognition && !server.stt) $('mLive').disabled = true;
   $('micMode').querySelector('[value="record"]').disabled = !server.stt;
   if (!server.stt && setting('micMode') === 'record') $('micMode').value = 'auto';
+  else if (server.stt && store.get('set.micMode', '') === 'record') $('micMode').value = 'record';
   renderChat(); renderItems(); sysInfo();
   if (chat.summary) $('summary').textContent = chat.summary;
   pullSync().then(checkReminders);

@@ -128,12 +128,62 @@
     }
     return json(503, { error: 'Doğal ses şu an alınamadı (' + (last?.status || '?') + ').', code: 'speech_failed', retryAfter: 120 });
   }
+
+  // ---- Konuşmayı yazıya çevirme (Gemini): iPhone ana ekran uygulamasında tarayıcı tanıması çalışmadığında ----
+  async function toWav16k(bytes) {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) throw Error('ses çözülemedi');
+    const ctx = new AC();
+    try {
+      const buf = await new Promise((res, rej) => { const p = ctx.decodeAudioData(bytes.buffer.slice(0), res, rej); p?.then?.(res, rej); });
+      const ch = buf.numberOfChannels, n = buf.length, src = new Float32Array(n);
+      for (let c = 0; c < ch; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) src[i] += d[i] / ch; }
+      const rate = 16000, ratio = buf.sampleRate / rate, out = new Int16Array(Math.floor(n / ratio));
+      for (let i = 0; i < out.length; i++) { const v = Math.max(-1, Math.min(1, src[Math.floor(i * ratio)])); out[i] = v < 0 ? v * 0x8000 : v * 0x7fff; }
+      return wav(new Uint8Array(out.buffer), rate);
+    } finally { ctx.close?.().catch?.(() => {}); }
+  }
+  async function geminiStt(options) {
+    const body = JSON.parse(options.body || '{}'), raw = b64bytes(body.data || '');
+    if (raw.length < 1500) return json(400, { error: 'Ses algılanmadı.' });
+    let mime = String(body.mimeType || 'audio/webm').split(';')[0], data = body.data;
+    if (!/^audio\/(?:wav|mp3|mpeg|aac|ogg|flac|aiff)$/.test(mime)) { // iPhone: audio/mp4, Chrome: audio/webm → WAV
+      try { const w = await toWav16k(raw); data = await blobToB64(w); mime = 'audio/wav'; } catch {}
+    }
+    const lang = ({ 'ar-SA': 'Arapça', 'en-US': 'İngilizce', 'ku': 'Kürtçe' })[setv('listenLang')] || 'Türkçe';
+    const req = { contents: [{ role: 'user', parts: [{ inlineData: { mimeType: mime, data } }, { text: `Bu ses kaydındaki konuşmayı ${lang} olarak kelimesi kelimesine yazıya dök. Yalnızca söylenen metni yaz; yorum, açıklama, tırnak ekleme. Konuşma yoksa veya anlaşılmıyorsa tek kelime yaz: BOŞ` }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } };
+    let last = null;
+    for (const model of routed(['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'], 'quick')) {
+      const t0 = performance.now();
+      try {
+        const r = await fetch(GEMINI + model + ':generateContent', { method: 'POST', signal: options.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(req) });
+        report(model, r.status, performance.now() - t0);
+        if (!r.ok) { last = r.status; continue; }
+        const d = await r.json();
+        const text = (d.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim().replace(/^["“]|["”]$/g, '');
+        if (!text || /^BOŞ\.?$/i.test(text)) return json(200, { text: '', error: 'Konuşma anlaşılamadı, tekrar söyler misin?' });
+        return json(200, { text, model });
+      } catch (e) { if (options.signal?.aborted) throw e; last = e.message; }
+    }
+    return json(503, { error: 'Ses yazıya çevrilemedi (' + last + ').' });
+  }
+  const blobToB64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); });
+
+  // ---- kısa ifadelerin doğal sesi önbellekte tutulur (aynı “Tamam.”, “Hazırım.” için kota harcanmaz) ----
+  const TTS_CACHE = 'jarvis-tts-v1';
+  async function cachedTts(text, voice, signal) {
+    const key = new Request('https://tts.jarvis/' + encodeURIComponent([voice || setv('ttsVoice') || 'Charon', setv('ttsStyle') || 'jarvis', text.trim()].join('|')));
+    const short = text.trim().length <= 160;
+    if (short && window.caches) { try { const c = await caches.open(TTS_CACHE); const hit = await c.match(key); if (hit) { const h = new Headers(hit.headers); h.set('X-Jarvis-Speech', (h.get('X-Jarvis-Speech') || 'Gemini') + ' · önbellek'); return new Response(await hit.blob(), { headers: h }); } } catch {} }
+    const r = await geminiTts(text, voice, signal);
+    if (short && r.ok && window.caches) { try { const c = await caches.open(TTS_CACHE); await c.put(key, r.clone()); const ks = await c.keys(); for (const k of ks.slice(0, Math.max(0, ks.length - 300))) await c.delete(k); } catch {} }
+    return r;
+  }
   const engine = () => (setv('ttsEngine') === 'eleven' && setv('elevenKey') ? 'eleven' : provider() === 'gemini' ? 'gemini' : setv('elevenKey') ? 'eleven' : null);
   const speechRoute = options => {
     const e = engine();
     if (options.method !== 'POST') return Promise.resolve(json(200, { configured: !!e, naturalReady: !!e, retryAfter: 0, engine: e }));
     const body = JSON.parse(options.body || '{}');
-    if (e === 'gemini') return geminiTts(String(body.text || '').slice(0, 3000), body.voice, options.signal);
+    if (e === 'gemini') return cachedTts(String(body.text || '').slice(0, 3000), body.voice, options.signal);
     if (e === 'eleven') return eleven(body.text, options.signal);
     return Promise.resolve(json(503, { error: 'Doğal ses ayarlı değil.', code: 'speech_not_configured' }));
   };
@@ -248,9 +298,10 @@
             if (!r.ok) return explainGemini(r);
             sessionStorage.setItem('jarvisapp.ok', '1');
           }
-          return json(200, { ok: true, brain: true, speech: true, stt: false, sync: false, direct: true, provider: 'gemini' });
+          return json(200, { ok: true, brain: true, speech: true, stt: true, sync: false, direct: true, provider: 'gemini' });
         }
         if (route === '/api/speech') return speechRoute(options);
+        if (route === '/api/stt') return geminiStt(options);
         if (route === '/api/chat') {
           const r = await gemini(JSON.parse(options.body || '{}'), options.signal);
           if (!r.ok) return explainGemini(r);
