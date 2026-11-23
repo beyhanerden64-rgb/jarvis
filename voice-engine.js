@@ -133,7 +133,7 @@ class JarvisVoice {
       return;
     }
     this.recognition = r;
-    r.lang = 'tr-TR';
+    r.lang = globalThis.jarvisListenLang?.() || 'tr-TR';
     r.continuous = false;
     r.interimResults = true;
     let submitted = false,
@@ -306,8 +306,8 @@ class JarvisVoice {
         }
       };
       u.onboundary = () => globalThis.jarvisAvatarBoundary?.();
-      u.lang = 'tr-TR';
-      u.voice = owner.voice();
+      u.lang = globalThis.jarvisSpeakLang?.(u.text) || 'tr-TR';
+      u.voice = u.lang === 'tr-TR' ? owner.voice() : globalThis.jarvisVoiceFor?.(u.lang) || null;
       u.rate = owner.rate();
       let settled = false;
       u.onend = () => {
@@ -494,8 +494,8 @@ class JarvisVoice {
         }
       };
       utterance.onboundary = () => globalThis.jarvisAvatarBoundary?.();
-      utterance.lang = 'tr-TR';
-      utterance.voice = this.voice();
+      utterance.lang = globalThis.jarvisSpeakLang?.(utterance.text) || 'tr-TR';
+      utterance.voice = utterance.lang === 'tr-TR' ? this.voice() : globalThis.jarvisVoiceFor?.(utterance.lang) || null;
       utterance.rate = this.rate();
       let settled = false;
       utterance.onend = () => {
@@ -917,8 +917,9 @@ class JarvisSpeechPlayer {
       if (!live() || finished) return;
       const initialStart = callbacks.start,
         initialBoundary = callbacks.boundary;
-      u.lang = 'tr-TR';
-      if (!u.voice || !/^tr(?:-|$)/i.test(u.voice.lang)) u.voice = choose(null);
+      // Translator mode may speak Arabic/English: keep that language; otherwise force a Turkish voice.
+      if (u.lang && !/^tr(?:-|$)/i.test(u.lang)) { if (!u.voice) u.voice = (this.synth?.getVoices?.() || []).find(v => v.lang?.toLowerCase().startsWith(u.lang.slice(0, 2).toLowerCase())) || null; }
+      else { u.lang = 'tr-TR'; if (!u.voice || !/^tr(?:-|$)/i.test(u.voice.lang)) u.voice = choose(null); }
       u.onstart = (...args) => {
         if (!live() || finished || started) return;
         started = true;

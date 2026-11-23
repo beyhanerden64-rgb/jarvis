@@ -62,6 +62,17 @@ header.top { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap;
 .seg button:disabled { opacity: .4; cursor: not-allowed; }
 .seg select { width: 100%; border: 0; background: transparent; padding: 6px 8px; font-size: 12.5px; }
 .seg select option { background: #0b1b28; }
+.skills { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.skills button { border: 1px solid var(--line); background: rgb(87 211 255 / .05); color: var(--ink); border-radius: 6px; padding: 6px 6px; font-size: 12px; text-align: left; }
+.skills button:hover { border-color: var(--line-2); color: var(--holo-2); }
+.mobile-skills { display: none; gap: 6px; overflow-x: auto; max-width: 100%; padding-bottom: 2px; }
+.mobile-skills button { flex: none; border: 1px solid var(--line); background: rgb(3 12 20 / .55); color: var(--ink); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+.agenda { display: grid; gap: 6px; }
+.agenda .day { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.agenda .day b { font: 600 10.5px var(--f-display); letter-spacing: .14em; color: var(--holo-2); }
+.agenda .day.today { border-color: var(--line-2); background: rgb(87 211 255 / .06); }
+.agenda .day div { font-size: 13px; color: var(--ink); }
+.agenda .day span { color: var(--muted); font: 11px var(--f-mono); margin-right: 6px; }
 .timers { display: grid; gap: 4px; font: 500 13px var(--f-mono); }
 .timer { display: flex; justify-content: space-between; gap: 8px; color: var(--amber); }
 .timer button { border: 0; background: none; color: var(--muted); padding: 0 2px; }
@@ -158,6 +169,7 @@ textarea#prompt::placeholder { color: var(--muted); }
   .middle { grid-template-columns: minmax(0, 1fr); }
   .left, .right { display: none; }
   .mobile-strip { display: flex !important; }
+  .mobile-skills { display: flex; }
 }
 @media (max-width: 560px) {
   .brand { font-size: 18px; } .readout .time { font-size: 22px; } .chips { display: none; }
@@ -192,7 +204,7 @@ textarea#prompt::placeholder { color: var(--muted); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 2.0.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 2.1.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -220,8 +232,21 @@ textarea#prompt::placeholder { color: var(--muted); }
             <option value="klinik">Klinik yönetimi</option>
             <option value="icerik">İçerik ve sosyal medya</option>
             <option value="akademik">Akademik · ZOİ</option>
+            <option value="tercuman">Tercüman · hasta ile</option>
           </select></div>
           <div class="seg"><button type="button" id="brief">Brifing</button></div>
+        </div>
+      </div>
+      <div class="card"><h4>YETENEKLER</h4>
+        <div class="skills" id="skills">
+          <button type="button" data-skill="news">Haberler</button>
+          <button type="button" data-skill="fx">Döviz · altın</button>
+          <button type="button" data-skill="wx">Hava</button>
+          <button type="button" data-skill="exercise">Egzersiz programı</button>
+          <button type="button" data-skill="patient">Hasta mesajı</button>
+          <button type="button" data-skill="insta">Instagram</button>
+          <button type="button" data-skill="translate">Tercüman</button>
+          <button type="button" data-skill="focus">Odak 25 dk</button>
         </div>
       </div>
       <div class="card" id="timerCard" hidden><h4>SAYAÇLAR</h4><div class="timers" id="timers"></div></div>
@@ -234,6 +259,7 @@ textarea#prompt::placeholder { color: var(--muted); }
         <div class="seg" role="group" aria-label="Dinleme biçimi (mobil)"><button type="button" data-proxy="mPush">Bas-konuş</button><button type="button" data-proxy="mLive">Sürekli</button></div>
         <div class="seg"><button type="button" data-proxy="brief">Brifing</button></div>
       </div>
+      <div class="mobile-skills" id="mobileSkills"></div>
       <div class="caption" id="caption" aria-live="polite"></div>
     </div>
     <div class="right">
@@ -293,6 +319,8 @@ textarea#prompt::placeholder { color: var(--muted); }
         </div>
       </div>
       <div class="pane" id="p-tasks" role="tabpanel" hidden>
+        <h3>BU HAFTA</h3>
+        <div class="agenda" id="agenda"></div>
         <h3>GÖREV VE HATIRLATMALAR</h3>
         <ul class="list" id="tasks"></ul>
         <p class="muted" id="tasksEmpty">Görev yok. “Jarvis, yarın 10'da Ahmet Bey'i aramamı hatırlat” diyebilirsin.</p>
@@ -314,6 +342,9 @@ textarea#prompt::placeholder { color: var(--muted); }
         <h3>UZUN DÖNEM ÖZET</h3>
         <div class="summary" id="summary">Sohbetler uzadıkça eski kısımları buraya özetlerim.</div>
         <div class="row"><button type="button" class="btn" id="exportNotes">Notları indir</button><button type="button" class="btn" id="exportChat">Sohbeti indir</button></div>
+        <h3>CİHAZLAR ARASI AKTARIM</h3>
+        <p class="muted">Hafıza, görev, not ve sohbeti bir dosyaya kaydet; diğer cihazda “Yedekten yükle” ile aktar. Anahtar dosyaya yazılmaz.</p>
+        <div class="row"><button type="button" class="btn" id="backupSave">Yedeği indir</button><button type="button" class="btn" id="backupLoad">Yedekten yükle</button><input type="file" id="backupFile" accept="application/json,.json" hidden></div>
       </div>
       <div class="pane" id="p-settings" role="tabpanel" hidden>
         <h3>SES</h3>
@@ -350,7 +381,7 @@ textarea#prompt::placeholder { color: var(--muted); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=2.0.0"></script>
-<script src="direct.js?v=2.0.0"></script><script src="app.js?v=2.0.0"></script>
+<script src="voice-engine.js?v=2.1.0"></script>
+<script src="direct.js?v=2.1.0"></script><script src="app.js?v=2.1.0"></script>
 </body>
 </html>

@@ -48,9 +48,24 @@ const voiceSel = $('voice');
   const web = document.createElement('div'); web.className = 'field';
   web.innerHTML = '<label for="web">İnternette arama (Gemini)</label><select id="web"><option value="1" selected>Otomatik · güncel sorularda</option><option value="2">Her soruda</option><option value="0">Kapalı</option></select>';
   $('depth').closest('.field').after(web);
+  const tr = document.createElement('div'); tr.className = 'field';
+  tr.innerHTML = '<label for="transLang">Tercüman · hastanın dili</label><select id="transLang"><option value="Kürtçe (Kurmancî)">Kürtçe (Kurmancî)</option><option value="Arapça">Arapça</option><option value="İngilizce">İngilizce</option><option value="Farsça">Farsça</option></select>';
+  const ll = document.createElement('div'); ll.className = 'field';
+  ll.innerHTML = '<label for="listenLang">Konuşma tanıma dili</label><select id="listenLang"><option value="tr-TR" selected>Türkçe</option><option value="ar-SA">Arapça (hasta konuşurken)</option><option value="en-US">İngilizce</option></select>';
+  const dv = document.createElement('div'); dv.className = 'field';
+  dv.innerHTML = '<label for="deviceVoice">Cihaz sesi</label><select id="deviceVoice"><option value="">Otomatik · en doğal Türkçe ses</option></select>';
+  $('voice').closest('.field').after(dv);
+  $('pause').closest('.field').after(tr, ll);
 })();
 voiceSel.innerHTML = '<option value="natural">Doğal ses · sunucu</option><option value="device" selected>Telefon/bilgisayar sesi</option>';
-for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen', 'web']) {
+function fillVoices() {
+  const sel = $('deviceVoice'), keep = store.get('set.deviceVoice', '') || sel.value;
+  const list = (window.speechSynthesis?.getVoices() || []).filter(v => /^tr/i.test(v.lang)).sort((a, b) => JarvisSpeechPlayer.voiceScore(b) - JarvisSpeechPlayer.voiceScore(a));
+  sel.replaceChildren(new Option('Otomatik · en doğal Türkçe ses', ''), ...list.map(v => new Option(v.name + (v.localService === false ? ' · çevrimiçi' : ''), v.voiceURI)));
+  sel.value = list.some(v => v.voiceURI === keep) ? keep : '';
+}
+fillVoices(); window.speechSynthesis?.addEventListener?.('voiceschanged', fillVoices);
+for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen', 'web', 'transLang', 'listenLang', 'deviceVoice']) {
   const v = store.get('set.' + id, null);
   if (v !== null && [...$(id).options].some(o => o.value === v)) $(id).value = v;
   $(id).addEventListener('change', () => { store.set('set.' + id, $(id).value); sysInfo(); });
@@ -225,8 +240,16 @@ function answerTools(el, text) {
   mk('Kopyala', () => { const p = navigator.clipboard?.writeText(text); if (p) p.then(() => note('Kopyalandı.'), () => note('Kopyalanamadı.')); });
   mk('Not olarak kaydet', () => { saveItem({ kind: 'note', text, title: text.split(/[.\n]/)[0].slice(0, 60) }); note('Not kaydedildi.'); });
   mk('Sesli oku', () => { stopAll(); voiceSession.read(text); });
+  mk('WhatsApp', () => { const a = document.createElement('a'); a.href = 'https://wa.me/?text=' + encodeURIComponent(text); a.target = '_blank'; a.rel = 'noopener'; a.click(); });
+  mk('Yazdır', () => printText(text));
   mk('Paylaş', () => { if (navigator.share) navigator.share({ text }).catch(() => {}); else note('Bu cihazda paylaşma yok; Kopyala’yı kullan.'); });
   el.append(bar);
+}
+function printText(text) {
+  const f = document.createElement('iframe'); f.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0'; document.body.append(f);
+  const d = f.contentDocument, esc = t => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  d.open(); d.write(`<!doctype html><html lang="tr"><meta charset="utf-8"><title>FİZYOVİTA</title><style>body{font:13pt/1.55 Georgia,serif;margin:2cm;color:#111}h1{font:600 15pt system-ui;letter-spacing:.08em;margin:0 0 4px}small{color:#555;font:10pt system-ui}hr{border:0;border-top:1px solid #999;margin:14px 0}p{white-space:pre-wrap}</style><h1>FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi</h1><small>Fzt. Beyhan Erden · Cizre · ${now().toLocaleDateString('tr-TR', TZ)}</small><hr><p>${esc(text)}</p>`); d.close();
+  setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); } catch {} setTimeout(() => f.remove(), 2000); }, 250);
 }
 function renderChat() {
   $('feed').querySelectorAll('.msg').forEach(m => m.remove());
@@ -277,7 +300,8 @@ const webSearch = {
   wanted(text) {
     if (!this.allowed()) return false;
     if (setting('web') === '2') return true;
-    return /\b(?:haber|son dakika|güncel|bugün(?:kü)?\s+(?:maç|dolar|euro|altın|borsa|gündem)|dolar|euro|altın|kur|borsa|bitcoin|fiyat(?:ı|lar)?|kimdir|kim kazandı|maç(?:ı)?|skor|seçim|deprem|yol durumu|nöbetçi eczane|açık mı|nerede|adres|telefon numarası|internette|araştır|ara(?:t)?\s|google|son çıkan|yeni çıkan|2025|2026|2027)\b/i.test(text);
+    // Stems, not \\b: JavaScript word boundaries do not understand Turkish letters (haberi, altını, güncel…).
+    return /(?:haber|son dakika|güncel|gündem|dolar|euro|avro|sterlin|altın|borsa|bitcoin|kripto|fiyat|kimdir|kim kazandı|maç|skor|puan durumu|seçim|deprem|yol durumu|nöbetçi eczane|açık mı|internette|araştır|google|son çıkan|yeni çıkan|resmi gazete|asgari ücret|emekli|zam oranı)|(?:^|\s)kur(?:u|lar[ıi]?)?(?:\s|$|\?)/i.test(text);
   }
 };
 
@@ -317,6 +341,26 @@ function parseTimer(t) {
   return { ms: n * unit, label: `${m[1]} ${m[2]}${what && what.length < 40 ? ' · ' + what : ''} sayacı` };
 }
 
+/* ================= skills (one-tap abilities) ================= */
+const SKILLS = {
+  news: { label: 'Haberler', ask: 'Bugünün Türkiye ve dünya gündeminden en önemli 5 haberi birer cümleyle özetle.' },
+  fx: { label: 'Döviz · altın', ask: 'Güncel dolar, euro ve gram altın fiyatları ne kadar?' },
+  wx: { label: 'Hava', ask: 'Bugün ve yarın Cizre’de hava nasıl? Dışarı çıkarken nelere dikkat etmeliyim?' },
+  exercise: { label: 'Egzersiz programı', fill: 'Ev egzersiz programı hazırla. Tanı/bölge: … Yaş: … Seviye: başlangıç. Set, tekrar, sıklık ve dikkat edilecekleri sade dille yaz.' },
+  patient: { label: 'Hasta mesajı', fill: 'Hastaya gönderilecek kısa ve nazik WhatsApp mesajı yaz. Konu: … (randevu hatırlatma / kontrol / ödeme / bilgilendirme)' },
+  insta: { label: 'Instagram', fill: 'FİZYOVİTA Instagram gönderisi yaz. Konu: … Başlık, 4-5 cümlelik metin, görsel önerisi ve uygun etiketler olsun.' },
+  translate: { label: 'Tercüman', run: () => { $('persona').value = 'tercuman'; store.set('set.persona', 'tercuman'); sysInfo(); note(`Tercüman modu: Türkçe ↔ ${setting('transLang')}. Hasta konuşacaksa Ayar → Konuşma tanıma dili. Çıkmak için uzman modunu değiştir.`); } },
+  focus: { label: 'Odak 25 dk', run: () => { startTimer(25 * 60000, 'Odak (25 dk)'); note('25 dakikalık odak sayacı başladı.'); } }
+};
+function runSkill(k) {
+  const sk = SKILLS[k]; if (!sk) return; window.jarvisUnlock();
+  if (sk.run) return sk.run();
+  if (sk.fill) { $('prompt').value = sk.fill; autosize(); $('prompt').focus(); const i = sk.fill.indexOf('…'); if (i >= 0) $('prompt').setSelectionRange(i, i + 1); return; }
+  wake.stop(); voiceSession.stop(''); typedTurn(sk.ask, setting('speakOn') === '1');
+}
+document.querySelectorAll('[data-skill]').forEach(b => b.onclick = () => runSkill(b.dataset.skill));
+$('mobileSkills').replaceChildren(...Object.entries(SKILLS).map(([k, v]) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = v.label; b.onclick = () => runSkill(k); return b; }));
+
 /* ================= system HUD ================= */
 function hudNet() { $('hNet').textContent = navigator.onLine ? 'çevrimiçi' : 'ÇEVRİMDIŞI'; }
 addEventListener('online', hudNet); addEventListener('offline', hudNet); hudNet();
@@ -353,6 +397,19 @@ function renderItems() {
   $('tasksEmpty').hidden = tasks.length > 0; $('memoryEmpty').hidden = mem.length > 0; $('notesEmpty').hidden = notes.length > 0;
   const late = tasks.filter(isLate).length; $('lateBadge').hidden = !late; $('lateBadge').textContent = late;
   $('dockBadge').hidden = !late; $('dockBadge').textContent = late;
+  const days = [];
+  for (let d = 0; d < 7; d++) {
+    const day = new Date(now().getTime() + d * 86400000), key = isoLocal(day).slice(0, 10);
+    const list = tasks.filter(i => !i.done && i.due && i.due.slice(0, 10) === key);
+    if (!list.length && d > 1) continue;
+    const box = document.createElement('div'); box.className = 'day' + (d === 0 ? ' today' : '');
+    const h = document.createElement('b'); h.textContent = d === 0 ? 'BUGÜN' : d === 1 ? 'YARIN' : day.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'short', ...TZ }).toLocaleUpperCase('tr-TR');
+    box.append(h);
+    if (!list.length) { const e = document.createElement('div'); e.textContent = 'Plan yok.'; e.style.color = 'var(--muted)'; box.append(e); }
+    for (const i of list) { const r = document.createElement('div'); const t = document.createElement('span'); t.textContent = i.due.includes('T') ? i.due.slice(11, 16) : 'gün boyu'; r.append(t, i.text); box.append(r); }
+    days.push(box);
+  }
+  $('agenda').replaceChildren(...days);
   const open = tasks.filter(i => !i.done);
   $('hTasks').textContent = open.length + (late ? ` · ${late} gecikmiş` : '');
   const next = open.filter(i => i.due && !isLate(i)).sort((a, b) => String(a.due).localeCompare(String(b.due)))[0];
@@ -401,6 +458,7 @@ const PERSONA = {
   fizyo: 'Fizyoterapi uzmanı gibi düşün: kanıta dayalı rehabilitasyon, klinik akıl yürütme, egzersiz dozajı (set, tekrar, sıklık, ilerleme), kırmızı bayraklar. Hasta için yazarken sade dil kullan. Tanı koyma; yönlendirme gereken durumları belirt.',
   klinik: 'Klinik işletme danışmanı gibi düşün: randevu akışı, hasta memnuniyeti, fiyatlandırma, personel, maliyet, yasal yükümlülükler (KVKK, SGK) ve pratik adımlar.',
   icerik: 'Sağlık içerik yazarı ve sosyal medya uzmanı gibi düşün: FİZYOVİTA için Instagram ve WhatsApp metinleri, başlık, görsel önerisi, etik ve yanıltmayan sağlık iletişimi, Cizre yerel kitlesi.',
+  tercuman: '',
   akademik: 'Akademik danışman gibi düşün (ZOİ çalışmaları dahil): hipotez, yöntem, istatistik, literatür; emin olmadığın kaynağı uydurma, doğrulanması gerektiğini söyle.'
 };
 const LENGTH = { kisa: 'Yanıtları kısa ve öz tut.', normal: 'Yanıt uzunluğunu soruya göre ayarla.', detay: 'Konu gerektiriyorsa ayrıntılı ve yapılandırılmış yanıt ver.' };
@@ -408,7 +466,7 @@ function instructions(voiceTurn) {
   const fmt = arr => arr.map(i => `- [${i.id}] ${i.text}${i.due ? ' (zaman: ' + i.due + (isLate(i) ? ', GECİKTİ' : '') + ')' : ''}`).join('\n') || '(yok)';
   return `Sen JARVIS'sin: Fizyoterapist Beyhan Erden'in kişisel yapay zekâ asistanı. Beyhan, Cizre/Şırnak'ta FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'ni işletiyor.
 Şu an: ${nowText()} (Türkiye saati, ISO ${isoLocal(now())}).
-Rol: ${PERSONA[setting('persona')] || PERSONA.genel}
+Rol: ${setting('persona') === 'tercuman' ? `TERCÜMANSIN. Beyhan (fizyoterapist) ile hastası arasında çeviri yap. Türkçe gelen sözü hastanın diline (${setting('transLang')}) çevir; başka dilde gelen sözü Türkçeye çevir. Yalnızca çeviriyi yaz, yorum veya açıklama ekleme; tıbbi terimleri sade ve doğru çevir. Bu modda eylem işaretleri kullanma.` : PERSONA[setting('persona')] || PERSONA.genel}
 Üslup: doğal, sıcak, akıcı Türkçe; "sen" diye hitap et; önce cevabı ver; gereksiz selam ve kapanış sorusu kullanma; yeri gelince kısa, zekice bir espri. ${LENGTH[setting('length')]} Bilmediğini uydurma. Yapmadığın bir işlemi (mesaj gönderme, telefon araması) yaptım deme.${webSearch.allowed() ? '' : ' İnternete erişimin yok; güncel bilgi gerekiyorsa bunu söyle.'} Kesin tıbbi tanı veya ilaç dozu verme.
 ${voiceTurn ? 'BU YANIT SESLİ OKUNACAK: 1-4 kısa cümle; liste, başlık, emoji, parantez, bağlantı, tablo kullanma; kısaltmaları açık yaz; yüzde ve para birimini sözcükle yaz.' : 'Yazılı yanıt: gerekirse kısa liste kullan.'}
 
@@ -444,7 +502,7 @@ function applyActions(text) {
     if (kind === 'NOT' && (a || b)) { const id = saveItem({ kind: 'note', title: a, text: b || a }); note('Not kaydedildi: ' + (a || b.slice(0, 40)), () => removeItem(id)); }
     if (kind === 'TAMAM') { const it = items.find(i => i.id === a && i.kind === 'task'); if (it) { saveItem({ ...it, done: true }); note('Tamamlandı: ' + it.text, () => saveItem({ ...it, done: false })); } }
     if (kind === 'SIL') { const it = items.find(i => i.id === a); if (it) { removeItem(a); note('Silindi: ' + (it.title || it.text), () => saveItem(it)); } }
-    if (kind === 'MOD' && PERSONA[a]) { $('persona').value = a; store.set('set.persona', a); note('Uzman modu: ' + $('persona').selectedOptions[0].text); sysInfo(); }
+    if (kind === 'MOD' && a in PERSONA) { $('persona').value = a; store.set('set.persona', a); note('Uzman modu: ' + $('persona').selectedOptions[0].text); sysInfo(); }
   }
 }
 function pickTier(text, voiceTurn, hasImage) {
@@ -538,7 +596,14 @@ const player = new JarvisSpeechPlayer({
   voice: () => 'default',
   status: t => { $('naturalStatus') && ($('naturalStatus').textContent = t); }
 });
-const bestVoice = () => (window.speechSynthesis?.getVoices() || []).filter(v => /^tr/i.test(v.lang)).sort((a, b) => JarvisSpeechPlayer.voiceScore(b) - JarvisSpeechPlayer.voiceScore(a))[0] || null;
+const bestVoice = () => {
+  const all = window.speechSynthesis?.getVoices() || [], pick = setting('deviceVoice');
+  return (pick && all.find(v => v.voiceURI === pick)) || all.filter(v => /^tr/i.test(v.lang)).sort((a, b) => JarvisSpeechPlayer.voiceScore(b) - JarvisSpeechPlayer.voiceScore(a))[0] || null;
+};
+// Translator mode: listen in the chosen language and speak Arabic/English with a matching voice.
+window.jarvisListenLang = () => setting('listenLang') || 'tr-TR';
+window.jarvisSpeakLang = text => (/[\u0600-\u06FF]/.test(text || '') ? 'ar-SA' : setting('persona') === 'tercuman' && setting('transLang') === 'İngilizce' && !/[çğıöşüÇĞİÖŞÜ]/.test(text || '') && /\b(the|and|you|your|please|pain|exercise|is|are)\b/i.test(text || '') ? 'en-US' : 'tr-TR');
+window.jarvisVoiceFor = lang => (window.speechSynthesis?.getVoices() || []).filter(v => v.lang?.toLowerCase().startsWith(lang.slice(0, 2))).sort((a, b) => JarvisSpeechPlayer.voiceScore(b) - JarvisSpeechPlayer.voiceScore(a))[0] || null;
 let continuous = store.get('set.continuous', false);
 const voiceSession = new JarvisVoice({
   Recognition, synth: player, Utterance: window.SpeechSynthesisUtterance,
@@ -773,12 +838,33 @@ const stamp = () => isoLocal(now()).slice(0, 10);
 $('exportNotes').onclick = () => download(`jarvis-notlar-${stamp()}.md`, '# JARVIS notları\n\n' + items.filter(i => i.kind === 'note').map(i => `## ${i.title || 'Not'}\n\n${i.text}\n`).join('\n') + '\n# Hafıza\n\n' + items.filter(i => i.kind === 'memory').map(i => '- ' + i.text).join('\n') + '\n\n# Görevler\n\n' + items.filter(i => i.kind === 'task').map(i => `- [${i.done ? 'x' : ' '}] ${i.text}${i.due ? ' (' + dueText(i.due) + ')' : ''}`).join('\n'));
 $('exportChat').onclick = () => download(`jarvis-sohbet-${stamp()}.md`, '# JARVIS sohbeti\n\n' + (chat.summary ? '## Özet\n\n' + chat.summary + '\n\n' : '') + chat.messages.map(m => `**${m.role === 'user' ? 'Beyhan' : 'JARVIS'}:** ${m.content}`).join('\n\n'));
 
+/* ================= backup: move memory between devices ================= */
+$('backupSave').onclick = () => {
+  const settings = {}; for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen', 'web', 'transLang', 'listenLang']) settings[id] = setting(id);
+  download(`jarvis-yedek-${stamp()}.json`, JSON.stringify({ app: 'jarvis', version: 2, items, chat, settings, saved: Date.now() }, null, 1));
+};
+$('backupLoad').onclick = () => $('backupFile').click();
+$('backupFile').onchange = async () => {
+  const f = $('backupFile').files[0]; $('backupFile').value = ''; if (!f) return;
+  try {
+    const d = JSON.parse(await f.text());
+    if (d.app !== 'jarvis' || !Array.isArray(d.items)) throw 0;
+    const byId = new Map(items.map(i => [i.id, i])); for (const i of d.items) if (i && i.id && i.kind) byId.set(i.id, i);
+    items = [...byId.values()];
+    if (d.chat?.messages?.length > chat.messages.length) chat.messages = d.chat.messages.filter(m => m && typeof m.content === 'string');
+    if (d.chat?.summary && !chat.summary) chat.summary = d.chat.summary;
+    for (const [k, v] of Object.entries(d.settings || {})) if ($(k) && [...$(k).options].some(o => o.value === v)) { $(k).value = v; store.set('set.' + k, v); }
+    persist(); renderChat(); $('summary').textContent = chat.summary || $('summary').textContent;
+    note(`Yedek yüklendi: ${d.items.length} kayıt.`);
+  } catch { note('Bu dosya bir JARVIS yedeği değil.'); }
+};
+
 /* ================= status ================= */
 function chip(id, text, on) { $(id).textContent = text; $(id).dataset.s = on ? 'on' : 'off'; }
 function sysInfo() {
   const rows = [
     ['Beyin', (server.provider === 'gemini' ? 'Gemini ücretsiz' : 'Claude') + ' · ' + $('depth').selectedOptions[0].text],
-    ['Uzman modu', $('persona').selectedOptions[0].text],
+    ['Uzman modu', $('persona').selectedOptions[0].text + (setting('persona') === 'tercuman' ? ' · ' + setting('transLang') : '')],
     ['Mikrofon', Recognition && setting('micMode') !== 'record' ? 'tarayıcı konuşma tanıma · Türkçe' : server.stt ? 'ses kaydı → sunucuda yazıya çevirme' : 'yok · yazarak kullan'],
     ['Ses', setting('voice') === 'natural' && server.speech ? 'doğal ses (sunucu), sorun olursa cihaz sesi' : 'cihaz sesi · ' + (bestVoice()?.name || 'varsayılan')],
     ['Eşitleme', server.sync ? 'telefon ve bilgisayar ortak' : 'yalnız bu cihaz (sunucuda JARVIS_KV yok)'],
@@ -812,6 +898,11 @@ function boot(info) {
   const late = items.filter(isLate).length;
   setPhase('idle', late ? `${late} gecikmiş görevin var. “Brifing”e dokunabilirsin.` : 'Mikrofona dokun ve konuş, ya da yaz.');
   setTimeout(() => wake.start(), 800);
+  const today = isoLocal(now()).slice(0, 10), hour = Number(isoLocal(now()).slice(11, 13));
+  if (store.get('lastBrief', '') !== today && hour >= 5) {
+    store.set('lastBrief', today);
+    setTimeout(() => { if (!answering) think('Günaydın brifingi: bugünün tarihi, Cizre hava durumu, bugünkü ve gecikmiş görevlerim, yaklaşan hatırlatmalar. Kısa tut.', { voiceTurn: false }).catch(() => {}); }, 2500);
+  }
   setInterval(() => { $('hWake').textContent = wake.rec ? 'dinliyor' : wake.enabled() ? 'beklemede' : 'kapalı'; }, 1500);
   if (!chat.messages.length || !$('caption').textContent) {
     const open = items.filter(i => i.kind === 'task' && !i.done).length;
