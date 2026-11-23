@@ -97,7 +97,7 @@
   window.addEventListener('online', () => { healLog('İnternet', 'Bağlantı geri geldi.', 'düzeldi'); });
 
   /* ---------- 2) bilgisayar nöbetçileri ---------- */
-  PC_READONLY.add('nobet'); PC_READONLY.add('nobet_tara'); PC_RISKY.add('nobet_onay');
+  PC_READONLY.add('nobet'); PC_READONLY.add('nobet_tara'); PC_RISKY.add('nobet_onay'); PC_RISKY.add('kendini_guncelle');
   async function loadPc(force) {
     if (!force && Date.now() - pcAt < 50000) return pc;
     pcAt = Date.now();
@@ -129,6 +129,7 @@
     el('div', { class: 'row' },
       el('button', { type: 'button', class: 'btn', onclick: () => loadPc(true) }, 'Yenile'),
       el('button', { type: 'button', class: 'btn', onclick: async () => { try { const d = await pcCall('nobet_tara', [], false); note(d.text); setTimeout(() => loadPc(true), 60000); } catch (e) { note(e.message); } } }, 'Şimdi tara'),
+      el('button', { type: 'button', class: 'btn', onclick: async () => { if (!(await confirmAction('Bilgisayar yardımcısı en son sürüme güncellensin mi?'))) return; try { const d = await pcCall('kendini_guncelle', [], true); note(d.text); setTimeout(() => { pcPing(); loadPc(true); }, 12000); } catch (e) { note('Güncellenemedi: ' + e.message + ' (eski yardımcıda bu düğme yok; bir kez PowerShell komutuyla kur).'); } } }, 'Yardımcıyı güncelle'),
       el('button', { type: 'button', class: 'btn', onclick: () => { $('drawer').classList.remove('open'); typedTurn('Nöbetçi raporunu ver: pc|nobet ile bak; sorunları önem sırasıyla, ne yapıldığını ve benim ne yapmam gerektiğini kısaca söyle.', false); } }, 'Rapor iste')),
     el('details', {}, el('summary', {}, 'Tüm bilgisayar ajanları'), el('ul', { class: 'list', id: 'nbAgents' })),
     el('h3', {}, 'UYGULAMA NÖBETÇİLERİ'), el('ul', { class: 'list', id: 'nbApp' }),
