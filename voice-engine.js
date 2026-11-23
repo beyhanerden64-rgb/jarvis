@@ -309,6 +309,7 @@ class JarvisVoice {
       u.lang = globalThis.jarvisSpeakLang?.(u.text) || 'tr-TR';
       u.voice = u.lang === 'tr-TR' ? owner.voice() : globalThis.jarvisVoiceFor?.(u.lang) || null;
       u.rate = owner.rate();
+      u.pitch = globalThis.jarvisPitch?.() || 1;
       let settled = false;
       u.onend = () => {
         globalThis.jarvisAvatarSpeech?.(false);
@@ -497,6 +498,7 @@ class JarvisVoice {
       utterance.lang = globalThis.jarvisSpeakLang?.(utterance.text) || 'tr-TR';
       utterance.voice = utterance.lang === 'tr-TR' ? this.voice() : globalThis.jarvisVoiceFor?.(utterance.lang) || null;
       utterance.rate = this.rate();
+      utterance.pitch = globalThis.jarvisPitch?.() || 1;
       let settled = false;
       utterance.onend = () => {
         globalThis.jarvisAvatarSpeech?.(false);

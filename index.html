@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://generativelanguage.googleapis.com https://api.open-meteo.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob:; connect-src 'self' https: http://127.0.0.1:8765">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>JARVIS</title>
 <meta name="description" content="Beyhan'ın sesli kişisel asistanı">
@@ -123,7 +123,9 @@ textarea#prompt::placeholder { color: var(--muted); }
 .drawer { position: fixed; z-index: 5; top: 0; right: 0; bottom: 0; width: min(420px, 100vw); background: rgb(5 16 25 / .94); border-left: 1px solid var(--line-2); transform: translateX(105%); transition: transform .28s ease; display: grid; grid-template-rows: auto minmax(0, 1fr); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .drawer.open { transform: none; }
 .drawer .close { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); right: 8px; border: 0; background: none; color: var(--muted); font-size: 22px; z-index: 1; }
-.tabs { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); padding-right: 36px; }
+.tabs { display: flex; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); padding-right: 36px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { flex: none; padding-left: 10px; padding-right: 10px; }
 .tabs button { background: none; border: 0; padding: 13px 2px; font: 600 10.5px var(--f-display); letter-spacing: .12em; color: var(--muted); border-bottom: 2px solid transparent; }
 .tabs button[aria-selected="true"] { color: var(--holo-2); border-bottom-color: var(--holo); }
 .pane { padding: 14px max(14px, env(safe-area-inset-right, 0px)) 14px 14px; display: grid; gap: 12px; align-content: start; overflow-y: auto; min-height: 0; }
@@ -155,7 +157,7 @@ textarea#prompt::placeholder { color: var(--muted); }
 .x:hover { color: var(--bad); }
 .add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
 .add.two input[type="datetime-local"] { grid-column: 1 / -1; grid-row: 2; }
-.add input, .field select { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: rgb(255 255 255 / .04); padding: 8px 10px; min-width: 0; }
+.add input, .field select, .field input, .pane > input { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: rgb(255 255 255 / .04); padding: 8px 10px; min-width: 0; }
 .field select option { background: #0b1b28; }
 .add button, .btn { border: 1px solid var(--line-2); background: rgb(87 211 255 / .08); color: var(--holo-2); border-radius: 8px; padding: 7px 12px; font-weight: 500; }
 .field { display: grid; gap: 4px; }
@@ -193,6 +195,40 @@ textarea#prompt::placeholder { color: var(--muted); }
 }
 .mobile-strip { display: none; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .mobile-strip .seg { background: rgb(3 12 20 / .55); }
+/* JARVIS 3 */
+@media (max-width: 700px) { #fullBtn { display: none; } .estop { padding: 2px 8px; font-size: 10px; } }
+.confirmbar { width: min(560px, 100%); display: grid; gap: 8px; border: 1px solid var(--amber); background: rgb(30 18 2 / .82); color: var(--ink); border-radius: var(--r); padding: 10px 14px; box-shadow: 0 0 24px rgb(255 181 71 / .25); }
+:root[data-theme="light"] .confirmbar { background: rgb(255 246 230 / .95); }
+.confirmbar div { display: flex; gap: 8px; justify-content: flex-end; }
+.confirmbar button { border: 1px solid var(--line-2); background: none; color: var(--ink); border-radius: 6px; padding: 6px 16px; font: 700 12px var(--f-mono); letter-spacing: .08em; }
+.confirmbar .yes { border-color: var(--amber); color: var(--amber); background: rgb(255 181 71 / .14); }
+.dockbar { flex-wrap: wrap; justify-content: center; }
+.msg.confirm { align-self: stretch; border: 1px solid var(--amber); background: rgb(255 181 71 / .1); border-radius: 10px; padding: 8px 10px; }
+.msg.confirm .yes { color: var(--amber); border-color: var(--amber); }
+.estop { border: 1px solid #ff5d5d; background: rgb(255 93 93 / .14); color: #ff8b8b; border-radius: 4px; padding: 4px 10px; font: 700 11px var(--f-mono); letter-spacing: .1em; }
+.estop:hover { background: rgb(255 93 93 / .28); }
+.readout { justify-items: end; }
+.list.ops .op { display: grid; gap: 2px; border-left: 3px solid var(--line); padding: 4px 8px; font-size: 12.5px; }
+.op.ok { border-left-color: var(--ok); } .op.bad { border-left-color: #ff6b6b; } .op.wait { border-left-color: var(--amber); } .op.off { opacity: .6; }
+.op small { color: var(--muted); font: 10.5px var(--f-mono); }
+.proj, .pat { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; }
+.proj.active { border-color: var(--line-2); background: rgb(87 211 255 / .06); }
+.proj p, .pat p { margin: 0; }
+.dec { margin: 0; padding-left: 4px; list-style: none; font-size: 12.5px; display: grid; gap: 2px; }
+.pat summary { cursor: pointer; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sessions { margin: 4px 0; padding-left: 18px; font-size: 12.5px; display: grid; gap: 2px; }
+.spark { width: 120px; height: 30px; margin-left: auto; } .spark polyline { fill: none; stroke: var(--amber); stroke-width: 2; }
+.add.sess, .add.pat-add { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.add.sess button, .add.pat-add button { grid-column: 1 / -1; }
+.hist details summary { cursor: pointer; font-size: 13px; } .hist p { white-space: pre-wrap; font-size: 13px; margin: 6px 0; }
+.pane input:not([type=checkbox]), .pane select { width: 100%; }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, body.focus .hint, body.focus .mobile-strip, body.focus .mobile-skills { display: none !important; }
+#lock form button { margin-top: 8px; }
+:root[data-theme="light"] { --bg: #e9f1f6; --bg2: #f7fbfd; --glass: rgb(255 255 255 / .72); --glass-2: rgb(255 255 255 / .9); --ink: #0b2233; --muted: #4d6b7e; --line: rgb(0 110 160 / .22); --line-2: rgb(0 110 160 / .45); --holo: #0077b6; --holo-2: #005f8f; --raised: #fff; }
+:root[data-theme="light"] .drawer { background: rgb(247 251 253 / .96); }
+:root[data-theme="light"] .caption, :root[data-theme="light"] .chip, :root[data-theme="light"] .dockbar button, :root[data-theme="light"] .mobile-skills button { background: rgb(255 255 255 / .75); }
+:root[data-theme="light"] .scan { opacity: .3; }
 @media (prefers-reduced-motion: reduce) { .mic[data-on="1"]::after { animation: none; } .drawer { transition: none; } }
 </style>
 </head>
@@ -218,7 +254,7 @@ textarea#prompt::placeholder { color: var(--muted); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 2.2.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 3.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -384,7 +420,7 @@ textarea#prompt::placeholder { color: var(--muted); }
         <h3>DURUM</h3>
         <dl class="kv" id="sys"></dl>
         <h3>KOMUTLAR</h3>
-        <p class="muted">“Dur / sus” · “Daha yavaş / hızlı konuş” · “Sesli yanıtı kapat / aç” · “Bunu hatırla: …” · “Not al: …” · “… hatırlat” · “… tamamlandı” · “Brifing ver” · “Fizyoterapi moduna geç”</p>
+        <p class="muted">“Dur / sus / acil dur” · “Daha yavaş / hızlı konuş” · “Kısa cevap ver / detaylı anlat” · “Sesli yanıtı kapat / aç” · “Bunu hatırla: …” · “Not al: …” · “… hatırlat” · “… tamamlandı” · “Nerede kalmıştık?” · “Brifing ver” · “Bilgisayarda Word’ü aç” · “Ekranıma bak” · “BTC analizi” · “Şu sayfayı özetle: https://…” · “Ahmet Yılmaz’ı hasta olarak kaydet” · “Yarın 10’da toplantıyı takvime ekle” · “Işıkları aç kestirmesini çalıştır”. Konuşurken araya girmek için ekrana dokun ya da “Jarvis” de.</p>
         <h3>UYGULAMA</h3>
         <p class="muted">Telefonda ve bilgisayarda “Uygulamayı yükle” ile kurulur. Sesli konuşma için Android ve bilgisayarda Chrome/Edge, iPhone’da Safari kullan.</p>
         <div class="row"><button type="button" class="btn" id="logout">Bu cihazda çıkış yap</button></div>
@@ -395,7 +431,7 @@ textarea#prompt::placeholder { color: var(--muted); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=2.2.0"></script>
-<script src="direct.js?v=2.2.0"></script><script src="app.js?v=2.2.0"></script><script src="figure.js?v=2.2.0"></script>
+<script src="voice-engine.js?v=3.0.0"></script>
+<script src="direct.js?v=3.0.0"></script><script src="app.js?v=3.0.0"></script><script src="plus.js?v=3.0.0"></script><script src="figure.js?v=3.0.0"></script>
 </body>
 </html>

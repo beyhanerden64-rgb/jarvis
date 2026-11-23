@@ -70,7 +70,22 @@
   // Lite first: fastest answers for a voice assistant and the most generous free quota.
   const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
-  const geminiOrder = () => { const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS; };
+  // Automatic model choice: quick/default questions → fastest lite model; complex ones (analysis, planning, maths) → stronger flash model first.
+  const geminiOrder = tier => {
+    if (tier === 'complex') return ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
+    const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS;
+  };
+  // Optional natural voice: ElevenLabs with the user's own (free-tier) key.
+  const setv = k => { try { return JSON.parse(localStorage.getItem('jarvisapp.set.' + k) || '""'); } catch { return ''; } };
+  async function eleven(text, signal) {
+    const voice = setv('elevenVoice') || 'pNInz6obpgDQGcFmaJgB';
+    const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice + '?output_format=mp3_44100_64', { method: 'POST', signal, headers: { 'xi-api-key': setv('elevenKey'), 'Content-Type': 'application/json', Accept: 'audio/mpeg' }, body: JSON.stringify({ text: String(text).slice(0, 2500), model_id: 'eleven_flash_v2_5', language_code: 'tr', voice_settings: { stability: 0.45, similarity_boost: 0.8 } }) });
+    if (!r.ok) { const quota = r.status === 401 || r.status === 429 || r.status === 402; return json(quota ? 429 : 503, { error: quota ? 'ElevenLabs kotası doldu veya anahtar geçersiz.' : 'Doğal ses alınamadı.', code: quota ? 'speech_quota_exceeded' : 'speech_failed', retryAfter: quota ? 3600 : 60 }); }
+    return new Response(await r.blob(), { headers: { 'Content-Type': 'audio/mpeg', 'X-Jarvis-Speech': 'ElevenLabs' } });
+  }
+  const speechRoute = (options) => options.method === 'POST'
+    ? (setv('elevenKey') ? eleven(JSON.parse(options.body || '{}').text, options.signal) : Promise.resolve(json(503, { error: 'Doğal ses için ElevenLabs anahtarı yok.', code: 'speech_not_configured' })))
+    : Promise.resolve(json(200, { configured: !!setv('elevenKey'), naturalReady: !!setv('elevenKey'), retryAfter: 0 }));
   function geminiBody(body) {
     const msgs = normalizeMessages(body.messages, body.image);
     const contents = msgs.map(m => ({
@@ -84,7 +99,7 @@
   }
   async function gemini(body, signal) {
     let last = null;
-    for (const model of geminiOrder()) {
+    for (const model of geminiOrder(body.tier)) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       // Each model gets 20 s to start answering; a busy model is skipped instead of hanging the app.
       const ac = new AbortController(), stop = () => ac.abort();
@@ -103,7 +118,7 @@
       // Missing model, its free quota used up, or the model is overloaded: try the next one.
       if (r.status === 400 && body.search) { body = { ...body, search: false }; return gemini(body, signal); } // model without search tool support
       if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
-      if (r.ok) localStorage.setItem('jarvisapp.geminiModel', model);
+      if (r.ok && body.tier !== 'complex') localStorage.setItem('jarvisapp.geminiModel', model);
       return r;
     }
     return last;
@@ -178,8 +193,9 @@
             if (!r.ok) return explainGemini(r);
             sessionStorage.setItem('jarvisapp.ok', '1');
           }
-          return json(200, { ok: true, brain: true, speech: false, stt: false, sync: false, direct: true, provider: 'gemini' });
+          return json(200, { ok: true, brain: true, speech: !!setv('elevenKey'), stt: false, sync: false, direct: true, provider: 'gemini' });
         }
+        if (route === '/api/speech') return speechRoute(options);
         if (route === '/api/chat') {
           const r = await gemini(JSON.parse(options.body || '{}'), options.signal);
           if (!r.ok) return explainGemini(r);
@@ -194,7 +210,7 @@
             if (!r.ok && r.status !== 429 && r.status !== 529) return explain(r, MODELS.quick);
             sessionStorage.setItem('jarvisapp.ok', '1');
           }
-          return json(200, { ok: true, brain: true, speech: false, stt: false, sync: false, direct: true });
+          return json(200, { ok: true, brain: true, speech: !!setv('elevenKey'), stt: false, sync: false, direct: true });
         }
         if (route === '/api/chat') {
           const body = JSON.parse(options.body || '{}');
@@ -204,7 +220,7 @@
           if (!r.ok) return explain(r, model);
           return new Response(textStream(r), { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
         }
-        if (route === '/api/speech') return options.method === 'POST' ? json(503, { error: 'Doğal ses bu sürümde yok; cihaz sesi kullanılır.', code: 'speech_not_configured' }) : json(200, { configured: false, naturalReady: false, retryAfter: 0 });
+        if (route === '/api/speech') return speechRoute(options);
         return json(503, { error: 'Bu özellik GitHub sürümünde yok.' });
       } catch (e) {
         if (e?.name === 'AbortError') throw e;
