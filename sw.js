@@ -1,7 +1,7 @@
 'use strict';
 // JARVIS uygulama kabuğu: arayüz çevrimdışı da açılır; /api/ istekleri asla önbelleğe alınmaz.
-const CACHE = 'jarvis-app-6.0.0';
-const SHELL = ['./', 'app.js?v=6.0.0', 'plus.js?v=6.0.0', 'hud.js?v=6.0.0', 'features.js?v=6.0.0', 'control.js?v=6.0.0', 'voices.js?v=6.0.0', 'social.js?v=6.0.0', 'agent.js?v=6.0.0', 'figure.js?v=6.0.0', 'voice-engine.js?v=6.0.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=6.0.0'];
+const CACHE = 'jarvis-app-7.0.0';
+const SHELL = ['./', 'app.js?v=7.0.0', 'plus.js?v=7.0.0', 'hud.js?v=7.0.0', 'features.js?v=7.0.0', 'control.js?v=7.0.0', 'voices.js?v=7.0.0', 'social.js?v=7.0.0', 'agent.js?v=7.0.0', 'figure.js?v=7.0.0', 'sentinel.js?v=7.0.0', 'voice-engine.js?v=7.0.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=7.0.0'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
