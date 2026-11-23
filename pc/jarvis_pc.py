@@ -8,7 +8,7 @@ onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarı
 import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '7.0.0'
+VERSION = '7.1.0'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -823,11 +823,44 @@ def incident_for(aid):
     return next((i for i in reversed(NB['incidents']) if i['ajan'] == aid and i['durum'] in ('açık', 'onay bekliyor')), None)
 
 
+DEPENDS_NET = {'kopru', 'saat', 'surum', 'veri_yedek'}  # internet yokken bunların sorunu ayrı olay sayılmaz (kök neden: internet)
+
+
+def anomaly(aid, x, floor, k=3.0):
+    """Öğrenen eşik: değerin bu bilgisayardaki normalini (EWMA ortalama/sapma) öğrenir; normalin çok üstü ve tabanın üstüyse True."""
+    e = NB.setdefault('baseline', {}).setdefault('ewma', {}).setdefault(aid, {'m': x, 'v': 25.0, 'n': 0})
+    sd = max(3.0, e['v'] ** 0.5)
+    hit = e['n'] >= 20 and x >= floor and x > e['m'] + k * sd
+    if not hit:  # anormal değerler normali bozmasın
+        e['m'] = e['m'] * 0.95 + x * 0.05; e['v'] = e['v'] * 0.95 + (x - e['m']) ** 2 * 0.05; e['n'] += 1
+    return hit, round(e['m'])
+
+
+def playbook(aid, okd=None):
+    pb = NB.setdefault('baseline', {}).setdefault('playbook', {}).setdefault(aid, {'ok': 0, 'fail': 0})
+    if okd is not None:
+        pb['ok' if okd else 'fail'] += 1
+    return pb
+
+
+def try_fix(inc, fn, aid):
+    inc['deneme'] = inc.get('deneme', 0) + 1; inc['son_deneme'] = time.time()
+    try:
+        out = fn(); playbook(aid, True)
+        inc.update(durum='onarıldı', sonuc=str(out or 'tamam')[:300], bitis=time.time()); return True
+    except Exception as e:
+        playbook(aid, False)
+        inc.update(durum='açık', sonuc=f'otomatik onarım denemesi {inc["deneme"]} başarısız: ' + str(e)[:200]); return False
+
+
 def nb_run_agent(a):
     try:
         r = a['fn']() or ok()
     except Exception as e:
         r = {'durum': 'atla', 'mesaj': 'denetim yapılamadı: ' + str(e)[:120]}
+    net = NB['agents'].get('internet')
+    if r['durum'] == 'sorun' and a['id'] in DEPENDS_NET and net and net['durum'] == 'sorun':
+        r = {'durum': 'atla', 'mesaj': 'internet yok (kök neden: İnternet bağlantısı)'}
     a['son'] = time.time(); a['durum'] = r['durum']; a['mesaj'] = r.get('mesaj', '')
     NB['runs'] += 1
     inc = incident_for(a['id'])
@@ -837,24 +870,40 @@ def nb_run_agent(a):
             inc.update(durum='kendiliğinden düzeldi', bitis=time.time()); nb_save()
         return
     a['ardisik'] += 1
+    fix = r.get('onarim')
+    # açık olayda güvenli onarımı artan aralıklarla yeniden dene (10, 20, 40 dk); 3 denemeden sonra Beyhan'a bırak
+    if inc and inc['durum'] == 'açık' and fix and fix[2] and inc.get('deneme', 0) < 3 and time.time() - inc.get('son_deneme', 0) > 600 * 2 ** (inc.get('deneme', 1) - 1):
+        if not try_fix(inc, fix[1], a['id']) and inc['deneme'] >= 3:
+            inc['durum'] = 'onay bekliyor'; NB_FIXES[inc['id']] = fix[1]
+            push('JARVIS nöbetçi · ' + inc['ad'], inc['mesaj'] + ' → otomatik onarım 3 kez başarısız, onayını bekliyor')
+            threading.Thread(target=nb_ai, args=(inc,), daemon=True).start()
+        nb_save(); return
     if a['ardisik'] < r.get('esik', 1) or inc:
         return
-    fix = r.get('onarim')
-    inc = {'id': secrets.token_hex(4), 'ajan': a['id'], 'ad': a['ad'], 'grup': a['grup'], 'mesaj': r['mesaj'], 'onem': r.get('onem', 'uyarı'),
+    day_ago = time.time() - 86400
+    repeat = sum(1 for i in NB['incidents'] if i['ajan'] == a['id'] and i['zaman'] > day_ago)
+    msg, onem = r['mesaj'], r.get('onem', 'uyarı')
+    if repeat >= 2:
+        msg += f' — TEKRARLAYAN SORUN (24 saatte {repeat + 1}. kez)'
+        if onem == 'bilgi':
+            onem = 'uyarı'
+        elif repeat >= 3:
+            onem = 'kritik'
+    inc = {'id': secrets.token_hex(4), 'ajan': a['id'], 'ad': a['ad'], 'grup': a['grup'], 'mesaj': msg, 'onem': onem,
            'zaman': time.time(), 'durum': 'açık', 'onarim': fix[0] if fix else '', 'guvenli': bool(fix and fix[2]), 'sonuc': '', 'teshis': ''}
     with NB_LOCK:
         NB['incidents'].append(inc)
-    if fix and fix[2]:
-        try:
-            out = fix[1](); inc.update(durum='onarıldı', sonuc=str(out or 'tamam')[:300], bitis=time.time())
-        except Exception as e:
-            inc.update(durum='açık', sonuc='otomatik onarım başarısız: ' + str(e)[:200])
+    pb = playbook(a['id'])
+    if fix and fix[2] and not (pb['fail'] >= 3 and pb['ok'] == 0):
+        try_fix(inc, fix[1], a['id'])
     elif fix:
         inc['durum'] = 'onay bekliyor'
+        if fix[2]:
+            inc['sonuc'] = 'bu onarım daha önce hep başarısız oldu; otomatik denenmedi'
         NB_FIXES[inc['id']] = fix[1]
-    if inc['onem'] == 'kritik' or inc['durum'] in ('onay bekliyor',) or (inc['durum'] == 'açık' and inc['onem'] != 'bilgi'):
+    if inc['onem'] == 'kritik' or inc['durum'] == 'onay bekliyor' or (inc['durum'] == 'açık' and inc['onem'] != 'bilgi'):
         threading.Thread(target=nb_ai, args=(inc,), daemon=True).start()
-        push('JARVIS nöbetçi · ' + inc['ad'], inc['mesaj'] + (' → ' + inc['durum'] + (': ' + inc['onarim'] if inc['onarim'] else '')))
+        push('JARVIS nöbetçi · ' + inc['ad'], inc['mesaj'] + ' → ' + inc['durum'] + (': ' + inc['onarim'] if inc['onarim'] else ''))
     elif inc['durum'] == 'onarıldı' and inc['onem'] != 'bilgi':
         push('JARVIS onardı · ' + inc['ad'], inc['mesaj'] + ' → ' + inc['sonuc'])
     nb_save()
@@ -959,19 +1008,22 @@ def nb_register():
     @agent('bellek', 'Bellek (RAM) baskısı', 'Performans', 60)
     def _():
         load, total, used = mem_info()
-        if load >= 92:
+        hit, norm = anomaly('bellek', load, 85)
+        if load >= 92 or hit:
             top = ps("Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 3 | ForEach-Object { $_.ProcessName + ' ' + [int]($_.WorkingSet64/1MB) + 'MB' }", 15).replace('\r', '').replace('\n', ', ') if WIN else ''
-            return sorun(f'Bellek %{load} dolu. En çok kullanan: {top}', 'uyarı', esik=3)
-        return ok(f'%{load}')
+            return sorun(f'Bellek %{load} dolu (bu bilgisayarın normali %{norm}). En çok kullanan: {top}', 'uyarı', esik=3)
+        return ok(f'%{load} · normali %{norm}')
 
     @agent('islemci', 'İşlemci yükü', 'Performans', 60)
     def _():
         c = cpu_load()
         if c < 0:
             return atla()
-        if c >= 95:
-            return sorun(f'İşlemci sürekli %{c} yükte', 'uyarı', esik=4)
-        return ok(f'%{c}')
+        hit, norm = anomaly('islemci', c, 85)
+        if c >= 95 or hit:
+            top = ps("Get-Process | Sort-Object CPU -Descending | Select-Object -First 3 | ForEach-Object { $_.ProcessName }", 15).replace('\r', '').replace('\n', ', ') if WIN else ''
+            return sorun(f'İşlemci sürekli %{c} yükte (normali %{norm}). Olası: {top}', 'uyarı', esik=4)
+        return ok(f'%{c} · normali %{norm}')
 
     @agent('internet', 'İnternet bağlantısı', 'Ağ', 120)
     def _():
@@ -1223,6 +1275,8 @@ def nobet_loop():
         for a in due[:40]:  # tur başına sınır: bilgisayarı yormaz
             nb_run_agent(a)
             time.sleep(0.2)
+        if time.time() - NB.get('saved_at', 0) > 600:
+            NB['saved_at'] = time.time(); nb_save()
         time.sleep(15)
 
 
