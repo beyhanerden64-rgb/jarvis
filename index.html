@@ -316,6 +316,17 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 :root[data-theme="light"] .scan { opacity: .3; }
 @media (prefers-reduced-motion: reduce) { .mic[data-on="1"]::after { animation: none; } .drawer { transition: none; } }
 
+/* ULTRON */
+body.ultron { --holo: #ff3b3b; --holo-2: #ff8a7a; --line: rgb(255 59 59 / .24); --line-2: rgb(255 59 59 / .5); --steel: #ff3b3b; --steel-soft: rgb(255 59 59 / .14); --bg: #0b0405; --bg2: #1a0709; --glass: rgb(30 8 10 / .62); --glass-2: rgb(40 10 12 / .82); --raised: rgb(56 14 16 / .9); --ink: #ffe9e6; --muted: #c08a85; }
+body.ultron .brand { text-shadow: 0 0 18px rgb(255 59 59 / .7), 0 0 2px #fff; }
+body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
+@keyframes upulse { 50% { text-shadow: 0 0 34px rgb(255 59 59 / 1), 0 0 4px #fff; } }
+.msg.ultron-card { border-left: 3px solid #ff3b3b; white-space: pre-wrap; }
+.msg.ultron-card .ustop { color: #ff6b6b; }
+.council { margin-top: 8px; } .council b { display: block; margin-top: 6px; color: var(--holo-2); font: 600 11px var(--f-mono); letter-spacing: .12em; } .council p { margin: 2px 0; white-space: pre-wrap; }
+#ultronCur { white-space: pre-wrap; font: 12px/1.4 var(--f-mono); max-height: 220px; overflow: auto; margin: 6px 0; }
+#p-ultron textarea { width: 100%; box-sizing: border-box; }
+@media (prefers-reduced-motion: reduce) { body.ultron-busy .brand { animation: none; } }
 /* ARAŞTIRMA */
 .resfilters select{flex:1;min-width:0}
 #res2 h3{margin-top:14px}
@@ -380,7 +391,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 10.1.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 11.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -558,7 +569,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=10.1.0"></script><script src="audiohub.js?v=10.1.0"></script>
-<script src="direct.js?v=10.1.0"></script><script src="app.js?v=10.1.0"></script><script src="plus.js?v=10.1.0"></script><script src="hud.js?v=10.1.0"></script><script src="features.js?v=10.1.0"></script><script src="control.js?v=10.1.0"></script><script src="voices.js?v=10.1.0"></script><script src="social.js?v=10.1.0"></script><script src="agent.js?v=10.1.0"></script><script src="figure.js?v=10.1.0"></script><script src="sentinel.js?v=10.1.0"></script><script src="brain.js?v=10.1.0"></script><script src="pro.js?v=10.1.0"></script><script src="ultra.js?v=10.1.0"></script><script src="klinik.js?v=10.1.0"></script><script src="live.js?v=10.1.0"></script><script src="research.js?v=10.1.0"></script><script src="research2.js?v=10.1.0"></script>
+<script src="voice-engine.js?v=11.0.0"></script><script src="audiohub.js?v=11.0.0"></script>
+<script src="direct.js?v=11.0.0"></script><script src="app.js?v=11.0.0"></script><script src="plus.js?v=11.0.0"></script><script src="hud.js?v=11.0.0"></script><script src="features.js?v=11.0.0"></script><script src="control.js?v=11.0.0"></script><script src="voices.js?v=11.0.0"></script><script src="social.js?v=11.0.0"></script><script src="agent.js?v=11.0.0"></script><script src="figure.js?v=11.0.0"></script><script src="sentinel.js?v=11.0.0"></script><script src="brain.js?v=11.0.0"></script><script src="pro.js?v=11.0.0"></script><script src="ultra.js?v=11.0.0"></script><script src="klinik.js?v=11.0.0"></script><script src="live.js?v=11.0.0"></script><script src="research.js?v=11.0.0"></script><script src="research2.js?v=11.0.0"></script><script src="ultron.js?v=11.0.0"></script>
 </body>
 </html>
