@@ -31,7 +31,7 @@
   /* ---------- açılış dizisi (oturum başına bir kez) ---------- */
   if (!sessionStorage.getItem('jarvis.booted') && !reduce && opt('pBoot') !== '0') {
     sessionStorage.setItem('jarvis.booted', '1');
-    const lines = ['JARVIS ÇEKİRDEĞİ BAŞLATILIYOR', 'BİYOMETRİK MODEL YÜKLENİYOR · ' + (mobile ? '16K' : '26K') + ' NOKTA', 'SES MOTORU 0.39 · TÜRKÇE', 'HAFIZA ÇÖZÜLÜYOR · ' + items.length + ' KAYIT', 'ARAÇLAR · ' + Object.keys(TOOLS).length + ' · UZMAN AJANLAR · ' + Object.keys(AGENTS).length, 'GÜVENLİK · YEREL ŞİFRELEME AKTİF', 'SİSTEM HAZIR'];
+    const lines = ['JARVIS ÇEKİRDEĞİ BAŞLATILIYOR', 'IŞIK HUZMELERİ HİZALANIYOR · ' + (mobile ? '70' : '150') + ' HUZME', 'DOĞAL SES · GEMINI · ' + (opt('ttsVoice') || 'CHARON').toLocaleUpperCase('tr-TR'), 'HAFIZA ÇÖZÜLÜYOR · ' + items.length + ' KAYIT', 'ARAÇLAR · ' + Object.keys(TOOLS).length + ' · UZMAN AJANLAR · ' + Object.keys(AGENTS).length, 'GÜVENLİK · YEREL ŞİFRELEME AKTİF', 'SİSTEM HAZIR'];
     const box = el('div', { class: 'boot', 'aria-hidden': 'true' }, el('div', { class: 'boot-ring' }, el('i'), el('i'), el('i')), el('div', { class: 'boot-title' }, 'J.A.R.V.I.S'), el('pre', { class: 'boot-log' }), el('div', { class: 'boot-bar' }, el('b')));
     document.body.append(box);
     const log = box.querySelector('.boot-log'), bar = box.querySelector('.boot-bar b');
@@ -361,5 +361,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v4.1.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v5.1.0`;
 })();

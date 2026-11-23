@@ -57,7 +57,7 @@ const voiceSel = $('voice');
   $('voice').closest('.field').after(dv);
   $('pause').closest('.field').after(tr, ll);
 })();
-voiceSel.innerHTML = '<option value="natural">Doğal ses · ElevenLabs</option><option value="device" selected>Telefon/bilgisayar sesi</option>';
+voiceSel.innerHTML = '<option value="natural" selected>Doğal ses · Gemini (ücretsiz, yüksek kalite)</option><option value="device">Telefon/bilgisayar sesi</option>';
 function fillVoices() {
   const sel = $('deviceVoice'), keep = store.get('set.deviceVoice', '') || sel.value;
   const list = (window.speechSynthesis?.getVoices() || []).filter(v => /^tr/i.test(v.lang)).sort((a, b) => JarvisSpeechPlayer.voiceScore(b) - JarvisSpeechPlayer.voiceScore(a));
@@ -552,7 +552,7 @@ const recovery = new JarvisVoiceRecovery({ load: () => store.get('voiceRecovery'
 const player = new JarvisSpeechPlayer({
   synth: window.speechSynthesis, fetcher: authFetch, recovery,
   mode: () => server.speech && setting('voice') === 'natural',
-  voice: () => 'default',
+  voice: () => store.get('set.ttsVoice', 'Charon') || 'Charon',
   status: t => { $('naturalStatus') && ($('naturalStatus').textContent = t); }
 });
 const bestVoice = () => {

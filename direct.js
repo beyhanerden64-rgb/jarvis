@@ -83,9 +83,55 @@
     if (!r.ok) { const quota = r.status === 401 || r.status === 429 || r.status === 402; return json(quota ? 429 : 503, { error: quota ? 'ElevenLabs kotası doldu veya anahtar geçersiz.' : 'Doğal ses alınamadı.', code: quota ? 'speech_quota_exceeded' : 'speech_failed', retryAfter: quota ? 3600 : 60 }); }
     return new Response(await r.blob(), { headers: { 'Content-Type': 'audio/mpeg', 'X-Jarvis-Speech': 'ElevenLabs' } });
   }
-  const speechRoute = (options) => options.method === 'POST'
-    ? (setv('elevenKey') ? eleven(JSON.parse(options.body || '{}').text, options.signal) : Promise.resolve(json(503, { error: 'Doğal ses için ElevenLabs anahtarı yok.', code: 'speech_not_configured' })))
-    : Promise.resolve(json(200, { configured: !!setv('elevenKey'), naturalReady: !!setv('elevenKey'), retryAfter: 0 }));
+  // Natural voice with the user's own free Gemini key (Gemini TTS). Newer models take voiceConfig.voice + speech_metadata.style;
+  // older preview models take prebuiltVoiceConfig.voiceName. The model that works is remembered.
+  const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
+  const STYLES = { jarvis: 'calm, clear, confident and warm male AI assistant; natural Turkish pronunciation; measured pace', sakin: 'calm, soft and reassuring', enerjik: 'energetic, upbeat and friendly', resmi: 'formal, precise and professional', sicak: 'warm, gentle and caring' };
+  const ttsOrder = () => { const ok = localStorage.getItem('jarvisapp.ttsModel'); return ok ? [ok, ...TTS_MODELS.filter(m => m !== ok)] : TTS_MODELS; };
+  const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  function wav(pcm, rate = 24000) { // 16-bit mono PCM → WAV
+    const h = new DataView(new ArrayBuffer(44)), w = (o, s) => [...s].forEach((c, i) => h.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); h.setUint32(4, 36 + pcm.length, true); w(8, 'WAVE'); w(12, 'fmt '); h.setUint32(16, 16, true); h.setUint16(20, 1, true); h.setUint16(22, 1, true);
+    h.setUint32(24, rate, true); h.setUint32(28, rate * 2, true); h.setUint16(32, 2, true); h.setUint16(34, 16, true); w(36, 'data'); h.setUint32(40, pcm.length, true);
+    return new Blob([h.buffer, pcm], { type: 'audio/wav' });
+  }
+  async function geminiTts(text, voice, signal) {
+    const v = /^[A-Z][a-z]+$/.test(voice || '') ? voice : setv('ttsVoice') || 'Charon', style = STYLES[setv('ttsStyle')] || STYLES.jarvis;
+    let last = null;
+    for (const model of ttsOrder()) {
+      const modern = /^gemini-3\.8/.test(model);
+      const bodies = modern
+        ? [{ contents: [{ role: 'user', parts: [{ text, speech_metadata: { style } }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { voice: v } } } },
+           { contents: [{ role: 'user', parts: [{ text }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: v } } } } }]
+        : [{ contents: [{ role: 'user', parts: [{ text: `Şu metni ${style} bir tonla, doğal Türkçe ile seslendir: ${text}` }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: v } } } } }];
+      for (const body of bodies) {
+        let r;
+        try { r = await fetch(GEMINI + model + ':generateContent', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(body) }); }
+        catch (e) { if (signal?.aborted) throw e; last = { status: 503 }; continue; }
+        if (r.status === 400) { last = r; continue; }            // request shape not accepted by this model: try the other shape / model
+        if ([403, 404].includes(r.status)) { last = r; break; } // model not available for this key
+        if (r.status === 429) return json(429, { error: 'Doğal ses kotası doldu; cihaz sesine geçiyorum.', code: 'speech_quota_exceeded', retryAfter: 900 });
+        if (!r.ok) { last = r; break; }
+        const d = await r.json();
+        const part = d.candidates?.[0]?.content?.parts?.find(p => p.inlineData?.data);
+        if (!part) { last = { status: 502 }; break; }
+        localStorage.setItem('jarvisapp.ttsModel', model);
+        const mime = part.inlineData.mimeType || '', bytes = b64bytes(part.inlineData.data);
+        const blob = /wav/i.test(mime) || (bytes[0] === 0x52 && bytes[1] === 0x49) ? new Blob([bytes], { type: 'audio/wav' }) : wav(bytes, Number((mime.match(/rate=(\d+)/) || [])[1]) || 24000);
+        return new Response(blob, { headers: { 'Content-Type': 'audio/wav', 'X-Jarvis-Speech': 'Gemini ' + model.replace('gemini-', ''), 'X-Jarvis-Voice': v } });
+      }
+    }
+    return json(503, { error: 'Doğal ses şu an alınamadı (' + (last?.status || '?') + ').', code: 'speech_failed', retryAfter: 120 });
+  }
+  const engine = () => (setv('ttsEngine') === 'eleven' && setv('elevenKey') ? 'eleven' : provider() === 'gemini' ? 'gemini' : setv('elevenKey') ? 'eleven' : null);
+  const speechRoute = options => {
+    const e = engine();
+    if (options.method !== 'POST') return Promise.resolve(json(200, { configured: !!e, naturalReady: !!e, retryAfter: 0, engine: e }));
+    const body = JSON.parse(options.body || '{}');
+    if (e === 'gemini') return geminiTts(String(body.text || '').slice(0, 3000), body.voice, options.signal);
+    if (e === 'eleven') return eleven(body.text, options.signal);
+    return Promise.resolve(json(503, { error: 'Doğal ses ayarlı değil.', code: 'speech_not_configured' }));
+  };
   function geminiBody(body) {
     const msgs = normalizeMessages(body.messages, body.image);
     const contents = msgs.map(m => ({
@@ -194,7 +240,7 @@
             if (!r.ok) return explainGemini(r);
             sessionStorage.setItem('jarvisapp.ok', '1');
           }
-          return json(200, { ok: true, brain: true, speech: !!setv('elevenKey'), stt: false, sync: false, direct: true, provider: 'gemini' });
+          return json(200, { ok: true, brain: true, speech: true, stt: false, sync: false, direct: true, provider: 'gemini' });
         }
         if (route === '/api/speech') return speechRoute(options);
         if (route === '/api/chat') {
