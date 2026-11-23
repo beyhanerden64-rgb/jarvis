@@ -64,9 +64,10 @@
     cancel() { return reader.cancel().catch(() => {}); }
   });
 }
-  const provider = () => (/^AIza[\w-]{30,}$/.test(getKey()) ? 'gemini' : /^sk-ant-[\w-]{20,}$/.test(getKey()) ? 'claude' : null);
+  // Claude keys start with sk-ant-. Google keys come in several formats (AIza…, AQ.…), so anything else that looks like a key is Gemini.
+  const provider = () => { const k = getKey(); return /^sk-ant-[\w-]{20,}$/.test(k) ? 'claude' : /^[\w.\-]{30,200}$/.test(k) ? 'gemini' : null; };
   // Gemini free tier. Model names change between releases: try in order, remember the one that answers.
-  const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+  const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
   const geminiOrder = () => { const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS; };
   function geminiBody(body) {
@@ -82,7 +83,8 @@
     let last;
     for (const model of geminiOrder()) {
       const r = await fetch(GEMINI + model + ':streamGenerateContent?alt=sse', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(geminiBody(body)) });
-      if (r.status === 404 || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
+      // Missing model or that model's free quota used up: try the next one.
+      if (r.status === 404 || r.status === 429 || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
       if (r.ok) localStorage.setItem('jarvisapp.geminiModel', model);
       return r;
     }
@@ -143,7 +145,7 @@
       const at = url.pathname.indexOf('/api/');
       if (at < 0) return fetch(path, options);
       const route = url.pathname.slice(at);
-      if (!provider()) return json(401, { error: 'Geçerli bir anahtar gir: ücretsiz Gemini (AIza…) veya Claude (sk-ant-…).' });
+      if (!provider()) return json(401, { error: 'Geçerli bir anahtar gir: ücretsiz Gemini anahtarı veya Claude anahtarı (sk-ant-…).' });
       if (provider() === 'gemini') {
         if (route === '/api/status') {
           const validate = new Headers(options.headers || {}).get('x-validate');
@@ -188,9 +190,9 @@
   };
   document.addEventListener('DOMContentLoaded', () => {
     const p = document.querySelector('#gateForm .muted');
-    if (p) p.textContent = 'Ücretsiz kullanım: aistudio.google.com → “Get API key” ile aldığın Gemini anahtarını (AIza… ile başlar) gir. Claude anahtarı (sk-ant-…) da olur ama ücretlidir. Anahtar yalnızca bu cihazda saklanır.';
+    if (p) p.textContent = 'Ücretsiz kullanım: aistudio.google.com → “Get API key” ile aldığın Gemini anahtarını gir. Claude anahtarı (sk-ant-…) da olur ama ücretlidir. Anahtar yalnızca bu cihazda saklanır.';
     const i = document.getElementById('gateKey');
-    if (i) { i.placeholder = 'AIza… (ücretsiz Gemini) veya sk-ant-…'; i.setAttribute('aria-label', 'Yapay zekâ anahtarı'); i.autocomplete = 'off'; }
+    if (i) { i.placeholder = 'Gemini API anahtarı'; i.setAttribute('aria-label', 'Yapay zekâ anahtarı'); i.autocomplete = 'off'; }
     const out = document.getElementById('logout');
     if (out) out.textContent = 'Bu cihazdan anahtarı sil';
   });

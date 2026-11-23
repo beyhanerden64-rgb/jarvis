@@ -27,7 +27,7 @@ const authFetch = (url, o = {}) => net(url, { ...o, headers: { ...(o.headers || 
 function showGate(msg = '') { $('gate').hidden = false; $('gateErr').textContent = msg; setTimeout(() => $('gateKey').focus(), 50); }
 $('gateForm').onsubmit = async e => {
   e.preventDefault();
-  store.set('key', $('gateKey').value);
+  store.set('key', $('gateKey').value.trim());
   try {
     const r = await net('/api/status', { headers: { 'x-jarvis-key': key(), 'x-validate': '1' } });
     if (!r.ok) { let d = {}; try { d = await r.json(); } catch {} $('gateErr').textContent = d.error || (r.status === 401 ? 'Şifre yanlış.' : 'Sunucu yanıt vermedi (' + r.status + ').'); return; }
