@@ -307,7 +307,7 @@ class JarvisVoice {
       };
       u.onboundary = () => globalThis.jarvisAvatarBoundary?.();
       u.lang = globalThis.jarvisSpeakLang?.(u.text) || 'tr-TR';
-      u.voice = u.lang === 'tr-TR' ? owner.voice() : globalThis.jarvisVoiceFor?.(u.lang) || null;
+      try { u.voice = u.lang === 'tr-TR' ? owner.voice() : globalThis.jarvisVoiceFor?.(u.lang) || null; } catch { /* keep the default voice */ }
       u.rate = owner.rate();
       u.pitch = globalThis.jarvisPitch?.() || 1;
       let settled = false;
@@ -496,7 +496,7 @@ class JarvisVoice {
       };
       utterance.onboundary = () => globalThis.jarvisAvatarBoundary?.();
       utterance.lang = globalThis.jarvisSpeakLang?.(utterance.text) || 'tr-TR';
-      utterance.voice = utterance.lang === 'tr-TR' ? this.voice() : globalThis.jarvisVoiceFor?.(utterance.lang) || null;
+      try { utterance.voice = utterance.lang === 'tr-TR' ? this.voice() : globalThis.jarvisVoiceFor?.(utterance.lang) || null; } catch { /* keep the default voice */ }
       utterance.rate = this.rate();
       utterance.pitch = globalThis.jarvisPitch?.() || 1;
       let settled = false;

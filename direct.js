@@ -21,10 +21,10 @@
   while (out.length && out[0].role !== 'user') out.shift();
   if (!out.length || out.at(-1).role !== 'user' || total > 150000) throw Object.assign(Error('Sohbet geçmişi geçersiz veya çok uzun.'), { status: 400 });
   if (image) {
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(image.mediaType) || typeof image.data !== 'string' || image.data.length > 7_000_000 || !/^[A-Za-z0-9+/]+=*$/.test(image.data))
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'].includes(image.mediaType) || typeof image.data !== 'string' || image.data.length > 7_000_000 || !/^[A-Za-z0-9+/]+=*$/.test(image.data))
       throw Object.assign(Error('Görsel okunamadı.'), { status: 400 });
     const last = out.at(-1);
-    last.content = [{ type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } }, { type: 'text', text: last.content }];
+    last.content = [{ type: image.mediaType === 'application/pdf' ? 'document' : 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } }, { type: 'text', text: last.content }];
   }
   return out;
 }
@@ -90,7 +90,7 @@
     const msgs = normalizeMessages(body.messages, body.image);
     const contents = msgs.map(m => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: typeof m.content === 'string' ? [{ text: m.content }] : m.content.map(c => (c.type === 'image' ? { inlineData: { mimeType: c.source.media_type, data: c.source.data } } : { text: c.text }))
+      parts: typeof m.content === 'string' ? [{ text: m.content }] : m.content.map(c => (c.type === 'image' || c.type === 'document' ? { inlineData: { mimeType: c.source.media_type, data: c.source.data } } : { text: c.text }))
     }));
     const tier = ['quick', 'default', 'complex'].includes(body.tier) ? body.tier : 'default';
     const out = { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: MAX_TOKENS[tier] * 2 } };
@@ -119,6 +119,7 @@
       if (r.status === 400 && body.search) { body = { ...body, search: false }; return gemini(body, signal); } // model without search tool support
       if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
       if (r.ok && body.tier !== 'complex') localStorage.setItem('jarvisapp.geminiModel', model);
+      if (r.ok) window.jarvisLastModel = model;
       return r;
     }
     return last;

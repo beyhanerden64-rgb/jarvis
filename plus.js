@@ -43,7 +43,12 @@ window.jarvisConfirmAnswer = text => {
   if (/^(hayir|iptal|vazgec|yapma|dur|reddet)/.test(t)) { confirmResolver(false); return true; }
   return false;
 };
+let confirmQueue = Promise.resolve();
 function confirmAction(question, say) {
+  const run = () => confirmOne(question, say);
+  const p = confirmQueue.then(run, run); confirmQueue = p.catch(() => {}); return p;
+}
+function confirmOne(question, say) {
   return new Promise(resolve => {
     let done = false, rec = null;
     const card = bubble('confirm', '⚠ Onay gerekiyor: ' + question);
@@ -63,15 +68,19 @@ function confirmAction(question, say) {
     confirmResolver = finish;
     const timer = setTimeout(() => finish(false), 90000);
     say?.('Onaylıyor musun? ' + question);
-    // Voice answer: a short one-shot recognition after the question has been spoken.
-    if (Recognition && opt('micMode') !== 'record') setTimeout(() => {
-      if (done) return;
+    // Voice answer: listen as soon as JARVIS has finished asking, and keep listening until answered or timed out.
+    const listenAnswer = () => {
+      if (done || !Recognition || opt('micMode') === 'record') return;
+      if (window.speechSynthesis?.speaking || phase === 'speaking') { setTimeout(listenAnswer, 300); return; }
       try {
         rec = new Recognition(); rec.lang = 'tr-TR'; rec.interimResults = false; rec.maxAlternatives = 3;
-        rec.onresult = e => { for (const alt of e.results[0] || []) if (window.jarvisConfirmAnswer(alt.transcript)) return; };
+        rec.onresult = e => { for (const alt of e.results[e.resultIndex ?? 0] || []) if (window.jarvisConfirmAnswer(alt.transcript)) return; };
+        rec.onend = () => { if (!done) setTimeout(listenAnswer, 250); };
+        rec.onerror = ev => { if (ev.error === 'not-allowed') done || (rec.onend = null); };
         rec.start();
-      } catch {}
-    }, 700 + question.length * 65);
+      } catch { setTimeout(listenAnswer, 600); }
+    };
+    setTimeout(listenAnswer, 400);
   });
 }
 
@@ -156,7 +165,7 @@ const aiName = p => (opt('anonym') === '0' ? p.ad : initials(p.ad));
 const findPatient = q => { const f = fold(q); return patients.find(p => fold(p.ad) === f) || patients.find(p => fold(p.ad).includes(f) || f.includes(fold(p.ad))); };
 function patientSummary(p, forAI = true) {
   const s = p.seanslar || [];
-  return `${forAI ? aiName(p) : p.ad}${p.yas ? ', ' + p.yas + ' yaş' : ''}; tanı/şikâyet: ${p.tani || '-'}; seans: ${s.length}` + (s.length ? `; ağrı (VAS) seyri: ${s.map(x => x.vas ?? '-').join(' → ')}; son seans ${dateTR(s.at(-1).t)}: ${[s.at(-1).rom && 'EHA ' + s.at(-1).rom, s.at(-1).mmt && 'kas kuvveti ' + s.at(-1).mmt, s.at(-1).egz && 'egzersiz ' + s.at(-1).egz, s.at(-1).not].filter(Boolean).join('; ')}` : '') + (p.notlar ? '; not: ' + p.notlar : '');
+  return `${forAI ? aiName(p) : p.ad}${p.yas ? ', ' + p.yas + ' yaş' : ''}; tanı/şikâyet: ${p.tani || '-'}; seans: ${s.length}` + (s.length ? `; ağrı (VAS) seyri: ${s.map(x => x.vas ?? '-').join(' → ')}; son seans ${dateTR(s.at(-1).t)}${[s.at(-1).rom && 'EHA ' + s.at(-1).rom, s.at(-1).mmt && 'kas kuvveti ' + s.at(-1).mmt, s.at(-1).egz && 'egzersiz ' + s.at(-1).egz, s.at(-1).olcek && 'ölçek ' + s.at(-1).olcek, s.at(-1).uyum && 'ev programı uyumu ' + s.at(-1).uyum, s.at(-1).not].filter(Boolean).map((x, i) => (i ? '; ' : ': ') + x).join('')}` : '') + (p.notlar ? '; not: ' + p.notlar : '') + (p.program ? '; ev programı VAR (' + dateTR(p.programT) + ')' : '; ev programı YOK');
 }
 function sparkline(vals) {
   const v = vals.filter(Number.isFinite); if (v.length < 2) return null;
@@ -175,9 +184,11 @@ function renderPatients() {
       el('input', { name: 'rom', placeholder: 'EHA (ör. diz fleks 110°)', 'aria-label': 'Eklem hareket açıklığı' }),
       el('input', { name: 'mmt', placeholder: 'Kas kuvveti (ör. quadriceps 4/5)', 'aria-label': 'Kas kuvveti' }),
       el('input', { name: 'egz', placeholder: 'Uygulama / egzersiz', 'aria-label': 'Egzersiz' }),
-      el('input', { name: 'not', placeholder: 'Not', 'aria-label': 'Seans notu' }),
+      el('input', { name: 'olcek', placeholder: 'Ölçek (ör. ODI %34, NDI 18)', 'aria-label': 'Fonksiyonel ölçek' }),
+      el('select', { name: 'uyum', 'aria-label': 'Ev programı uyumu' }, new Option('Ev programı uyumu', ''), new Option('Tam uydu', 'tam'), new Option('Kısmen', 'kısmen'), new Option('Uymadı', 'uymadı')),
+      el('input', { name: 'not', placeholder: 'Not / hasta geri bildirimi', 'aria-label': 'Seans notu' }),
       el('button', {}, 'Seans ekle'));
-    form.onsubmit = e => { e.preventDefault(); const f = new FormData(form); const vas = f.get('vas') === '' ? null : Number(f.get('vas')); (p.seanslar ||= []).push({ t: Date.now(), vas, rom: f.get('rom'), mmt: f.get('mmt'), egz: f.get('egz'), not: f.get('not') }); savePatients(); note('Seans kaydedildi: ' + p.ad); };
+    form.onsubmit = e => { e.preventDefault(); const f = new FormData(form); const vas = f.get('vas') === '' ? null : Number(f.get('vas')); (p.seanslar ||= []).push({ t: Date.now(), vas, rom: f.get('rom'), mmt: f.get('mmt'), egz: f.get('egz'), olcek: f.get('olcek'), uyum: f.get('uyum'), not: f.get('not') }); savePatients(); note('Seans kaydedildi: ' + p.ad); };
     const ask = q2 => { $('drawer').classList.remove('open'); typedTurn(q2, false); };
     const det = el('details', { ontoggle: () => (det.open ? openPats.add(p.id) : openPats.delete(p.id)) });
     det.open = openPats.has(p.id);
@@ -276,7 +287,7 @@ function linkChip(url, title) { pendingLinks.push({ url, title }); }
 
 /* ================= bilgisayar yardımcısı (Windows) ================= */
 const PC = 'http://127.0.0.1:8765';
-const PC_RISKY = new Set(['kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'kapat_bilgisayar']);
+const PC_RISKY = new Set(['kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir']);
 let pcLocal = false;
 async function pcLocalCall(tool, args, onay) {
   const r = await withTimeout(fetch(PC + '/run', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ tool, args, onay }) }), tool === 'powershell' || tool === 'tarama' ? 70000 : 30000, 'Bilgisayar yanıt vermedi');
@@ -285,6 +296,7 @@ async function pcLocalCall(tool, args, onay) {
   return d;
 }
 async function pcPing() {
+  if (!opt('pcToken') || /android|iphone|ipad|ipod/i.test(navigator.userAgent)) { pcLocal = false; $('pcState').textContent = opt('pcToken') ? 'telefon: bilgisayara eşitleme köprüsüyle ulaşılır' : 'bağlı değil · erişim kodu girilmedi'; return false; }
   try { const r = await withTimeout(fetch(PC + '/durum', { headers: { 'X-Jarvis-Token': opt('pcToken') || '' } }), 2500); pcLocal = r.ok; if (r.ok) { const d = await r.json(); $('pcState').textContent = 'bağlı · ' + (d.pc || 'bilgisayar') + (d.relay ? ' · telefondan komut açık' : ''); pcPair(); } }
   catch { pcLocal = false; $('pcState').textContent = sync.ready() ? 'bu cihazdan doğrudan yok · telefon köprüsü ile denenir' : 'bağlı değil'; }
   return pcLocal;
@@ -356,7 +368,7 @@ const TOOLS = {
   takvim: { d: 'takvim|başlık|YYYY-MM-DDTHH:MM|süre dk — telefon/bilgisayar takvimine eklenecek etkinlik dosyası', run: ([t, s, m]) => { const u = icsLink(t, s, Number(m) || 30); linkChip(u, 'Takvime ekle: ' + t); return 'Takvim dosyası hazır; Beyhan bağlantıya dokununca takvimine eklenir (henüz eklenmedi).'; }, pending: true },
   ac: { d: 'ac|hedef|arama/numara — hedef: whatsapp, instagram, youtube, muzik, spotify, harita, yol, ara, sms, eposta, takvim, google, haber, radyo, podcast, film veya https adresi', run: ([t, q = '']) => { const u = appLink(t, q); if (!u) throw Error('Bu uygulama için bağlantı yok: ' + t); linkChip(u, short((t + ' ' + q).trim(), 40)); return `Bağlantı hazır (${t}); tarayıcı kuralı gereği açmak için Beyhan'ın dokunması gerekiyor.`; }, pending: true },
   kestirme: { d: 'kestirme|kestirme adı|girdi — iPhone Kestirmeler uygulamasında o kestirmeyi çalıştırır (ışık, alarm, mesaj, odak modu vb. Beyhan kestirmeyi önceden oluşturmalı)', run: ([n, q = '']) => { linkChip('shortcuts://run-shortcut?name=' + encodeURIComponent(n) + (q ? '&input=text&text=' + encodeURIComponent(q) : ''), 'Kestirme: ' + n); return 'Kestirme bağlantısı hazır; dokununca iPhone çalıştırır.'; }, pending: true },
-  pc: { d: 'pc|komut|argüman — Windows bilgisayarda: ac (program: not defteri, hesap makinesi, chrome, edge, word, excel, powerpoint, paint, dosyalar, vscode, ayarlar, spotify, whatsapp), kapat (program), sistem (CPU/RAM/disk/süreçler), baslangic, dosya_ara (sorgu), dosya_oku (yol), dosya_olustur (ad|içerik), klasor_ac (yol), ekran (ekran görüntüsü alır ve görürsün), ses (yukari/asagi/kapat), medya (oynat/sonraki/onceki), kilitle, url (adres), pano (metni bilgisayar panosuna koy), pano_al, gunluk (sistem hata kayıtları), guncelleme, tarama (Defender hızlı tarama), temizlik (geçici dosya boyutu), temizlik_sil, yedekle (klasör), yazici, monitor, powershell (komut), yaz (metni klavyeyle yazar)', run: null },
+  pc: { d: 'pc|komut|argüman — Windows bilgisayarda: ac (program: not defteri, hesap makinesi, chrome, edge, word, excel, powerpoint, paint, dosyalar, vscode, ayarlar, spotify, whatsapp), kapat (program), sistem (CPU/RAM/disk/süreçler), baslangic, dosya_ara (sorgu), dosya_oku (yol), dosya_olustur (ad|içerik), klasor_ac (yol), ekran (ekran görüntüsü alır ve görürsün), ses (yukari/asagi/kapat), medya (oynat/sonraki/onceki), kilitle, url (adres), pano (metni bilgisayar panosuna koy), pano_al, gunluk (sistem hata kayıtları), guncelleme, tarama (Defender hızlı tarama), temizlik (geçici dosya boyutu), temizlik_sil, yedekle (klasör), yazici, monitor, powershell (komut), yaz (metni klavyeyle yazar), word_olustur (ad|metin → .docx), excel_olustur (ad|CSV satırları → .xlsx), donustur (dosya yolu → PDF; Word/Excel/PowerPoint), tikla (x|y), kur (winget paket adı), yazdir (dosya yolu), kaldir (eşleşmeyi iptal)', run: null },
   ev: { d: 'ev|alan.servis|varlık_id — Home Assistant (ör. light.turn_on|light.salon, climate.set_temperature|climate.klima)', run: async ([s, ent, val]) => { const [dom, srv] = String(s).split('.'); const body = { entity_id: ent }; if (val) body[dom === 'climate' ? 'temperature' : 'brightness_pct'] = Number(val); await ha(`services/${dom}/${srv}`, body); const st = await ha('states/' + ent).catch(() => null); return `${s} → ${ent} gönderildi${st ? '; şimdiki durum: ' + st.state : ''}.`; } },
   ev_durum: { d: 'ev_durum|varlık_id veya boş — Home Assistant cihaz durumları', run: async ([ent]) => { if (ent) { const s = await ha('states/' + ent); return `${ent}: ${s.state}`; } const all = await ha('states'); return all.filter(s => /^(light|switch|climate|cover|lock|binary_sensor|sensor|vacuum|media_player)\./.test(s.entity_id)).slice(0, 40).map(s => `${s.entity_id}: ${s.state}`).join('\n'); } },
   uzman: { d: 'uzman|ajan|görev — ajanlar: arastirma, matematik, finans, icerik, ceviri, kod, saglik, planlama, klinik, denetci (aynı adımda birden çok uzman paralel çalışır)', run: async ([n, t]) => runAgent(n, t) },
@@ -376,26 +388,39 @@ ${pcLocal ? 'Bilgisayar yardımcısı BAĞLI.' : sync.ready() ? 'Bilgisayar yard
 ${isIOS ? 'Beyhan şu an iPhone kullanıyor: uygulama açmak için ac veya kestirme aracını kullan.' : ''}`;
 }
 /** Runs the tool calls of one step. Calls of the same step run in parallel. Returns text for the model and an optional image. */
+// Tools that change something (asked first when autonomy is "always ask"); read-only tools never ask.
+const WRITE_TOOLS = new Set(['pc', 'ev', 'hasta_ekle', 'seans_ekle', 'program_kaydet', 'kasa', 'envanter', 'portfoy', 'izle']);
+const PC_READONLY = new Set(['sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran']);
 window.jarvisRunTools = async (calls, ctx) => {
   const results = await Promise.all(calls.map(async raw => {
     const [name0, ...args] = raw.split('|').map(s => s.trim());
     const name = fold(name0);
-    let tool = TOOLS[name];
-    if (!tool) return { text: `${name0}: başarısız — böyle bir araç yok.` };
-    const op = logOp(name === 'pc' ? 'pc · ' + (args[0] || '') : name, name === 'pc' ? args.slice(1) : args, 'beklemede');
+    const tool = TOOLS[name];
+    if (!tool) return { text: `${name0}: BAŞARISIZ — böyle bir araç yok.` };
+    const sub = name === 'pc' ? fold(args[0] || '').replace(/\s+/g, '_') : '';
+    const op = logOp(name === 'pc' ? 'pc · ' + sub : name, name === 'pc' ? args.slice(1) : args, 'beklemede');
     try {
+      const risky = (name === 'pc' && PC_RISKY.has(sub)) || tool.risky;
+      const writes = WRITE_TOOLS.has(name) && !(name === 'pc' && PC_READONLY.has(sub));
+      const ask = risky || (opt('autonomy') === '0' && writes);
+      let onay = false;
+      if (ask) {
+        onay = await confirmAction(name === 'pc' ? `Bilgisayarda “${sub}” ${short(args.slice(1).join(' '), 120)}` : `${name0} ${short(args.join(' | '), 140)}`, ctx.say);
+        if (!onay) { updateOp(op, 'iptal', 'Beyhan onaylamadı'); return { text: `${name0}: İPTAL — Beyhan onaylamadı, işlem yapılmadı.` }; }
+        if (risky && lock.on() && !(await lock.reauth())) { updateOp(op, 'iptal', 'kimlik doğrulanmadı'); return { text: `${name0}: İPTAL — kimlik doğrulaması yapılmadı.` }; }
+      }
+      if (opt('dryRun') === '1' && (writes || risky)) { updateOp(op, 'iptal', 'deneme modu'); return { text: `${name0}: DENEME MODU — gerçekte yapılmadı (Bağlantı → Deneme modu kapalıyken yapılır).` }; }
       let text, image;
-      if (name === 'pc') {
-        const sub = fold(args[0] || ''), rest = args.slice(1);
-        let onay = false;
-        if (PC_RISKY.has(sub)) {
-          onay = await confirmAction(`Bilgisayarda “${sub}” ${short(rest.join(' '), 120)}`, ctx.say);
-          if (!onay) { updateOp(op, 'iptal', 'Beyhan onaylamadı'); return { text: `pc ${sub}: İPTAL — Beyhan onaylamadı, işlem yapılmadı.` }; }
+      for (let attempt = 0; ; attempt++) {
+        try {
+          if (name === 'pc') { const d = await pcCall(sub, args.slice(1), onay); text = d.text || 'tamam'; if (d.image) image = { mediaType: 'image/jpeg', data: d.image }; }
+          else text = await tool.run(args, ctx);
+          break;
+        } catch (e) {
+          // automatic retry once, only for read-only work and network-type failures
+          if (attempt || writes || risky || !/zaman aşımı|failed to fetch|network|yanıt vermedi|load failed/i.test(e.message)) throw e;
+          await sleep(1200);
         }
-        const d = await pcCall(sub, rest, onay);
-        text = d.text || 'tamam'; if (d.image) image = { mediaType: 'image/jpeg', data: d.image };
-      } else {
-        text = await tool.run(args);
       }
       updateOp(op, tool.pending ? 'beklemede' : 'başarılı', text);
       return { text: `${name0}: ${tool.pending ? 'HAZIR (Beyhan dokunmalı)' : 'BAŞARILI'} — ${String(text).slice(0, 7000)}`, image };
@@ -468,6 +493,10 @@ const lock = {
   show() {
     const o = $('lock'); o.hidden = false;
     $('lockBio').hidden = !store.get('lockCred', ''); $('lockPinForm').hidden = !store.get('lockPin', '');
+  },
+  async reauth() {
+    if (store.get('lockCred', '')) { try { const id = Uint8Array.from(atob(store.get('lockCred', '')), c => c.charCodeAt(0)); await navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), allowCredentials: [{ id, type: 'public-key' }], userVerification: 'required', timeout: 60000 } }); return true; } catch { if (!store.get('lockPin', '')) return false; } }
+    const p = prompt('Bu işlem için PIN gir'); return !!p && (await this.hash(p)) === store.get('lockPin', '');
   },
   async bio() {
     try {
@@ -649,6 +678,7 @@ const barge = {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = fold(e.results[i][0]?.transcript || '').trim();
         if (!t) continue;
+        if (confirmResolver && window.jarvisConfirmAnswer(t)) { this.stop(); return; }
         const hit = /^(?:hey\s+)?(?:j|c|ç)[ae]rv[iı][sz]\b|^(?:dur|sus|yeter|bekle|tamam tamam)\b/.test(t);
         if (hit && !fold(this.said).includes(t.split(' ')[0] + ' ' + (t.split(' ')[1] || ''))) {
           this.stop();

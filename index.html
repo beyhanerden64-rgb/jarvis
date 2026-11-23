@@ -195,6 +195,17 @@ textarea#prompt::placeholder { color: var(--muted); }
 }
 .mobile-strip { display: none; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .mobile-strip .seg { background: rgb(3 12 20 / .55); }
+/* JARVIS 4.1 */
+body.no-globe .globe, body.no-radar .tele, body.no-ticker .ticker, body.no-edges .edge, body.no-edges .fps { display: none !important; }
+body.eco .scan, body.eco .grid-bg { display: none; }
+body.eco canvas#hud2d { filter: none !important; }
+.mini { border: 1px solid var(--line); background: none; color: var(--muted); border-radius: 4px; padding: 0 6px; font: 10px var(--f-mono); }
+.pred { border-left: 3px solid var(--amber); padding: 4px 8px; display: grid; gap: 2px; font-size: 13px; }
+.pred.yes { border-left-color: var(--ok); } .pred.no { border-left-color: #ff6b6b; opacity: .8; }
+.doctext { white-space: pre-wrap; font-size: 12px; max-height: 200px; overflow: auto; }
+.camera { position: fixed; inset: 0; z-index: 45; background: rgb(0 0 0 / .92); display: grid; place-content: center; gap: 12px; padding: 16px; }
+.camera video { max-width: min(92vw, 900px); max-height: 75vh; border: 1px solid var(--line-2); }
+.camera .row { justify-content: center; }
 /* JARVIS 4 · holografik alan */
 @media (min-width: 901px) {
   .middle { perspective: 1100px; }
@@ -325,7 +336,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 4.0.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 4.1.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -502,7 +513,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=4.0.0"></script>
-<script src="direct.js?v=4.0.0"></script><script src="app.js?v=4.0.0"></script><script src="plus.js?v=4.0.0"></script><script src="hud.js?v=4.0.0"></script><script src="figure.js?v=4.0.0"></script>
+<script src="voice-engine.js?v=4.1.0"></script>
+<script src="direct.js?v=4.1.0"></script><script src="app.js?v=4.1.0"></script><script src="plus.js?v=4.1.0"></script><script src="hud.js?v=4.1.0"></script><script src="features.js?v=4.1.0"></script><script src="figure.js?v=4.1.0"></script>
 </body>
 </html>

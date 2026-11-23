@@ -176,12 +176,13 @@
   }
   addEventListener('resize', resize); resize();
   const COLORS = { idle: [0.34, 0.83, 1], starting: [0.55, 0.88, 1], listening: [1, 0.72, 0.32], thinking: [0.62, 0.62, 1], speaking: [0.45, 0.95, 1], error: [1, 0.4, 0.4] };
-  let pointerYaw = 0, col = [0.34, 0.83, 1], think = 0, listen = 0, speak = 0, yawExtra = 0;
+  let ecoSkip = false, pointerYaw = 0, col = [0.34, 0.83, 1], think = 0, listen = 0, speak = 0, yawExtra = 0;
   const mix = (a, b, f) => a + (b - a) * f;
 
   function frame() {
     requestAnimationFrame(frame);
     if (document.hidden) return;
+    if (window.jarvisEco && (ecoSkip = !ecoSkip)) return; // low-power: half frame rate
     const ph = getPhase();
     t += reduce ? 0.004 : 0.016;
     if (ph === 'speaking') target = Math.max(target * 0.9, 0.3 + 0.5 * Math.abs(Math.sin(t * 11) * Math.sin(t * 4.3)));

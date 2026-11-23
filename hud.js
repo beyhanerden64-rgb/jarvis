@@ -29,7 +29,7 @@
   }, 120);
 
   /* ---------- açılış dizisi (oturum başına bir kez) ---------- */
-  if (!sessionStorage.getItem('jarvis.booted') && !reduce) {
+  if (!sessionStorage.getItem('jarvis.booted') && !reduce && opt('pBoot') !== '0') {
     sessionStorage.setItem('jarvis.booted', '1');
     const lines = ['JARVIS ÇEKİRDEĞİ BAŞLATILIYOR', 'BİYOMETRİK MODEL YÜKLENİYOR · ' + (mobile ? '16K' : '26K') + ' NOKTA', 'SES MOTORU 0.39 · TÜRKÇE', 'HAFIZA ÇÖZÜLÜYOR · ' + items.length + ' KAYIT', 'ARAÇLAR · ' + Object.keys(TOOLS).length + ' · UZMAN AJANLAR · ' + Object.keys(AGENTS).length, 'GÜVENLİK · YEREL ŞİFRELEME AKTİF', 'SİSTEM HAZIR'];
     const box = el('div', { class: 'boot', 'aria-hidden': 'true' }, el('div', { class: 'boot-ring' }, el('i'), el('i'), el('i')), el('div', { class: 'boot-title' }, 'J.A.R.V.I.S'), el('pre', { class: 'boot-log' }), el('div', { class: 'boot-bar' }, el('b')));
@@ -179,7 +179,7 @@
   const wg = wave.getContext('2d');
   let an = null, micStream = null, buf = null;
   async function micOn() {
-    if (an || isIOS || opt('liveWave') === '0') return;
+    if (an || isIOS || /android/i.test(navigator.userAgent) || opt('liveWave') === '0') return;
     try {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
       AC ||= new (window.AudioContext || window.webkitAudioContext)();
@@ -361,5 +361,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v4.0.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v4.1.0`;
 })();
