@@ -41,9 +41,15 @@
     } },
     { id: 'kayit', ad: 'Kayıt bütünlüğü', every: 300000, run: () => {
       let fixed = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i); if (!k?.startsWith('jarvisapp.') || k.startsWith('jarvisapp.bozuk.')) continue;
-        const v = localStorage.getItem(k); try { JSON.parse(v); } catch { try { localStorage.setItem('jarvisapp.bozuk.' + k.slice(10) + '.' + Date.now(), v); localStorage.removeItem(k); fixed++; i--; } catch {} }
+      const RAW = new Set(['jarvisapp.geminiModel', 'jarvisapp.ttsModel']); // düz metin olarak saklanan kayıtlar (bozuk değil)
+      const keys = []; for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+      // 7.0'daki hatanın bıraktığı gereksiz yedekleri temizle; bozuk yedekleri en fazla 5 tut
+      const junk = keys.filter(k => /^jarvisapp\.bozuk\.(?:geminiModel|ttsModel)\./.test(k)); junk.forEach(k => localStorage.removeItem(k));
+      keys.filter(k => k?.startsWith('jarvisapp.bozuk.') && !junk.includes(k)).sort().slice(0, -5).forEach(k => localStorage.removeItem(k));
+      for (const k of keys) {
+        if (!k?.startsWith('jarvisapp.') || k.startsWith('jarvisapp.bozuk.') || RAW.has(k)) continue;
+        const v = localStorage.getItem(k); if (v === null) continue;
+        try { JSON.parse(v); } catch { try { localStorage.setItem('jarvisapp.bozuk.' + k.slice(10) + '.' + Date.now(), v); localStorage.removeItem(k); fixed++; } catch {} }
       }
       if (fixed) { healLog('Kayıt bütünlüğü', `${fixed} bozuk kayıt ayrıldı (yedeği “bozuk.” adıyla saklandı).`); return 'onarıldı'; }
       return 'ok';

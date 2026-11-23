@@ -95,7 +95,7 @@
     for (const j of [...jobs]) {
       if (j.next > nowT) continue;
       const late = nowT - j.next > 2 * MIN;
-      if (late && nowT - j.next > 2 * HOUR && j.tur === 'komut') { note('Kaçırılan zamanlanmış görev (uygulama kapalıydı): ' + describe(j)); }
+      if (late && nowT - j.next > 2 * HOUR) { /* kapalıyken kaçan iş saatler sonra çalışmasın; hatırlatma zaten telefona gitti */ note('Kaçırılan zamanlanmış görev (uygulama kapalıydı): ' + describe(j)); }
       else await runJob(j, late);
       if (j.kind === 'once') jobs = jobs.filter(x => x.id !== j.id); else { j.last = nowT; j.next = nextRun(j, nowT); }
       saveJobs();
