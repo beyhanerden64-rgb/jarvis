@@ -8,7 +8,7 @@ onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarı
 import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '8.0.0'
+VERSION = '8.0.1'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -347,16 +347,18 @@ def tool(name, args, onay):
         res = ps("Get-MpThreatDetection | Select-Object -First 5 | ForEach-Object { $_.ThreatID }", 20)
         return {'text': 'Defender hızlı tarama bitti. ' + ('Tespit: ' + res if res else 'Tehdit bulunmadı.')}
     if name in ('temizlik', 'temizlik_sil'):
-        tmp = tempfile.gettempdir(); size = 0; files = []
+        tmp = tempfile.gettempdir(); size = 0; files = []; old = time.time() - 86400
         for dp, dn, fn in os.walk(tmp):
             for f in fn:
                 fp = os.path.join(dp, f)
                 try:
-                    size += os.path.getsize(fp); files.append(fp)
+                    st = os.stat(fp)
+                    if st.st_mtime < old:  # yalnız 24 saattir dokunulmamış dosyalar: kurulum/güncelleme sırasındaki dosyalar korunur
+                        size += st.st_size; files.append(fp)
                 except OSError:
                     pass
         if name == 'temizlik':
-            return {'text': f'Geçici dosyalar: {len(files)} dosya, {size / 2**20:.0f} MB ({tmp}). Silmek için onaylı “temizlik_sil”.'}
+            return {'text': f'Silinebilir geçici dosyalar (24 saatten eski): {len(files)} dosya, {size / 2**20:.0f} MB ({tmp}). Silmek için onaylı “temizlik_sil”.'}
         freed = 0
         for fp in files:
             try:
@@ -684,6 +686,8 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get('Content-Length', '0') or 0)
         try:
             d = json.loads(self.rfile.read(min(n, 2_000_000)) or b'{}')
+            if not isinstance(d, dict):
+                raise ValueError
         except Exception:
             return self.reply(400, {'ok': False, 'error': 'Geçersiz istek'})
         if self.path == '/eslestir':
@@ -956,13 +960,27 @@ def nb_ai(inc):
             continue
 
 
+def one(text):
+    """PowerShell JSON çıktısı: tek kayıt, liste (ör. iki pil) veya boş/bozuk olabilir → tek sözlük ya da {}."""
+    try:
+        d = json.loads(text or 'null')
+    except ValueError:
+        return {}
+    if isinstance(d, list):
+        d = next((x for x in d if isinstance(x, dict)), {})
+    return d if isinstance(d, dict) else {}
+
+
 def nb_services():
     """Otomatik başlayan servislerin durumu (2 dakikada bir tek PowerShell çağrısı, tüm servis ajanları paylaşır)."""
     c = NB_CACHE.get('svc')
     if c and time.time() - c[0] < 110:
         return c[1]
-    rows = json.loads(ps("Get-CimInstance Win32_Service -Filter \"StartMode='Auto'\" | Select-Object Name,DisplayName,State,ExitCode | ConvertTo-Json -Compress", 40) or '[]')
-    rows = rows if isinstance(rows, list) else [rows]
+    try:
+        rows = json.loads(ps("Get-CimInstance Win32_Service -Filter \"StartMode='Auto'\" | Select-Object Name,DisplayName,State,ExitCode | ConvertTo-Json -Compress", 40) or '[]')
+    except ValueError:
+        rows = []
+    rows = [r for r in (rows if isinstance(rows, list) else [rows]) if isinstance(r, dict) and r.get('Name')]
     d = {r['Name']: r for r in rows}
     NB_CACHE['svc'] = (time.time(), d)
     return d
@@ -1042,7 +1060,9 @@ def nb_register():
     def _():
         if not WIN:
             return atla()
-        d = json.loads(ps('Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled,AntivirusEnabled,AntivirusSignatureAge | ConvertTo-Json -Compress', 30) or '{}')
+        d = one(ps('Get-MpComputerStatus | Select-Object RealTimeProtectionEnabled,AntivirusEnabled,AntivirusSignatureAge | ConvertTo-Json -Compress', 30))
+        if not d:
+            return atla('Defender bilgisi yok (başka bir virüs programı kullanılıyor olabilir)')
         if d.get('AntivirusEnabled') is False or d.get('RealTimeProtectionEnabled') is False:
             return sorun('Gerçek zamanlı virüs koruması KAPALI', 'kritik', ('korumayı aç (yönetici izni gerekebilir)', lambda: ps('Set-MpPreference -DisableRealtimeMonitoring $false', 30) or 'açıldı', False))
         if (d.get('AntivirusSignatureAge') or 0) > 3:
@@ -1160,7 +1180,7 @@ def nb_register():
     def _():
         if not WIN:
             return atla()
-        d = json.loads(ps('Get-CimInstance Win32_Battery | Select-Object EstimatedChargeRemaining,BatteryStatus | ConvertTo-Json -Compress', 15) or 'null')
+        d = one(ps('Get-CimInstance Win32_Battery | Select-Object EstimatedChargeRemaining,BatteryStatus | ConvertTo-Json -Compress', 15))
         if not d:
             return atla('pil yok')
         lvl, st = d.get('EstimatedChargeRemaining', 100), d.get('BatteryStatus')
