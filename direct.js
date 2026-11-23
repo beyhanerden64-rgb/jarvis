@@ -90,7 +90,7 @@
   // Natural voice with the user's own free Gemini key (Gemini TTS). Newer models take voiceConfig.voice + speech_metadata.style;
   // older preview models take prebuiltVoiceConfig.voiceName. The model that works is remembered.
   const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
-  const STYLES = { jarvis: 'calm, clear, confident and warm male AI assistant; natural Turkish pronunciation; measured pace', sakin: 'calm, soft and reassuring', enerjik: 'energetic, upbeat and friendly', resmi: 'formal, precise and professional', sicak: 'warm, gentle and caring' };
+  const STYLES = { jarvis: 'lively, fluent, confident and warm male AI assistant; natural conversational Turkish with expressive intonation; brisk, engaging pace, never robotic or monotone', sakin: 'calm, soft and reassuring', enerjik: 'energetic, upbeat and friendly', resmi: 'formal, precise and professional', sicak: 'warm, gentle and caring' };
   const ttsOrder = () => { const ok = localStorage.getItem('jarvisapp.ttsModel'); return routed(ok ? [ok, ...TTS_MODELS.filter(m => m !== ok)] : TTS_MODELS, 'tts'); };
   const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   function wav(pcm, rate = 24000) { // 16-bit mono PCM → WAV

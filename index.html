@@ -316,6 +316,13 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 :root[data-theme="light"] .scan { opacity: .3; }
 @media (prefers-reduced-motion: reduce) { .mic[data-on="1"]::after { animation: none; } .drawer { transition: none; } }
 
+/* CANLI */
+.livebtn { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; height: 40px; border-radius: 999px; border: 1px solid var(--line); background: rgb(87 211 255 / .06); color: var(--holo); font: 700 11px var(--f-display); letter-spacing: .18em; cursor: pointer; flex: none; }
+.livebtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.livebtn[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 16px rgb(255 181 71 / .45); }
+.livebtn[aria-pressed="true"] .dot { background: #ff4d4d; animation: livepulse 1.2s infinite; }
+@keyframes livepulse { 50% { opacity: .25; } }
+@media (max-width: 420px) { .livebtn { padding: 0 9px; letter-spacing: .1em; } }
 /* KLİNİK */
 .klinikbar { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .pkt.bad { color: var(--bad); font-weight: 600; }
@@ -366,7 +373,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 9.2.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 9.3.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -543,7 +550,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=9.2.0"></script>
-<script src="direct.js?v=9.2.0"></script><script src="app.js?v=9.2.0"></script><script src="plus.js?v=9.2.0"></script><script src="hud.js?v=9.2.0"></script><script src="features.js?v=9.2.0"></script><script src="control.js?v=9.2.0"></script><script src="voices.js?v=9.2.0"></script><script src="social.js?v=9.2.0"></script><script src="agent.js?v=9.2.0"></script><script src="figure.js?v=9.2.0"></script><script src="sentinel.js?v=9.2.0"></script><script src="brain.js?v=9.2.0"></script><script src="pro.js?v=9.2.0"></script><script src="ultra.js?v=9.2.0"></script><script src="klinik.js?v=9.2.0"></script>
+<script src="voice-engine.js?v=9.3.0"></script>
+<script src="direct.js?v=9.3.0"></script><script src="app.js?v=9.3.0"></script><script src="plus.js?v=9.3.0"></script><script src="hud.js?v=9.3.0"></script><script src="features.js?v=9.3.0"></script><script src="control.js?v=9.3.0"></script><script src="voices.js?v=9.3.0"></script><script src="social.js?v=9.3.0"></script><script src="agent.js?v=9.3.0"></script><script src="figure.js?v=9.3.0"></script><script src="sentinel.js?v=9.3.0"></script><script src="brain.js?v=9.3.0"></script><script src="pro.js?v=9.3.0"></script><script src="ultra.js?v=9.3.0"></script><script src="klinik.js?v=9.3.0"></script><script src="live.js?v=9.3.0"></script>
 </body>
 </html>
