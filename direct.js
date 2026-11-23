@@ -75,6 +75,10 @@
     if (tier === 'complex') return ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
     const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS;
   };
+  // Akıllı yönlendirici (brain.js) varsa: soğumadaki modelleri atlar, sağlıklı/hızlı olanı öne alır, sonuçları öğrenir.
+  const gate = () => window.jarvisModelGate;
+  const routed = (list, tier) => { try { return gate()?.order(list, tier) || list; } catch { return list; } };
+  const report = (model, status, ms) => { try { gate()?.report(model, status, ms); } catch {} };
   // Optional natural voice: ElevenLabs with the user's own (free-tier) key.
   const setv = k => { try { return JSON.parse(localStorage.getItem('jarvisapp.set.' + k) || '""'); } catch { return ''; } };
   async function eleven(text, signal) {
@@ -87,7 +91,7 @@
   // older preview models take prebuiltVoiceConfig.voiceName. The model that works is remembered.
   const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
   const STYLES = { jarvis: 'calm, clear, confident and warm male AI assistant; natural Turkish pronunciation; measured pace', sakin: 'calm, soft and reassuring', enerjik: 'energetic, upbeat and friendly', resmi: 'formal, precise and professional', sicak: 'warm, gentle and caring' };
-  const ttsOrder = () => { const ok = localStorage.getItem('jarvisapp.ttsModel'); return ok ? [ok, ...TTS_MODELS.filter(m => m !== ok)] : TTS_MODELS; };
+  const ttsOrder = () => { const ok = localStorage.getItem('jarvisapp.ttsModel'); return routed(ok ? [ok, ...TTS_MODELS.filter(m => m !== ok)] : TTS_MODELS, 'tts'); };
   const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   function wav(pcm, rate = 24000) { // 16-bit mono PCM → WAV
     const h = new DataView(new ArrayBuffer(44)), w = (o, s) => [...s].forEach((c, i) => h.setUint8(o + i, c.charCodeAt(0)));
@@ -109,6 +113,7 @@
         try { r = await fetch(GEMINI + model + ':generateContent', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(body) }); }
         catch (e) { if (signal?.aborted) throw e; last = { status: 503 }; continue; }
         if (r.status === 400) { last = r; continue; }            // request shape not accepted by this model: try the other shape / model
+        report(model, r.status, 0);
         if ([403, 404].includes(r.status)) { last = r; break; } // model not available for this key
         if (r.status === 429) return json(429, { error: 'Doğal ses kotası doldu; cihaz sesine geçiyorum.', code: 'speech_quota_exceeded', retryAfter: 900 });
         if (!r.ok) { last = r; break; }
@@ -145,7 +150,8 @@
   }
   async function gemini(body, signal) {
     let last = null;
-    for (const model of geminiOrder(body.tier)) {
+    for (const model of routed(geminiOrder(body.tier), body.tier)) {
+      const t0 = performance.now();
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       // Each model gets 20 s to start answering; a busy model is skipped instead of hanging the app.
       const ac = new AbortController(), stop = () => ac.abort();
@@ -157,12 +163,14 @@
       } catch (e) {
         clearTimeout(timer); signal?.removeEventListener('abort', stop);
         if (signal?.aborted) throw e;
+        report(model, 504, performance.now() - t0);
         last = json(503, { error: { message: 'timeout' } });
         continue;
       }
       clearTimeout(timer); signal?.removeEventListener('abort', stop);
       // Missing model, its free quota used up, or the model is overloaded: try the next one.
       if (r.status === 400 && body.search) { body = { ...body, search: false }; return gemini(body, signal); } // model without search tool support
+      report(model, r.status, performance.now() - t0);
       if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
       if (r.ok && body.tier !== 'complex') localStorage.setItem('jarvisapp.geminiModel', model);
       if (r.ok) window.jarvisLastModel = model;

@@ -317,6 +317,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 @media (prefers-reduced-motion: reduce) { .mic[data-on="1"]::after { animation: none; } .drawer { transition: none; } }
 
 /* NÖBET */
+.brainbox { display: grid; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .nbgroups { display: flex; flex-wrap: wrap; gap: 6px; }
 .nbg { font: 11px var(--f-mono); padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--ok); }
 .nbg.bad { color: var(--bad); border-color: rgb(255 107 107 / .5); }
@@ -351,7 +352,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 7.0.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 7.1.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -528,7 +529,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=7.0.0"></script>
-<script src="direct.js?v=7.0.0"></script><script src="app.js?v=7.0.0"></script><script src="plus.js?v=7.0.0"></script><script src="hud.js?v=7.0.0"></script><script src="features.js?v=7.0.0"></script><script src="control.js?v=7.0.0"></script><script src="voices.js?v=7.0.0"></script><script src="social.js?v=7.0.0"></script><script src="agent.js?v=7.0.0"></script><script src="figure.js?v=7.0.0"></script><script src="sentinel.js?v=7.0.0"></script>
+<script src="voice-engine.js?v=7.1.0"></script>
+<script src="direct.js?v=7.1.0"></script><script src="app.js?v=7.1.0"></script><script src="plus.js?v=7.1.0"></script><script src="hud.js?v=7.1.0"></script><script src="features.js?v=7.1.0"></script><script src="control.js?v=7.1.0"></script><script src="voices.js?v=7.1.0"></script><script src="social.js?v=7.1.0"></script><script src="agent.js?v=7.1.0"></script><script src="figure.js?v=7.1.0"></script><script src="sentinel.js?v=7.1.0"></script><script src="brain.js?v=7.1.0"></script>
 </body>
 </html>
