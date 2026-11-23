@@ -5,7 +5,8 @@
  * bilgisayar, hasta…) konuşurken kullanabilir. iPhone'da da çalışır (mikrofon + Web Audio, sessiz anahtara rağmen). */
 (() => {
   const WS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
-  const MODELS = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.5-flash-native-audio-preview-09-2025', 'gemini-live-2.5-flash-preview'];
+  const MODELS = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.5-flash-native-audio-preview-09-2025', 'gemini-live-2.5-flash-preview', 'gemini-2.0-flash-live-001'];
+  const SHAPES = 3; // 0: tam (araç+döküm), 1: sade, 2: üst düzey alanlar
   const VOICES = [['Puck', 'Puck · erkek, neşeli ve canlı (önerilen)'], ['Fenrir', 'Fenrir · erkek, heyecanlı, enerjik'], ['Charon', 'Charon · erkek, net ve bilgilendirici'], ['Orus', 'Orus · erkek, kararlı'], ['Iapetus', 'Iapetus · erkek, berrak'], ['Algenib', 'Algenib · erkek, tok'], ['Sadachbia', 'Sadachbia · erkek, canlı'], ['Kore', 'Kore · kadın, kararlı'], ['Aoede', 'Aoede · kadın, ferah'], ['Leda', 'Leda · kadın, genç'], ['Zephyr', 'Zephyr · kadın, parlak'], ['Laomedeia', 'Laomedeia · kadın, neşeli']];
   const getKey = () => { try { return JSON.parse(localStorage.getItem('jarvisapp.key') || '""'); } catch { return ''; } };
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -21,12 +22,22 @@
   }
   const setupMsg = (model, shape) => {
     const voice = opt('liveVoice') || 'Puck';
-    const speech = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } }, languageCode: 'tr-TR' };
+    const speech = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
     const tools = [{ functionDeclarations: [{ name: 'jarvis_arac', description: 'JARVIS aracını çalıştırır ve sonucu döndürür (hatırlatma, takvim, hava, hesap, hasta kayıtları, kasa, bilgisayar kontrolü vb.).', parameters: { type: 'OBJECT', properties: { komut: { type: 'STRING', description: 'Araç adı ve argümanlar | ile ayrılmış, ör. "hava|Cizre"' } }, required: ['komut'] } }] }];
-    const common = { model: 'models/' + model, systemInstruction: { parts: [{ text: liveInstructions() }] }, tools, inputAudioTranscription: {}, outputAudioTranscription: {} };
-    return shape === 0
-      ? { setup: { ...common, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech } } }
-      : { setup: { ...common, responseModalities: ['AUDIO'], speechConfig: speech } };
+    const sys = { parts: [{ text: liveInstructions() }] };
+    if (shape === 0) return { setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech }, systemInstruction: sys, tools, inputAudioTranscription: {}, outputAudioTranscription: {} } };
+    if (shape === 1) return { setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech }, systemInstruction: sys } };
+    return { setup: { model: 'models/' + model, responseModalities: ['AUDIO'], speechConfig: speech, systemInstruction: sys, inputAudioTranscription: {}, outputAudioTranscription: {} } };
+  };
+  const explain = a => {
+    const r = String(a?.reason || '');
+    if (/api key not valid|API_KEY_INVALID|permission|PERMISSION_DENIED|unregistered callers/i.test(r) || a?.code === 1008) return 'anahtar bu özelliğe izin vermiyor';
+    if (/quota|exhaust|RESOURCE_EXHAUSTED|429|rate/i.test(r)) return 'ücretsiz canlı ses kotası doldu';
+    if (/not found|not supported|NOT_FOUND|is not found/i.test(r)) return 'model bu anahtarda yok';
+    if (/invalid|unknown name|Cannot find field|INVALID_ARGUMENT/i.test(r) || a?.code === 1007) return 'istek biçimi kabul edilmedi';
+    if (a?.code === 'timeout') return 'sunucu cevap vermedi';
+    if (a?.code === 1006) return 'bağlantı kurulamadı (ağ/engel)';
+    return r ? short(r, 80) : 'kod ' + a?.code;
   };
 
   /* ---------- ses çalma (24 kHz PCM) ---------- */
@@ -93,24 +104,73 @@
 
   function connect(mi = 0, shape = 0) {
     const order = [...new Set([store.get('liveModel', ''), ...MODELS].filter(Boolean))];
-    if (mi >= order.length) { stop('Canlı mod şu an açılamadı (ücretsiz canlı ses kotası dolmuş ya da bu anahtarda kapalı olabilir). Normal sesli moda döndüm.'); return; }
+    if (mi >= order.length) {
+      const a = S.attempts, last = a.at(-1), why = [...new Set(a.map(explain))];
+      return stop('CANLI mod açılamadı: ' + why.join('; ') + '. ' + (why.some(w => /kota/.test(w)) ? 'Google’ın ücretsiz kotası yenilenince (TSİ 11:00) tekrar dene.' : why.some(w => /anahtar/.test(w)) ? 'Gemini anahtarının Live API iznini aistudio.google.com’da kontrol et.' : 'Ayarlar → “Ses ve CANLI testi” ile ayrıntı alabilirsin.'));
+    }
+    if (shape >= SHAPES) return connect(mi + 1, 0);
     S.model = order[mi]; S.ready = false;
-    const ws = new WebSocket(WS + encodeURIComponent(getKey())); S.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify(setupMsg(S.model, shape)));
-    ws.onmessage = onMessage;
+    setPhase('thinking', `Canlı bağlantı kuruluyor… (${mi * SHAPES + shape + 1}/${order.length * SHAPES})`);
+    let ws;
+    try { ws = new WebSocket(WS + encodeURIComponent(getKey())); } catch (e) { S.attempts.push({ model: S.model, shape, code: 'ws', reason: e.message }); return connect(mi + 1, 0); }
+    S.ws = ws;
+    const next = rec => { if (!S || S.ws !== ws || S.ready) return; S.ws = null; clearTimeout(S.dog); S.attempts.push({ model: S.model, shape, ...rec }); try { ws.close(); } catch {}
+      const why = explain(rec);
+      if (/kota|anahtar/.test(why)) return connect(order.length, 0);           // tüm modellerde aynı olur: boşa deneme
+      if (/model bu anahtarda yok|bağlantı kurulamadı/.test(why)) return connect(mi + 1, 0); // bu model yok → sonraki model
+      return connect(mi, shape + 1); };
+    S.dog = setTimeout(() => next({ code: 'timeout', reason: 'setupComplete gelmedi' }), 9000);
+    ws.onopen = () => { try { ws.send(JSON.stringify(setupMsg(S.model, shape))); } catch {} };
+    ws.onmessage = ev => { if (S && S.ws === ws) { if (!S.ready) clearTimeout(S.dog); onMessage(ev); } };
     ws.onclose = e => {
       if (!S || S.ws !== ws) return;
-      if (!S.ready) { // kurulum reddedildi: önce diğer biçimi, sonra diğer modeli dene
-        const reason = String(e.reason || '');
-        if (/quota|exhausted|429|limit/i.test(reason)) return stop('Canlı ses için bugünkü ücretsiz kota doldu. Normal sesli moda döndüm.');
-        return shape === 0 ? connect(mi, 1) : connect(mi + 1, 0);
-      }
+      if (!S.ready) return next({ code: e.code, reason: e.reason });
       if (S.stopping) return;
-      // ~10 dk bağlantı sınırı: kesintisiz yeniden bağlan
-      if (Date.now() - S.started < 60 * 60000) { S.reconnects = (S.reconnects || 0) + 1; if (S.reconnects < 8) return connect(mi, shape); }
-      stop('Canlı bağlantı kapandı' + (e.reason ? ' (' + short(e.reason, 80) + ')' : '') + '.');
+      if (Date.now() - S.started < 60 * 60000 && (S.reconnects = (S.reconnects || 0) + 1) < 8) { S.ready = false; return connect(mi, shape); } // ~10 dk sınırı: sessizce yeniden bağlan
+      stop('Canlı bağlantı kapandı (' + explain({ code: e.code, reason: e.reason }) + ').');
     };
     ws.onerror = () => {};
+  }
+
+  /* ---------- tanılama: doğal ses + CANLI ---------- */
+  async function diag() {
+    const lines = [];
+    // doğal ses
+    try {
+      for (const [m, h] of Object.entries(window.jarvisBrain?.B?.models || {})) if (/tts/.test(m)) { h.cool = 0; h.strikes = 0; }
+      const r = await authFetch('/api/speech', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'Merhaba Beyhan, doğal sesim çalışıyor.' }) });
+      if (r.ok && /audio/.test(r.headers.get('content-type') || '')) {
+        const u = URL.createObjectURL(await r.blob()); const a = player.sharedAudio || new Audio(); a.src = u; a.play().catch(() => {});
+        lines.push('✓ Doğal ses (Gemini TTS): çalışıyor · ' + (r.headers.get('X-Jarvis-Speech') || ''));
+      } else { let d = {}; try { d = await r.json(); } catch {} lines.push(`✗ Doğal ses (Gemini TTS): ${r.status} · ${d.error || ''}${r.status === 429 ? ' → Google’ın ücretsiz TTS kotası doldu (TSİ 11:00’de yenilenir).' : ''}`); }
+    } catch (e) { lines.push('✗ Doğal ses: ' + e.message); }
+    // canlı
+    if (S) lines.push('• CANLI şu an açık: ' + (S.ready ? 'bağlı (' + S.model + ')' : 'bağlanıyor'));
+    else {
+      const order = [...new Set([store.get('liveModel', ''), ...MODELS].filter(Boolean))];
+      let okModel = null; const tried = [];
+      for (const model of order) {
+        for (let shape = 0; shape < SHAPES && !okModel; shape++) {
+          const res = await new Promise(res => {
+            let ws; try { ws = new WebSocket(WS + encodeURIComponent(getKey())); } catch (e) { return res({ code: 'ws', reason: e.message }); }
+            const dog = setTimeout(() => { try { ws.close(); } catch {} res({ code: 'timeout' }); }, 9000);
+            ws.onopen = () => ws.send(JSON.stringify(setupMsg(model, shape)));
+            ws.onmessage = async ev => { let m = {}; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text()); } catch {} if (m.setupComplete) { clearTimeout(dog); ws.close(); res({ ok: true }); } };
+            ws.onclose = e => { clearTimeout(dog); res({ code: e.code, reason: e.reason }); };
+          });
+          if (res.ok) { okModel = model; store.set('liveModel', model); tried.push(`✓ ${model} (biçim ${shape + 1})`); break; }
+          tried.push(`✗ ${model} (biçim ${shape + 1}): ${explain(res)}${res.reason ? ' — ' + short(res.reason, 90) : ''}`);
+          if (/kota|anahtar|model bu anahtarda yok|bağlantı kurulamadı/.test(explain(res))) break;
+        }
+        if (okModel || /kota|anahtar/.test(tried.at(-1) || '')) break;
+      }
+      lines.push(okModel ? '✓ CANLI mod: çalışıyor · ' + okModel : '✗ CANLI mod: açılamadı', ...tried.map(x => '   ' + x));
+    }
+    lines.push(`• Mikrofon yöntemi: ${setting('micMode') === 'record' ? 'kayıt → Gemini yazıya çevirir' : 'tarayıcı tanıma'} · Cihaz: ${isIOS ? 'iPhone/iPad' : 'diğer'} · Sürüm: ${(document.querySelector('script[src*="live.js"]')?.src.match(/v=([\w.]+)/) || [])[1]}`);
+    const t = 'SES VE CANLI TESTİ\n' + lines.join('\n');
+    const n = bubble('ai', t); answerTools(n.el, t);
+    logOp('ses testi', [], lines.some(l => l.startsWith('✗')) ? 'başarısız' : 'başarılı', short(lines.join(' | '), 300));
+    return t;
   }
 
   async function start() {
@@ -118,14 +178,16 @@
     if (!getKey()) { note('Canlı mod için ücretsiz Gemini anahtarı gerekli (Bağlantı sekmesi).'); return; }
     if (!navigator.onLine) { note('Canlı mod için internet gerekli.'); return; }
     try { voiceSession.stop(''); } catch {} try { recorder?.active && recorder.stop?.(); } catch {}
-    S = { sources: new Set(), playAt: 0, userText: '', aiText: '', started: Date.now() };
+    S = { sources: new Set(), playAt: 0, userText: '', aiText: '', started: Date.now(), attempts: [] };
     try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch {} // iPhone: sessiz anahtara rağmen çal
     const AC = window.AudioContext || window.webkitAudioContext;
-    S.out = new AC({ sampleRate: 24000 }); try { await S.out.resume(); } catch {}
+    try { S.out = new AC({ sampleRate: 24000 }); } catch { S.out = new AC(); }
+    S.out.resume?.().catch(() => {}); // beklemeden: iPhone'da dokunuş dışında asla çözülmeyebilir
     document.body.classList.add('live-on'); $('liveBtn')?.setAttribute('aria-pressed', 'true');
     setPhase('thinking', 'Canlı bağlantı kuruluyor…');
-    try { await startMic(); } catch { stop('Mikrofon izni verilmedi.'); return; }
-    connect();
+    connect(); // bağlantı mikrofon izniyle paralel kurulur (daha hızlı)
+    try { await withTimeout(startMic(), 15000, 'mikrofon'); } catch (e) { stop(/mikrofon/.test(e.message) ? 'Mikrofon açılamadı (izin penceresi cevaplanmadı).' : 'Mikrofon izni verilmedi. iPhone: Ayarlar → Safari → Mikrofon → İzin Ver.'); return; }
+    if (S?.out?.state === 'suspended') note('Sesi duyamıyorsan CANLI düğmesine bir kez dokun.');
   }
   function stop(msg) {
     if (!S) return;
@@ -142,7 +204,7 @@
   }
 
   /* ---------- arayüz ---------- */
-  const btn = el('button', { type: 'button', class: 'livebtn', id: 'liveBtn', 'aria-pressed': 'false', title: 'Canlı sohbet (Gemini Live): akıcı, doğal ses; sözünü kesebilirsin', onclick: () => { window.jarvisUnlock?.(); S ? stop('Canlı mod kapandı.') : start(); } }, el('span', { class: 'dot' }), 'CANLI');
+  const btn = el('button', { type: 'button', class: 'livebtn', id: 'liveBtn', 'aria-pressed': 'false', title: 'Canlı sohbet (Gemini Live): akıcı, doğal ses; sözünü kesebilirsin', onclick: () => { window.jarvisUnlock?.(); if (S && S.out?.state === 'suspended') { S.out.resume().catch(() => {}); return; } S ? stop('Canlı mod kapandı.') : start(); } }, el('span', { class: 'dot' }), 'CANLI');
   $('mic')?.after(btn);
   const vs = el('select', { id: 'liveVoice' }); for (const [v, t] of VOICES) vs.append(new Option(t, v));
   vs.value = store.get('set.liveVoice', 'Puck') || 'Puck'; vs.onchange = () => store.set('set.liveVoice', vs.value);
@@ -157,5 +219,6 @@
     return _lc(text);
   };
   addEventListener('pagehide', () => stop());
-  window.jarvisLive = { start, stop, active: () => !!S, state: () => S && { model: S.model, ready: S.ready } };
+  $('voiceDiag') && ($('voiceDiag').onclick = () => { window.jarvisUnlock?.(); $('drawer').classList.remove('open'); note('Ses ve CANLI testi yapılıyor (10-30 sn)…'); diag().catch(e => note(e.message)); });
+  window.jarvisLive = { diag, start, stop, active: () => !!S, state: () => S && { model: S.model, ready: S.ready } };
 })();

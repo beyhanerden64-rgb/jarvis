@@ -65,7 +65,7 @@ function fillVoices() {
   sel.value = list.some(v => v.voiceURI === keep) ? keep : '';
 }
 fillVoices(); window.speechSynthesis?.addEventListener?.('voiceschanged', fillVoices);
-for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen', 'web', 'transLang', 'listenLang', 'deviceVoice']) {
+for (const id of ['speakOn', 'voice', 'rate', 'pause', 'depth', 'length', 'learn', 'persona', 'micMode', 'autoListen', 'web', 'transLang', 'listenLang', 'deviceVoice', 'deviceFallback']) {
   const v = store.get('set.' + id, null);
   if (v !== null && [...$(id).options].some(o => o.value === v)) $(id).value = v;
   $(id).addEventListener('change', () => { store.set('set.' + id, $(id).value); sysInfo(); });
@@ -569,7 +569,15 @@ const player = new JarvisSpeechPlayer({
   sharedAudio: iosAudio ? Object.assign(new Audio(), { playsInline: true, preload: 'auto' }) : null, preferMedia: iosAudio,
   mode: () => server.speech && setting('voice') === 'natural',
   voice: () => store.get('set.ttsVoice', 'Charon') || 'Charon',
-  status: t => { $('naturalStatus') && ($('naturalStatus').textContent = t); }
+  status: t => {
+    $('naturalStatus') && ($('naturalStatus').textContent = t);
+    // doğal ses düştüğünde nedenini bir kez açıkça söyle (oturum başına)
+    if (/Cihaz sesine geçildi|cihaz sesi kapalı/.test(t) && !sessionStorage.getItem('jarvis.ttsWarned')) {
+      sessionStorage.setItem('jarvis.ttsWarned', '1');
+      setTimeout(() => note('Doğal ses şu an çalışmıyor: ' + t.replace(/ (Cihaz sesine geçildi|Yanıt ekranda \(cihaz sesi kapalı\))\.?$/, '') + ' En akıcı ses için mikrofonun yanındaki CANLI düğmesini kullan. ' + (/kota|429/i.test(t) ? 'Google’ın ücretsiz doğal ses kotası günlük sınırlıdır; gece yarısı (TSİ 11:00) yenilenir.' : '')), 50);
+    }
+  },
+  deviceFallback: () => (store.get('set.deviceFallback', '0') || '0') === '1'
 });
 const bestVoice = () => {
   const all = window.speechSynthesis?.getVoices() || [], pick = setting('deviceVoice');

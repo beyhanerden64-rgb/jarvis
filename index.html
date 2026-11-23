@@ -376,7 +376,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 9.4.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 9.5.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -527,10 +527,11 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <div class="field"><label for="rate">Konuşma hızı</label>
           <select id="rate"><option value="0.9">Yavaş</option><option value="1" selected>Normal</option><option value="1.12">Hızlı</option></select></div>
         <div class="field"><label for="pause">Sözün bitti sayma süresi</label>
-          <select id="pause"><option value="1000">Kısa · 1,0 sn</option><option value="1400" selected>Dengeli · 1,4 sn</option><option value="2100">Rahat · 2,1 sn</option></select></div>
+          <select id="pause"><option value="800">Hızlı · 0,8 sn</option><option value="1000" selected>Kısa · 1,0 sn</option><option value="1400">Dengeli · 1,4 sn</option><option value="2100">Rahat · 2,1 sn</option></select></div>
         <div class="field"><label for="length">Yanıt uzunluğu</label>
           <select id="length"><option value="kisa">Kısa ve öz</option><option value="normal" selected>Normal</option><option value="detay">Ayrıntılı</option></select></div>
-        <div class="row"><button type="button" class="btn" id="testVoice">Sesi dene</button></div>
+        <div class="field"><label for="deviceFallback">Doğal ses kullanılamazsa</label><select id="deviceFallback"><option value="0" selected>Sessiz kal · yanıt ekranda (Yelda yok)</option><option value="1">Telefon/bilgisayar sesiyle oku</option></select></div>
+        <div class="row"><button type="button" class="btn" id="testVoice">Sesi dene</button><button type="button" class="btn" id="voiceDiag">Ses ve CANLI testi</button></div>
         <h3>DÜŞÜNME</h3>
         <div class="field"><label for="depth">Model seçimi</label>
           <select id="depth"><option value="auto" selected>Otomatik · soruya göre</option><option value="quick">Hep hızlı</option><option value="default">Hep dengeli</option><option value="complex">Hep derin</option></select></div>
@@ -553,7 +554,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=9.4.0"></script>
-<script src="direct.js?v=9.4.0"></script><script src="app.js?v=9.4.0"></script><script src="plus.js?v=9.4.0"></script><script src="hud.js?v=9.4.0"></script><script src="features.js?v=9.4.0"></script><script src="control.js?v=9.4.0"></script><script src="voices.js?v=9.4.0"></script><script src="social.js?v=9.4.0"></script><script src="agent.js?v=9.4.0"></script><script src="figure.js?v=9.4.0"></script><script src="sentinel.js?v=9.4.0"></script><script src="brain.js?v=9.4.0"></script><script src="pro.js?v=9.4.0"></script><script src="ultra.js?v=9.4.0"></script><script src="klinik.js?v=9.4.0"></script><script src="live.js?v=9.4.0"></script><script src="research.js?v=9.4.0"></script>
+<script src="voice-engine.js?v=9.5.0"></script>
+<script src="direct.js?v=9.5.0"></script><script src="app.js?v=9.5.0"></script><script src="plus.js?v=9.5.0"></script><script src="hud.js?v=9.5.0"></script><script src="features.js?v=9.5.0"></script><script src="control.js?v=9.5.0"></script><script src="voices.js?v=9.5.0"></script><script src="social.js?v=9.5.0"></script><script src="agent.js?v=9.5.0"></script><script src="figure.js?v=9.5.0"></script><script src="sentinel.js?v=9.5.0"></script><script src="brain.js?v=9.5.0"></script><script src="pro.js?v=9.5.0"></script><script src="ultra.js?v=9.5.0"></script><script src="klinik.js?v=9.5.0"></script><script src="live.js?v=9.5.0"></script><script src="research.js?v=9.5.0"></script>
 </body>
 </html>

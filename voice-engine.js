@@ -376,7 +376,7 @@ class JarvisVoice {
   // A sentence ends at . ! ? … or a newline that is FOLLOWED by whitespace; the end of the buffer is
   // never treated as a boundary because "1." or "Dr." may still be continued by the next delta.
   static take(buffer, batch = false) {
-    const min = batch ? 180 : 1;
+    const min = batch ? 100 : 1;
     const re = /[.!?…]+(?=\s)|\n/g;
     let m;
     while ((m = re.exec(buffer))) {
@@ -620,7 +620,8 @@ class JarvisSpeechPlayer {
     recovery = null,
     fetchTimeout = 8500,
     sharedAudio = null, // iPhone: tek, dokunuşla kilidi açılmış ses öğesi (yeni öğeler otomatik çalmayı engeller)
-    preferMedia = false // iPhone: Web Audio sessiz anahtarında susar; medya öğesi susmaz
+    preferMedia = false, // iPhone: Web Audio sessiz anahtarında susar; medya öğesi susmaz
+    deviceFallback = () => true // false: doğal ses yoksa cihaz sesine (Yelda) düşme, yanıt yalnız ekranda
   }) {
     Object.assign(this, {
       synth,
@@ -636,7 +637,8 @@ class JarvisSpeechPlayer {
       recovery,
       fetchTimeout,
       sharedAudio,
-      preferMedia
+      preferMedia,
+      deviceFallback
     });
     this.mediaUnlocked = false;
     this.serial = 0;
@@ -790,6 +792,7 @@ class JarvisSpeechPlayer {
       live = () => id === this.serial && play === this.playSerial;
     this.speaking = true;
     if (!this.natural) {
+      if (this.mode() && !this.deviceFallback()) return this.silent(utterance, live);
       this.browserSpeak(utterance, live);
       return;
     }
@@ -821,7 +824,9 @@ class JarvisSpeechPlayer {
       this.coolUntil = Date.now() + wait * 1000;
       for (const p of this.pending.values()) p.controller.abort();
       this.pending.clear();
-      this.status((error.public ? error.message : 'Doğal ses hazırlanamadı.') + ' Cihaz sesine geçildi.');
+      this.lastError = (error.public ? error.message : 'Doğal ses hazırlanamadı.') + (error.status ? ' (' + error.status + ')' : '');
+      if (!this.deviceFallback()) { this.status(this.lastError + ' Yanıt ekranda (cihaz sesi kapalı).'); return this.silent(utterance, live); }
+      this.status(this.lastError + ' Cihaz sesine geçildi.');
       this.browserSpeak(utterance, live);
     };
     Promise.resolve(pending)
@@ -892,6 +897,13 @@ class JarvisSpeechPlayer {
         if (started) end(error);
         else fallback(error);
       });
+  }
+  silent(utterance, live = () => true) { // doğal ses yok ve cihaz sesi istenmiyor: sırayı bozmadan sessizce geç
+    this.clearWatch();
+    this.speaking = false;
+    if (!live()) return;
+    try { utterance.onstart?.(); } catch {}
+    this.timers.setTimeout(() => { if (live()) utterance.onend?.(); }, 30);
   }
   browserSpeak(original, live = () => true) {
     this.clearWatch();
