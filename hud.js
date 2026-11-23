@@ -115,6 +115,64 @@
   }
   radar();
 
+
+  /* ---------- tel kafes küre (Cizre işaretli) + sinyal grafiği ---------- */
+  const globeCard = el('div', { class: 'card globe' }, el('h4', {}, 'KÜRESEL KONUM'), el('canvas', { id: 'globe', width: 300, height: 170, 'aria-label': 'Dönen dünya; Cizre işaretli' }));
+  document.querySelector('.left').prepend(globeCard);
+  const gc = $('globe'), gx = gc.getContext('2d');
+  const CIZ = [37.33 * Math.PI / 180, 42.19 * Math.PI / 180];
+  const CITIES = [['İST', 41.0, 28.97], ['ANK', 39.93, 32.85], ['DİY', 37.91, 40.23], ['ERB', 36.19, 44.01]];
+  let gRot = -0.4;
+  function globe() {
+    requestAnimationFrame(globe);
+    if (document.hidden || globeCard.offsetParent === null) return;
+    const Wd = gc.width, Hd = gc.height, r = Hd * 0.42, cx = Wd * 0.38, cy = Hd / 2;
+    const colr = getComputedStyle(document.documentElement).getPropertyValue('--holo').trim() || '#57d3ff';
+    gRot += reduce ? 0.0005 : 0.004;
+    const tilt = 0.35;
+    const P = (lat, lon) => { const x = Math.cos(lat) * Math.sin(lon + gRot), y = Math.sin(lat), z = Math.cos(lat) * Math.cos(lon + gRot); const y2 = y * Math.cos(tilt) - z * Math.sin(tilt), z2 = y * Math.sin(tilt) + z * Math.cos(tilt); return [cx + x * r, cy - y2 * r, z2]; };
+    gx.clearRect(0, 0, Wd, Hd); gx.lineWidth = 1;
+    const line = pts => { for (let i = 1; i < pts.length; i++) { const [x0, y0, z0] = pts[i - 1], [x1, y1, z1] = pts[i]; gx.globalAlpha = z0 > 0 && z1 > 0 ? 0.45 : 0.1; gx.beginPath(); gx.moveTo(x0, y0); gx.lineTo(x1, y1); gx.stroke(); } };
+    gx.strokeStyle = colr;
+    for (let la = -60; la <= 60; la += 30) line(Array.from({ length: 49 }, (_, i) => P(la * Math.PI / 180, (i / 48) * Math.PI * 2)));
+    for (let lo = 0; lo < 360; lo += 30) line(Array.from({ length: 25 }, (_, i) => P((i / 24 - 0.5) * Math.PI, lo * Math.PI / 180)));
+    gx.globalAlpha = 0.6; gx.beginPath(); gx.arc(cx, cy, r, 0, Math.PI * 2); gx.stroke();
+    // cities and links to Cizre
+    const [zx, zy, zz] = P(...CIZ);
+    gx.font = '10px "Share Tech Mono", monospace';
+    for (const [n, la, lo] of CITIES) {
+      const [x, y, z] = P(la * Math.PI / 180, lo * Math.PI / 180); if (z <= 0 || zz <= 0) continue;
+      gx.globalAlpha = 0.5; gx.strokeStyle = '#ffb547'; gx.beginPath(); gx.moveTo(zx, zy); gx.quadraticCurveTo((zx + x) / 2, Math.min(zy, y) - 18, x, y); gx.stroke();
+      gx.globalAlpha = 0.8; gx.fillStyle = colr; gx.fillRect(x - 1.5, y - 1.5, 3, 3); gx.fillText(n, x + 4, y - 3);
+    }
+    if (zz > 0) {
+      const pulse = (performance.now() / 900) % 1;
+      gx.globalAlpha = 1 - pulse; gx.strokeStyle = '#ffb547'; gx.beginPath(); gx.arc(zx, zy, 3 + pulse * 14, 0, Math.PI * 2); gx.stroke();
+      gx.globalAlpha = 1; gx.fillStyle = '#ffb547'; gx.beginPath(); gx.arc(zx, zy, 3, 0, Math.PI * 2); gx.fill();
+      gx.fillText('CİZRE', zx + 6, zy + 12);
+    }
+    // readouts
+    gx.globalAlpha = 0.85; gx.fillStyle = colr; gx.textAlign = 'left';
+    const tx = Wd * 0.76;
+    [['ENLEM', '37.33°K'], ['BOYLAM', '42.19°D'], ['RAKIM', '400 m'], ['SAAT', new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit', ...TZ })]].forEach(([k, v], i) => { gx.globalAlpha = 0.5; gx.fillText(k, tx, 26 + i * 34); gx.globalAlpha = 0.95; gx.fillText(v, tx, 40 + i * 34); });
+    gx.globalAlpha = 1;
+  }
+  globe();
+
+  const sig = el('canvas', { id: 'sig', width: 300, height: 70, 'aria-label': 'Ses ve sistem sinyali' });
+  document.querySelector('.right .card').append(el('div', { class: 'sigwrap' }, sig));
+  const sx = sig.getContext('2d'), hist = new Array(120).fill(0), hist2 = new Array(120).fill(0);
+  setInterval(() => {
+    if (document.hidden) return;
+    hist.push(window.jarvisLevelNow?.() || 0); hist.shift();
+    hist2.push(answering ? 0.5 + Math.random() * 0.3 : 0.08 + Math.random() * 0.06); hist2.shift();
+    const Wd = sig.width, Hd = sig.height, colr = getComputedStyle(document.documentElement).getPropertyValue('--holo').trim() || '#57d3ff';
+    sx.clearRect(0, 0, Wd, Hd);
+    sx.globalAlpha = 0.18; sx.strokeStyle = colr; for (let y = 0; y <= Hd; y += Hd / 4) { sx.beginPath(); sx.moveTo(0, y); sx.lineTo(Wd, y); sx.stroke(); }
+    const plot = (h, c, fill) => { sx.beginPath(); h.forEach((v, i) => { const x = (i / (h.length - 1)) * Wd, y = Hd - 4 - v * (Hd - 8); i ? sx.lineTo(x, y) : sx.moveTo(x, y); }); sx.globalAlpha = 0.9; sx.strokeStyle = c; sx.lineWidth = 1.5; sx.stroke(); if (fill) { sx.lineTo(Wd, Hd); sx.lineTo(0, Hd); sx.closePath(); sx.globalAlpha = 0.12; sx.fillStyle = c; sx.fill(); } };
+    plot(hist2, '#ffb547', false); plot(hist, colr, true);
+    sx.globalAlpha = 0.7; sx.fillStyle = colr; sx.font = '10px "Share Tech Mono", monospace'; sx.fillText('SES', 4, 11); sx.fillStyle = '#ffb547'; sx.fillText('YÜK', 34, 11); sx.globalAlpha = 1;
+  }, 100);
   /* ---------- canlı ses dalgası (dinlerken gerçek mikrofon, konuşurken JARVIS) ---------- */
   const wave = el('canvas', { class: 'wave', id: 'wave', height: 36, 'aria-hidden': 'true' });
   document.querySelector('.composer').before(wave);
@@ -303,5 +361,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v3.1.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v4.0.0`;
 })();

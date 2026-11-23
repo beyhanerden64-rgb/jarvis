@@ -196,7 +196,7 @@
     const yaw = Math.sin(t * 0.22) * 0.35 + yawExtra + pointerYaw;
     const aspect = W / H;
     const scale = small ? Math.min(1.1, 1.6 * aspect) : Math.min(1.0, 1.25 * aspect);
-    const cyOff = small ? 0.22 : 0.1;
+    const cyOff = small ? 0.1 : 0.06;
     const scanY = 1.3 - ((t * 0.3) % 1.4);
     const col2 = ph === 'listening' ? [1, 0.75, 0.35] : [1, 0.8, 0.45];
 
@@ -222,64 +222,109 @@
     drawHud(ph, scale, cyOff, aspect);
   }
 
-  /* ---------- 2D HUD overlay: targeting reticle, voice ring, readouts ---------- */
+  /* ---------- 2D HUD overlay: multi-layer holographic core around the head (concentric rotating rings,
+   * circular voice spectrum, degree scale, orbitals, ring text, projector beam, side data) ---------- */
+  const RING_TEXT = ' J.A.R.V.I.S  ·  FİZYOVİTA  ·  CİZRE 37.33°K 42.19°D  ·  KİŞİSEL ASİSTAN  ·  BİYOMETRİK ÇEKİRDEK  ·';
+  const hex = () => Math.floor(Math.random() * 0xffffff).toString(16).toUpperCase().padStart(6, '0');
+  let hexRows = Array.from({ length: 9 }, hex), hexT = 0;
+  const spec = new Float32Array(120);
+  window.jarvisLevelNow = () => level;
   function drawHud(ph, scale, cyOff, aspect) {
     hg.clearRect(0, 0, W, H);
     const toPx = (x, y) => [W / 2 + (x * scale / aspect) * W / 2, H / 2 - ((y - 0.62) * scale + cyOff) * H / 2];
     const [hx, hy] = toPx(0, 0.98);
-    const R = 0.33 * scale * H / 2;
+    let R = 0.28 * scale * H / 2;
+    const maxR = Math.min(W / 2 - 8 * dpr, hy - (small ? 70 : 46) * dpr) / 1.72;
+    if (R > maxR) R = maxR;
     const [r0, g0, b0] = col.map(v => Math.round(v * 255));
-    const c = a => `rgba(${r0},${g0},${b0},${a})`;
-    hg.lineWidth = 1.2 * dpr;
-    // outer rotating tick ring
-    hg.strokeStyle = c(0.35);
-    const ticks = 72, rot = t * 0.25;
-    hg.beginPath();
-    for (let i = 0; i < ticks; i++) {
-      const a = rot + (i / ticks) * Math.PI * 2, len = i % 6 === 0 ? 10 : 4;
-      hg.moveTo(hx + Math.cos(a) * R * 1.22, hy + Math.sin(a) * R * 1.22);
-      hg.lineTo(hx + Math.cos(a) * (R * 1.22 + len * dpr), hy + Math.sin(a) * (R * 1.22 + len * dpr));
+    const c = a => `rgba(${r0},${g0},${b0},${a})`, am = a => `rgba(255,181,71,${a})`;
+    const TAU = Math.PI * 2, spin = reduce ? 0.2 : 1;
+    hg.save(); hg.globalCompositeOperation = 'lighter'; hg.lineCap = 'butt';
+    const ring = (r, a, w = 1) => { hg.strokeStyle = c(a); hg.lineWidth = w * dpr; hg.beginPath(); hg.arc(hx, hy, r, 0, TAU); hg.stroke(); };
+    const arc = (r, a0, a1, style, w) => { hg.strokeStyle = style; hg.lineWidth = w * dpr; hg.beginPath(); hg.arc(hx, hy, r, a0, a1); hg.stroke(); };
+
+    // projector beam from the base up to the bust
+    const [bx0, by0] = toPx(0, -0.04);
+    const beam = hg.createLinearGradient(0, by0, 0, hy - R);
+    beam.addColorStop(0, c(0.09)); beam.addColorStop(0.6, c(0.025)); beam.addColorStop(1, c(0));
+    hg.fillStyle = beam; hg.beginPath();
+    hg.moveTo(bx0 - R * 0.35, by0); hg.lineTo(bx0 + R * 0.35, by0); hg.lineTo(bx0 + R * 2.1, hy - R * 0.4); hg.lineTo(bx0 - R * 2.1, hy - R * 0.4); hg.closePath(); hg.fill();
+    // projector base ellipses
+    for (let i = 0; i < 3; i++) { hg.strokeStyle = c(0.35 - i * 0.09); hg.lineWidth = (1.6 - i * 0.4) * dpr; hg.beginPath(); hg.ellipse(bx0, by0, R * (0.45 + i * 0.32), R * (0.07 + i * 0.045), 0, 0, TAU); hg.stroke(); }
+
+    // 1 circular voice spectrum
+    for (let i = 0; i < spec.length; i++) {
+      const n = Math.abs(Math.sin(i * 0.37 + t * 7.3) * Math.sin(i * 0.11 - t * 3.1)) * (0.35 + level * 1.4) + (ph === 'thinking' ? 0.15 * Math.abs(Math.sin(i * 0.5 + t * 12)) : 0);
+      spec[i] += (n - spec[i]) * 0.35;
     }
-    hg.stroke();
-    // segmented arcs (counter-rotating)
     hg.lineWidth = 2 * dpr;
-    for (let i = 0; i < 3; i++) {
-      hg.strokeStyle = c(0.5 - i * 0.12);
-      const rr = R * (1.08 + i * 0.07), base = (i % 2 ? -1 : 1) * t * (0.4 + i * 0.25);
-      for (let s = 0; s < 4; s++) { hg.beginPath(); hg.arc(hx, hy, rr, base + s * Math.PI / 2, base + s * Math.PI / 2 + 0.7 + level * 0.6); hg.stroke(); }
+    for (let i = 0; i < spec.length; i++) {
+      const a = (i / spec.length) * TAU - Math.PI / 2, len = (3 + spec[i] * R * 0.22) * (ph === 'idle' ? 0.45 : 1);
+      hg.strokeStyle = ph === 'listening' ? am(0.35 + spec[i] * 0.5) : c(0.3 + spec[i] * 0.55);
+      hg.beginPath(); hg.moveTo(hx + Math.cos(a) * R * 1.03, hy + Math.sin(a) * R * 1.03); hg.lineTo(hx + Math.cos(a) * (R * 1.03 + len), hy + Math.sin(a) * (R * 1.03 + len)); hg.stroke();
     }
-    // voice ring (listening / speaking)
-    if (level > 0.02 || ph === 'listening') {
-      hg.strokeStyle = c(0.55); hg.lineWidth = 1.5 * dpr; hg.beginPath();
-      const n = 96;
-      for (let i = 0; i <= n; i++) {
-        const a = (i / n) * Math.PI * 2;
-        const amp = (Math.sin(a * 8 + t * 9) * 0.5 + Math.sin(a * 13 - t * 6) * 0.5) * level * R * 0.12;
-        const x = hx + Math.cos(a) * (R * 0.98 + amp), y = hy + Math.sin(a) * (R * 0.98 + amp);
-        i ? hg.lineTo(x, y) : hg.moveTo(x, y);
-      }
-      hg.stroke();
-    }
-    // corner brackets around head
-    hg.strokeStyle = c(0.7); hg.lineWidth = 1.5 * dpr;
-    const bx = R * 1.45, by = R * 1.45, bl = 14 * dpr;
-    for (const [sx, sy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      hg.beginPath(); hg.moveTo(hx + sx * bx, hy + sy * by + -sy * bl); hg.lineTo(hx + sx * bx, hy + sy * by); hg.lineTo(hx + sx * bx + -sx * bl, hy + sy * by); hg.stroke();
-    }
-    // readouts
+    ring(R, 0.55, 1.2);
+
+    // 2 degree scale (slow rotation)
+    const rot1 = t * 0.05 * spin, rS = R * 1.3;
+    hg.strokeStyle = c(0.45); hg.lineWidth = 1 * dpr; hg.beginPath();
+    for (let i = 0; i < 180; i++) { const a = rot1 + (i / 180) * TAU, l = i % 15 === 0 ? 9 : i % 5 === 0 ? 5 : 2.5; hg.moveTo(hx + Math.cos(a) * rS, hy + Math.sin(a) * rS); hg.lineTo(hx + Math.cos(a) * (rS - l * dpr), hy + Math.sin(a) * (rS - l * dpr)); }
+    hg.stroke();
+    if (!small) { hg.fillStyle = c(0.6); hg.font = `${8 * dpr}px "Share Tech Mono", monospace`; hg.textAlign = 'center'; hg.textBaseline = 'middle'; for (let d = 0; d < 360; d += 30) { const a = rot1 + (d / 360) * TAU; hg.fillText(String(d).padStart(3, '0'), hx + Math.cos(a) * (rS + 9 * dpr), hy + Math.sin(a) * (rS + 9 * dpr)); } }
+
+    // 3 voice-level arc (amber) + thinking arcs
+    arc(R * 1.17, -Math.PI / 2, -Math.PI / 2 + TAU * Math.min(1, level * 1.15), am(0.85), 3);
+    arc(R * 1.17, 0, TAU, c(0.12), 3);
+    const th = t * (ph === 'thinking' ? 2.6 : 0.6) * spin;
+    for (let k = 0; k < 2; k++) arc(R * 1.47, th + k * Math.PI, th + k * Math.PI + 0.7, am(0.55), 2.5);
+
+    // 4 thick segmented ring with bright leading edges
+    const rot2 = -t * 0.18 * spin, rT = R * 1.4;
+    [[0, 1.35], [1.6, 2.5], [2.75, 4.3], [4.6, 5.9]].forEach(([s, e]) => { arc(rT, rot2 + s, rot2 + e, c(0.22), 7); arc(rT, rot2 + e - 0.06, rot2 + e, c(0.9), 7); });
+
+    // 5 dashed counter-rotating ring
+    hg.setLineDash([2 * dpr, 7 * dpr]); hg.lineDashOffset = -t * 40 * spin; ring(R * 1.53, 0.6, 1.4); hg.setLineDash([]);
+
+    // 6 text running around the core
     if (!small) {
-      hg.fillStyle = c(0.75); hg.font = `${10 * dpr}px "IBM Plex Mono", monospace`; hg.textAlign = 'left';
-      const lines = [
-        'BİYOMETRİK MODEL · ' + pts.length + ' NOKTA',
-        'DURUM · ' + ({ idle: 'BEKLEMEDE', starting: 'BAŞLATIYOR', listening: 'DİNLİYOR', thinking: 'ANALİZ', speaking: 'YANITLIYOR', error: 'HATA' }[ph] || ph).toLocaleUpperCase('tr-TR'),
-        'SES SEVİYESİ · ' + String(Math.round(level * 100)).padStart(3, '0'),
-        'TARAMA · ' + String(Math.round(((t * 0.35) % 2.2) / 2.2 * 100)).padStart(3, '0') + '%'
-      ];
-      lines.forEach((s, i) => hg.fillText(s, hx + bx + 18 * dpr, hy - by * 0.2 + i * 15 * dpr));
-      hg.textAlign = 'right';
-      hg.fillText('YAW ' + (Math.sin(t * 0.22) * 28.6).toFixed(1) + '°', hx - bx - 18 * dpr, hy - by * 0.2);
-      hg.fillText('JARVIS · ÇEKİRDEK ' + (60 + Math.round(level * 40)) + '%', hx - bx - 18 * dpr, hy - by * 0.2 + 15 * dpr);
+      const rTx = R * 1.62, txt = RING_TEXT.repeat(2), step = TAU / txt.length, rot3 = t * 0.07 * spin;
+      hg.fillStyle = c(0.55); hg.font = `${8.5 * dpr}px "Share Tech Mono", monospace`; hg.textAlign = 'center'; hg.textBaseline = 'middle';
+      for (let i = 0; i < txt.length; i++) { const a = rot3 + i * step; hg.save(); hg.translate(hx + Math.cos(a) * rTx, hy + Math.sin(a) * rTx); hg.rotate(a + Math.PI / 2); hg.fillText(txt[i], 0, 0); hg.restore(); }
     }
+    // 7 outer hairline with moving triangle markers
+    const rO = R * (small ? 1.6 : 1.7); ring(rO, 0.25, 1);
+    hg.fillStyle = c(0.85);
+    for (let k = 0; k < 4; k++) { const a = t * 0.3 * spin + k * Math.PI / 2, x = hx + Math.cos(a) * rO, y = hy + Math.sin(a) * rO; hg.save(); hg.translate(x, y); hg.rotate(a); hg.beginPath(); hg.moveTo(5 * dpr, 0); hg.lineTo(-3 * dpr, -4 * dpr); hg.lineTo(-3 * dpr, 4 * dpr); hg.closePath(); hg.fill(); hg.restore(); }
+    // crosshair ticks at cardinal points
+    hg.strokeStyle = c(0.7); hg.lineWidth = 1.4 * dpr; hg.beginPath();
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2; hg.moveTo(hx + Math.cos(a) * (rO + 4 * dpr), hy + Math.sin(a) * (rO + 4 * dpr)); hg.lineTo(hx + Math.cos(a) * (rO + 16 * dpr), hy + Math.sin(a) * (rO + 16 * dpr)); }
+    hg.stroke();
+
+    // 8 tilted 3D orbitals with travelling nodes
+    for (let k = 0; k < 2; k++) {
+      const tilt = (k ? -0.42 : 0.42) + Math.sin(t * 0.2 + k) * 0.05, rx = R * (1.9 - k * 0.2), ry = R * 0.3;
+      hg.strokeStyle = c(0.22); hg.lineWidth = 1 * dpr; hg.beginPath(); hg.ellipse(hx, hy, rx, ry, tilt, 0, TAU); hg.stroke();
+      const a = t * (0.5 + k * 0.25) * spin + k * 2, ex = Math.cos(a) * rx, ey = Math.sin(a) * ry;
+      const x = hx + ex * Math.cos(tilt) - ey * Math.sin(tilt), y = hy + ex * Math.sin(tilt) + ey * Math.cos(tilt);
+      const front = Math.sin(a) > 0;
+      hg.fillStyle = k ? am(front ? 0.95 : 0.35) : c(front ? 0.95 : 0.35); hg.beginPath(); hg.arc(x, y, (front ? 3.2 : 2) * dpr, 0, TAU); hg.fill();
+    }
+
+    // 9 side data: hex stream (left) and level bars (right)
+    if (!small) {
+      if ((hexT += 1) % 9 === 0) { hexRows.shift(); hexRows.push(hex()); }
+      hg.font = `${9 * dpr}px "Share Tech Mono", monospace`; hg.textAlign = 'right'; hg.textBaseline = 'alphabetic';
+      const lx = hx - rO - 26 * dpr, ly = hy + R * 0.2;
+      hexRows.forEach((h, i) => { hg.fillStyle = c(0.15 + i * 0.07); hg.fillText('0x' + h, lx, ly + i * 12 * dpr); });
+      const rx = hx + rO + 26 * dpr;
+      for (let i = 0; i < 6; i++) { const v = Math.min(1, spec[i * 17] * 1.2); hg.fillStyle = c(0.12); hg.fillRect(rx, ly + i * 12 * dpr - 7 * dpr, 70 * dpr, 6 * dpr); hg.fillStyle = i % 3 === 2 ? am(0.75) : c(0.7); hg.fillRect(rx, ly + i * 12 * dpr - 7 * dpr, 70 * dpr * v, 6 * dpr); }
+      hg.textAlign = 'left'; hg.fillStyle = c(0.7);
+      const st = { idle: 'BEKLEMEDE', starting: 'BAŞLATIYOR', listening: 'DİNLİYOR', thinking: 'ANALİZ', speaking: 'YANITLIYOR', error: 'HATA' }[ph] || ph;
+      [`DURUM  ${st}`, `SES    ${String(Math.round(level * 100)).padStart(3, '0')}`, `YAW    ${(Math.sin(t * 0.22) * 20).toFixed(1)}°`, `NOKTA  ${pts.length}`].forEach((s, i) => hg.fillText(s, rx, hy - R * 0.75 + i * 13 * dpr));
+      hg.textAlign = 'right';
+      ['ÇEKİRDEK ' + (60 + Math.round(level * 40)) + '%', 'TARAMA ' + String(Math.round(((t * 0.3) % 1.4) / 1.4 * 100)).padStart(3, '0') + '%', 'BAĞ ' + (navigator.onLine ? 'ÇEVRİMİÇİ' : 'YOK')].forEach((s, i) => hg.fillText(s, lx, hy - R * 0.75 + i * 13 * dpr));
+    }
+    hg.restore();
     // chest core halo
     const [cx, cy] = toPx(0, 0.3);
     const grad = hg.createRadialGradient(cx, cy, 0, cx, cy, R * (0.55 + level * 0.4));

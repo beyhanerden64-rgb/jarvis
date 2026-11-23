@@ -195,6 +195,23 @@ textarea#prompt::placeholder { color: var(--muted); }
 }
 .mobile-strip { display: none; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .mobile-strip .seg { background: rgb(3 12 20 / .55); }
+/* JARVIS 4 · holografik alan */
+@media (min-width: 901px) {
+  .middle { perspective: 1100px; }
+  .left { transform: rotateY(10deg); transform-origin: left center; }
+  .right { transform: rotateY(-10deg); transform-origin: right center; }
+  .left .card, .right .card { background: linear-gradient(160deg, rgb(10 36 54 / .55), rgb(3 12 20 / .35)); box-shadow: inset 2px 0 0 rgb(87 211 255 / .4), inset 0 0 30px rgb(87 211 255 / .06); }
+  canvas#hud2d { filter: drop-shadow(0 0 3px rgb(87 211 255 / .55)); }
+}
+.skills { grid-template-columns: repeat(3, 1fr) !important; }
+.skills button { font-size: 11px !important; padding: 5px !important; line-height: 1.25; }
+.globe canvas { width: 100%; height: auto; display: block; }
+.sigwrap canvas { width: 100%; height: 50px; display: block; margin-top: 6px; }
+.tele canvas#radar { max-width: 140px; }
+.gauge svg { width: 54px; height: 54px; } .gauge b { top: 17px; font-size: 11px; }
+body::after { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 90% at 50% 42%, transparent 55%, rgb(0 0 0 / .55)); }
+.brand { text-shadow: 0 0 18px rgb(87 211 255 / .7), 0 0 2px #fff; }
+.readout .time { font-family: var(--f-display); font-weight: 700; }
 /* JARVIS 3.1 · FUI katmanı */
 .grid-bg { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%2357d3ff' stroke-opacity='.09'/%3E%3C/svg%3E"); background-size: 56px 97px; }
 .brand { font-weight: 900; }
@@ -247,7 +264,7 @@ textarea#prompt::placeholder { color: var(--muted); }
 .pal-box li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; cursor: pointer; font-size: 14px; }
 .pal-box li small { font: 10px var(--f-mono); letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
 .pal-box li.on, .pal-box li:hover { background: rgb(87 211 255 / .12); box-shadow: inset 2px 0 0 var(--holo); }
-@media (max-width: 900px) { .edge, .fps { display: none; } .wave { height: 26px; } .ticker { font-size: 10px; } #palBtn { display: none; } }
+@media (max-width: 900px) { .edge, .fps { display: none; } #clock, #wx { display: none; } .wave { height: 26px; } .ticker { font-size: 10px; } #palBtn { display: none; } }
 :root[data-theme="light"] .boot { background: #eaf3f8; }
 /* JARVIS 3 */
 @media (max-width: 700px) { #fullBtn { display: none; } .estop { padding: 2px 8px; font-size: 10px; } }
@@ -308,7 +325,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 3.1.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 4.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -485,7 +502,7 @@ body.focus .left, body.focus .right, body.focus .chips, body.focus .dockbar, bod
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=3.1.0"></script>
-<script src="direct.js?v=3.1.0"></script><script src="app.js?v=3.1.0"></script><script src="plus.js?v=3.1.0"></script><script src="hud.js?v=3.1.0"></script><script src="figure.js?v=3.1.0"></script>
+<script src="voice-engine.js?v=4.0.0"></script>
+<script src="direct.js?v=4.0.0"></script><script src="app.js?v=4.0.0"></script><script src="plus.js?v=4.0.0"></script><script src="hud.js?v=4.0.0"></script><script src="figure.js?v=4.0.0"></script>
 </body>
 </html>
