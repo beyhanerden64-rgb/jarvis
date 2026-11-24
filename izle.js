@@ -9,6 +9,7 @@
  */
 (() => {
   const MIN = 60000;
+  const BG_TOPIC = 'saturn-piyasa-9gtmwv4rx3rvg2'; // GitHub Actions arka plan bekçisinin YALNIZ piyasa için ayrılmış kanalı (bg/config.json)
   const guest = () => !!window.jarvisUltra?.guest?.();
   const nf = (v, d = 2) => Number(v).toLocaleString('tr-TR', { maximumFractionDigits: d });
   const OZ = 31.1034768;
@@ -30,7 +31,7 @@
     log.unshift({ t: Date.now(), msg }); log.length = Math.min(log.length, 20); paint();
     note('📈 ' + msg);
     try { if (setting('speakOn') === '1' && opt('watchVoice') !== '0' && typeof phase !== 'undefined' && phase === 'idle' && !window.jarvisLive?.active?.()) voiceSession.read(msg.replace(/[^\p{L}\p{N}\s,.%+-]/gu, '').replace(/%/g, 'yüzde ')); } catch {}
-    if (opt('ntfyOn') === '1') window.jarvisPushPhone?.(msg, { title: 'SATÜRN piyasa', tags: 'chart_with_upwards_trend', priority: 4 })?.catch?.(() => {});
+    if (opt('ntfyOn') === '1' && opt('bgWatch') !== '1') window.jarvisPushPhone?.(msg, { title: 'SATÜRN piyasa', tags: 'chart_with_upwards_trend', priority: 4 })?.catch?.(() => {}); // arka plan bekçisi açıksa telefona o gönderir (çift bildirim olmaz)
     return true;
   }
   // “mins dakika önceki” fiyat: o kadar (en az %90’ı) eski örneklerin EN YENİSİ — daha eski yoksa hesap yok
@@ -96,6 +97,11 @@
     el('div', { class: 'field' }, el('label', { for: 'watchSens' }, 'Hassasiyet'), sel('watchSens', [['orta', 'Orta (kripto %2,5/15 dk · %4/1 saat)'], ['yuksek', 'Yüksek (daha sık haber)'], ['dusuk', 'Düşük (yalnız büyük hareket)']], 'orta')),
     el('div', { class: 'field' }, el('label', { for: 'watchBrief' }, 'Sabah/akşam piyasa özeti'), sel('watchBrief', [['1', 'Açık'], ['0', 'Kapalı']], '1')),
     el('div', { class: 'field' }, el('label', { for: 'watchVoice' }, 'Uyarıyı sesli de söyle'), sel('watchVoice', [['1', 'Evet'], ['0', 'Hayır']], '1')),
+    el('details', { id: 'bgWatchSec' }, el('summary', {}, '🌙 Uygulama KAPALIYKEN de haber al (arka plan bekçisi)'),
+      el('p', { class: 'muted' }, 'GitHub sunucusunda 10 dakikada bir çalışır (ücretsiz). BTC, ETH, SOL, BNB, XRP, altın ve dolar/TL’de sert hareket ya da 24 saatlik zirve/dip kırılımı olunca; ayrıca 09:30 ve 18:30’da özet gönderir. Yalnız herkese açık piyasa verisi taşır — kişisel bildirim kanalından ayrıdır.'),
+      el('ol', { class: 'muted' }, el('li', {}, 'Telefona ücretsiz “ntfy” uygulamasını kur (App Store).'), el('li', {}, 'ntfy’de “+” → konu adı olarak aşağıdakini yaz (ya da kopyala) → Abone ol.'), el('li', {}, 'Bildirim iznini ver. Bitti.')),
+      el('div', { class: 'row' }, el('code', { id: 'bgTopic', style: 'user-select:all;word-break:break-all' }, BG_TOPIC), el('button', { type: 'button', class: 'btn ghost', onclick: async e => { try { await navigator.clipboard.writeText(BG_TOPIC); e.target.textContent = '✓ Kopyalandı'; } catch { e.target.textContent = 'Seçip kopyala'; } } }, '📋 Kopyala'), el('a', { class: 'btn ghost', href: 'https://ntfy.sh/' + BG_TOPIC, target: '_blank', rel: 'noopener' }, 'Tarayıcıda aç')),
+      el('div', { class: 'field' }, el('label', { for: 'bgWatch' }, 'Abone oldum — piyasa bildirimlerini arka plan bekçisi göndersin (çift bildirim olmasın)'), sel('bgWatch', [['0', 'Hayır'], ['1', 'Evet']], '0'))),
     logEl);
   { const pk = $('pkSec'); if (pk) pk.after(box); else $('p-market')?.append(box); }
   function paint() { logEl.replaceChildren(...(log.length ? log.slice(0, 6).map(x => el('li', { class: 'item' }, el('small', {}, new Date(x.t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })), el('p', {}, x.msg))) : [el('li', { class: 'muted' }, 'Henüz uyarı yok — piyasa sakin.')])); }
@@ -116,8 +122,9 @@
     if ((m = t.match(/^(.{2,20}?)(?:['’]?(?:yi|yı|yu|yü|i|ı|u|ü))? (?:izle|takip et|izlemeye al)$/i)) && !/haber|video|film|dizi|maç/i.test(m[1])) return watchAdd(m[1]);
     if ((m = t.match(/^(.{2,20}?)(?:['’]?(?:yi|yı|i|ı))? (?:izlemeyi bırak|izlemeden çıkar|takibi bırak)$/i))) return watchDel(m[1]);
     if (/^(izleme listem|izleme listesi|neleri izliyorsun)$/i.test(t)) return watchShow();
+    if (/^(arka plan bekçisi|kapalıyken (?:de )?haber ver|uygulama kapalıyken bildirim)$/i.test(t)) { const n = bubble('ai', `🌙 Arka plan bekçisi GitHub’da 10 dakikada bir çalışıyor. Telefona “ntfy” uygulamasını kur → “+” → konu: ${BG_TOPIC} → Abone ol. Sonra PİYASA → Piyasa bekçisi → “Abone oldum: Evet” seç.`); n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: async e => { try { await navigator.clipboard.writeText(BG_TOPIC); e.target.textContent = '✓ Konu kopyalandı'; } catch {} } }, '📋 Konuyu kopyala'))); return 'Arka plan bekçisi kurulum bilgisi.'; }
     if (/^(piyasa özeti|canlı piyasa özeti|anlık piyasa özeti)$/i.test(t)) { brief().then(x => { const n = bubble('ai', x); answerTools?.(n.el, x); }).catch(e => note(e.message)); return 'Piyasa özeti hazırlanıyor…'; }
     return _lc(text0);
   };
-  window.jarvisWatch = { sample, check, change, hist, brief, briefAuto, watch, watchAdd, watchDel, watchShow, log, TH };
+  window.jarvisWatch = { BG_TOPIC, sample, check, change, hist, brief, briefAuto, watch, watchAdd, watchDel, watchShow, log, TH };
 })();
