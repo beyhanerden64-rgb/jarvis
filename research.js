@@ -12,13 +12,14 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   async function getJson(url, ms = 15000) {
     try { const r = await withTimeout(fetch(url), ms, 'zaman aşımı'); if (r.ok) return await r.json(); throw Error('HTTP ' + r.status); }
-    catch (e) { // tarayıcı engellerse bilgisayar yardımcısı getirir (varsa)
+    catch (e) { // tarayıcı engellerse: kendi köprüsü, sonra bilgisayar yardımcısı
+      try { return JSON.parse(await window.jarvisViaBridge(url)); } catch {}
       try { const d = await pcCall('web_al', [url], false); return JSON.parse(d.text); } catch { throw Error('Kaynağa ulaşılamadı: ' + new URL(url).hostname + ' (' + e.message + ')'); }
     }
   }
   async function getText(url, ms = 20000) {
     try { const r = await withTimeout(fetch(url), ms, 'zaman aşımı'); if (r.ok) return await r.text(); throw Error('HTTP ' + r.status); }
-    catch (e) { try { return (await pcCall('web_al', [url], false)).text; } catch { throw Error('Kaynağa ulaşılamadı: ' + new URL(url).hostname); } }
+    catch (e) { try { return await window.jarvisViaBridge(url); } catch {} try { return (await pcCall('web_al', [url], false)).text; } catch { throw Error('Kaynağa ulaşılamadı: ' + new URL(url).hostname); } }
   }
   const clean = s => String(s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
 

@@ -8,8 +8,8 @@
   const NCBI = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/', tool = 'tool=jarvis-fizyovita&email=';
   const DAY = 86400000;
   const clean = s => String(s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  async function getJson(url) { const r = await withTimeout(fetch(url), 15000, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); }
-  async function getText(url) { const r = await withTimeout(fetch(url), 20000, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.text(); }
+  async function getJson(url) { try { const r = await withTimeout(fetch(url), 15000, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return await r.json(); } catch (e) { try { return JSON.parse(await window.jarvisViaBridge(url)); } catch { throw e; } } }
+  async function getText(url) { try { const r = await withTimeout(fetch(url), 20000, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return await r.text(); } catch (e) { try { return await window.jarvisViaBridge(url); } catch { throw e; } } }
 
   /* ---------- 1) makale analizi ---------- */
   async function resolve(idRaw) {

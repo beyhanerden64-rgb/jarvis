@@ -262,6 +262,12 @@ window.jarvisBridge = {
   key: () => { let k = store.get('bridgeKey', ''); if (!k) { k = Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, '0')).join(''); store.set('bridgeKey', k); } return k; },
   wrap: u => `${bridgeUrl()}?k=${encodeURIComponent(window.jarvisBridge.key())}&url=${encodeURIComponent(u)}`
 };
+// kaynağa doğrudan ulaşılamazsa kendi köprüsünden getir (kuruluysa)
+window.jarvisViaBridge = async (url, ms = 20000) => {
+  if (!window.jarvisBridge?.on()) throw Error('köprü kurulmadı');
+  const r = await withTimeout(fetch(window.jarvisBridge.wrap(url)), ms, 'köprü zaman aşımı'); if (!r.ok) throw Error('köprü HTTP ' + r.status);
+  const t = await r.text(); if (/^\s*\{"error":/.test(t)) throw Error('köprü: ' + (JSON.parse(t).error || 'hata')); return t;
+};
 async function fxRates(base = 'USD') {
   const b = String(base || 'USD').toUpperCase().slice(0, 3);
   const d = await fxLatest(b, ['TRY', 'USD', 'EUR', 'GBP']);

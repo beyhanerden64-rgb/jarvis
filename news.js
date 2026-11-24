@@ -28,7 +28,10 @@
   const ago = t => { const m = Math.max(0, Math.round((Date.now() - t) / 60000)); return m < 1 ? 'şimdi' : m < 60 ? m + ' dk önce' : m < 1440 ? Math.round(m / 60) + ' sa önce' : Math.round(m / 1440) + ' gün önce'; };
   const getJ = async (url, ms = 15000) => {
     try { const r = await withTimeout(fetch(url), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return await r.json(); }
-    catch (e) { if (typeof pcLocal !== 'undefined' && pcLocal) return JSON.parse((await pcCall('web_al', [url], false)).text); throw e; }
+    catch (e) {
+      try { return JSON.parse(await window.jarvisViaBridge(url)); } catch {} // GDELT vb. engelliyse kendi köprüsü
+      if (typeof pcLocal !== 'undefined' && pcLocal) return JSON.parse((await pcCall('web_al', [url], false)).text); throw e;
+    }
   };
   // GDELT istek sınırı: 5 sn'de bir → sıraya al
   let gq = Promise.resolve(), lastG = 0;

@@ -31,7 +31,7 @@
 
   /* ---------- prob araçları ---------- */
   const tFetch = (url, o = {}, ms = 10000) => withTimeout(fetch(url, o), ms, 'zaman aşımı');
-  const jOk = (url, test, o, ms) => async () => { const r = await tFetch(url, o, ms); if (!r.ok) throw Error('HTTP ' + r.status); const j = await r.json(); if (!test(j)) throw Error('beklenmeyen yanıt'); };
+  const jOk = (url, test, o, ms) => async () => { let r; try { r = await tFetch(url, o, ms); } catch (e) { if (o || !window.jarvisBridge?.on() || /yahoo|allorigins|codetabs|rss2json|binance|script\.google/.test(url)) throw e; /* geçit denemeleri kendi başına ölçülür */ const t = await window.jarvisViaBridge(url, ms || 20000); if (!test(JSON.parse(t))) throw Error('beklenmeyen yanıt'); return; } if (!r.ok) throw Error('HTTP ' + r.status); const j = await r.json(); if (!test(j)) throw Error('beklenmeyen yanıt'); };
   const tOk = (url, test, ms) => async () => { const r = await tFetch(url, {}, ms); if (!r.ok) throw Error('HTTP ' + r.status); const t = await r.text(); if (!test(t)) throw Error('beklenmeyen yanıt'); };
   const YURL = 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d';
   const RSS = 'https://feeds.bbci.co.uk/turkce/rss.xml';
