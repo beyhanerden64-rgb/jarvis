@@ -1,7 +1,7 @@
 'use strict';
 // SATÜRN uygulama kabuğu: arayüz çevrimdışı da açılır; /api/ istekleri asla önbelleğe alınmaz.
-const CACHE = 'jarvis-app-17.1.0';
-const SHELL = ['./', 'app.js?v=17.1.0', 'plus.js?v=17.1.0', 'hud.js?v=17.1.0', 'features.js?v=17.1.0', 'control.js?v=17.1.0', 'voices.js?v=17.1.0', 'social.js?v=17.1.0', 'agent.js?v=17.1.0', 'figure.js?v=17.1.0', 'sentinel.js?v=17.1.0', 'brain.js?v=17.1.0', 'pro.js?v=17.1.0', 'ultra.js?v=17.1.0', 'klinik.js?v=17.1.0', 'live.js?v=17.1.0', 'research.js?v=17.1.0', 'research2.js?v=17.1.0', 'markets.js?v=17.1.0', 'news.js?v=17.1.0', 'imagegen.js?v=17.1.0', 'visual.js?v=17.1.0', 'voice2.js?v=17.1.0', 'ultron.js?v=17.1.0', 'ultron-life.js?v=17.1.0', 'voice-engine.js?v=17.1.0', 'audiohub.js?v=17.1.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=17.1.0'];
+const CACHE = 'jarvis-app-17.1.1';
+const SHELL = ['./', 'app.js?v=17.1.1', 'plus.js?v=17.1.1', 'hud.js?v=17.1.1', 'features.js?v=17.1.1', 'control.js?v=17.1.1', 'voices.js?v=17.1.1', 'social.js?v=17.1.1', 'agent.js?v=17.1.1', 'figure.js?v=17.1.1', 'sentinel.js?v=17.1.1', 'brain.js?v=17.1.1', 'pro.js?v=17.1.1', 'ultra.js?v=17.1.1', 'klinik.js?v=17.1.1', 'live.js?v=17.1.1', 'research.js?v=17.1.1', 'research2.js?v=17.1.1', 'markets.js?v=17.1.1', 'news.js?v=17.1.1', 'imagegen.js?v=17.1.1', 'visual.js?v=17.1.1', 'voice2.js?v=17.1.1', 'ultron.js?v=17.1.1', 'ultron-life.js?v=17.1.1', 'voice-engine.js?v=17.1.1', 'audiohub.js?v=17.1.1', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=17.1.1'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

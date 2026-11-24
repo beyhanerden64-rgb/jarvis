@@ -82,7 +82,7 @@
     return list.length;
   }
   // bilgi sorusu → konu
-  const PERSONAL = /\b(hasta|seans|kasa|randevu|görev|not al|hatırlat|sayaç|alarm|takvim|yedek|şifre|ayar|beceri|otomasyon|bilgisayar|telefon|whatsapp|mesaj|ara\b|fener|ışık|klima|ultron|konsey|tasarım|yüzünü|kendini|seni|beni|görsel oluştur|çiz)/i;
+  const PERSONAL = /\b(hasta|seans|kasa|randevu|görev|not al|hatırlat|sayaç|alarm|takvim|yedek|şifre|ayar|beceri|otomasyon|bilgisayar|telefon|whatsapp|mesaj|ara\b|fener|ışık|klima|ultron|konsey|tasarım|yüzünü|kendini|seni|beni|ekran|masaüstü|kamera|pencere|sahne|sekme|panel|menü|sonuç|rapor|özet|liste|geçmiş|görsel oluştur|çiz)/i;
   function topicOf(text) {
     const t = String(text || '').trim().replace(/^\s*(?:hey\s+)?(?:s[aâ]t[uüıi]r[uüı]?n|jarvis)(?![\s,]*gezegen)\s*[,:!.]?\s+/iu, '');
     if (t.length < 4 || t.length > 140 || PERSONAL.test(t) || /\b[\wçğıöşü]+(?:ım|im|um|üm|ımı|imi|umu|ümü|larım|lerim|larımı|lerimi)\b/i.test(t)) return ''; // “notlarımı / programımı göster” → kişisel
