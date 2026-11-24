@@ -19,11 +19,11 @@
   /* ---------- kaynaklar ---------- */
   const usdtry = () => cached('usdtry', 60000, async () => {
     try { return +(await getJ(BN + 'ticker/price?symbol=USDTTRY')).price; }
-    catch { return +(await getJ('https://api.frankfurter.app/latest?from=USD&to=TRY')).rates.TRY; }
+    catch { return +(await window.jarvisFx('USD', ['TRY'])).rates.TRY; }
   });
   const fx = () => cached('fx', 300000, async () => {
     const u = await usdtry(); let r = {};
-    try { r = (await getJ('https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,CHF,JPY')).rates; } catch {}
+    try { r = (await window.jarvisFx('USD', ['EUR', 'GBP', 'CHF', 'JPY'])).rates; } catch {}
     return { USD: u, EUR: r.EUR ? u / r.EUR : null, GBP: r.GBP ? u / r.GBP : null, CHF: r.CHF ? u / r.CHF : null };
   });
   async function gold() {
@@ -74,8 +74,11 @@
   async function yahoo(sym) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=5d&interval=1d`;
     let j;
-    try { j = await getJ(url, 6000); } // tarayıcı izin verirse doğrudan
-    catch { if (typeof pcLocal === 'undefined' || !pcLocal) throw Error('yardımcı yok'); j = JSON.parse((await pcCall('web_al', [url], false)).text); }
+    try { if (!window.jarvisBridge?.on()) throw Error(); j = await getJ(window.jarvisBridge.wrap(url), 12000); if (!j.chart) throw Error(); } // kendi Google köprüsü
+    catch {
+      try { j = await getJ(url, 6000); } // tarayıcı izin verirse doğrudan
+      catch { if (typeof pcLocal === 'undefined' || !pcLocal) throw Error('yardımcı yok'); j = JSON.parse((await pcCall('web_al', [url], false)).text); }
+    }
     const m = j.chart?.result?.[0]?.meta; if (!m?.regularMarketPrice) throw Error('veri yok');
     const prev = m.chartPreviousClose || m.previousClose;
     return { sym, name: LABEL[sym] || m.shortName || sym, price: m.regularMarketPrice, ch: prev ? (m.regularMarketPrice / prev - 1) * 100 : null, cur: m.currency, src: 'Yahoo' };

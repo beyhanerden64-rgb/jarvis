@@ -139,6 +139,7 @@
   // devre kesici: bir taramada Yahoo'ya hiçbir yoldan ulaşılamıyorsa kalan sembolleri dakikalarca bekletme
   const yh = { ok: 0, dead: 0 };
   async function proxied(url, ms = 9000) {
+    if (window.jarvisBridge?.on()) { try { const j = await getJ(window.jarvisBridge.wrap(url), 15000); if (!j?.error) { yh.ok++; return j; } } catch {} }
     if (typeof pcLocal !== 'undefined' && pcLocal) { try { return JSON.parse((await pcCall('web_al', [url], false)).text); } catch {} }
     if (yh.dead >= 2 && !yh.ok) throw Error('hisse kaynağına şu an ulaşılamıyor');
     try { const j = await proxiedRaw(url, ms); yh.ok++; return j; } catch (e) { yh.dead++; throw e; }
@@ -150,7 +151,23 @@
     }
     throw Error('ulaşılamadı');
   }
+  // Stooq yedeği (CSV, Yahoo'ya ulaşılamazsa): ABD, Almanya, Londra, Tokyo, Hong Kong…
+  const STQ = { '': '.us', DE: '.de', L: '.uk', T: '.jp', HK: '.hk', PA: '.fr', AS: '.nl', SW: '.ch', MI: '.it', MC: '.es' };
+  async function stooqSeries(sym) {
+    const m = sym.match(/^([A-Z0-9\-]+)(?:\.([A-Z]+))?$/); if (!m || STQ[m[2] || ''] == null) throw Error('stooq yok');
+    const u = `https://stooq.com/q/d/l/?s=${m[1].toLowerCase()}${STQ[m[2] || '']}&i=d`;
+    let t = '';
+    if (window.jarvisBridge?.on()) { try { t = await (await withTimeout(fetch(window.jarvisBridge.wrap(u)), 15000, 'zaman aşımı')).text(); } catch {} }
+    if (!/^Date,/i.test(t) && typeof pcLocal !== 'undefined' && pcLocal) { try { t = (await pcCall('web_al', [u], false)).text; } catch {} }
+    if (!/^Date,/i.test(t)) throw Error('stooq okunamadı');
+    const rows = t.trim().split(/\r?\n/).slice(1).map(l => l.split(',')).filter(r => +r[4] > 0).slice(-260);
+    if (rows.length < 30) throw Error('stooq kısa');
+    return { sym, name: sym, cur: '', c: rows.map(r => +r[4]), h: rows.map(r => +r[2]), l: rows.map(r => +r[3]), v: rows.map(r => +r[5] || 0), price: +rows.at(-1)[4] };
+  }
   async function yahooSeries(sym, range = '1y') {
+    try { return await yahooOnly(sym, range); } catch (e) { if (range !== '1y') throw e; try { return await stooqSeries(sym); } catch { throw e; } }
+  }
+  async function yahooOnly(sym, range) {
     const j = await proxied(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=${range}&interval=1d`);
     const R = j.chart?.result?.[0], q = R?.indicators?.quote?.[0]; if (!q?.close) throw Error('veri yok');
     const idx = q.close.map((v, i) => i).filter(i => q.close[i] > 0);
@@ -395,6 +412,49 @@
       el('label', { for: 'picksAuto' }, 'Her pazartesi otomatik seçim'), sel('picksAuto', 'Açık', 'Kapalı', '1'),
       el('label', { for: 'picksAI' }, 'Haber/makro takvim notu (internet araması)'), sel('picksAI', 'Açık', 'Kapalı', '1'),
       el('label', { for: 'liveFeed' }, 'Kesintisiz canlı fiyat akışı'), sel('liveFeed', 'Açık', 'Kapalı', '1')));
+  // ---------- HİSSE/HABER KÖPRÜSÜ kurulumu (Beyhan'ın kendi Google hesabında, ücretsiz) ----------
+  const gasCode = () => `// SATÜRN köprüsü — yalnız bu anahtarı bilen Satürn kullanabilir
+var KEY = '${window.jarvisBridge.key()}';
+function doGet(e) {
+  var p = (e && e.parameter) || {};
+  if (p.k !== KEY) return out({ error: 'yetkisiz' });
+  var u = String(p.url || '');
+  if (!/^https:\\/\\//.test(u) || /script\\.google/.test(u)) return out({ error: 'gecersiz adres' });
+  var cache = CacheService.getScriptCache();
+  var ck = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, u));
+  var hit = cache.get(ck);
+  if (hit) return ContentService.createTextOutput(hit).setMimeType(ContentService.MimeType.TEXT);
+  var r = UrlFetchApp.fetch(u, { muteHttpExceptions: true, followRedirects: true, headers: { 'User-Agent': 'Mozilla/5.0 (SATURN)' } });
+  if (r.getResponseCode() !== 200) return out({ error: 'HTTP ' + r.getResponseCode() });
+  var t = r.getContentText();
+  if (t.length < 90000) { try { cache.put(ck, t, 300); } catch (x) {} }
+  return ContentService.createTextOutput(t).setMimeType(ContentService.MimeType.TEXT);
+}
+function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
+  const brIn = el('input', { id: 'bridgeUrl', placeholder: 'https://script.google.com/macros/s/…/exec', inputmode: 'url' }); brIn.value = store.get('set.bridgeUrl', '');
+  const brMsg = el('small', { id: 'bridgeMsg', class: 'muted' }, window.jarvisBridge.on() ? 'Köprü kayıtlı.' : 'Köprü kurulmadı.');
+  const brTest = async () => {
+    store.set('set.bridgeUrl', brIn.value.trim());
+    if (!window.jarvisBridge.on()) { brMsg.textContent = '✗ Adres “https://script.google.com/macros/s/…/exec” biçiminde olmalı.'; return false; }
+    brMsg.textContent = 'Deneniyor…';
+    try {
+      const j = await getJ(window.jarvisBridge.wrap('https://query1.finance.yahoo.com/v8/finance/chart/THYAO.IS?range=5d&interval=1d'), 25000);
+      if (j?.error) throw Error(j.error === 'yetkisiz' ? 'anahtar uyuşmuyor — kodu yeniden kopyalayıp yapıştır' : j.error);
+      const pr = j?.chart?.result?.[0]?.meta?.regularMarketPrice; if (!pr) throw Error('Yahoo verisi gelmedi');
+      brMsg.textContent = `✓ Köprü çalışıyor: THYAO ${nf(pr)} TL. Hisse ve haberler artık bu yoldan gelir.`; return true;
+    } catch (e) { brMsg.textContent = '✗ ' + e.message + ' (Dağıtım erişimi “Herkes” olmalı.)'; return false; }
+  };
+  brIn.onchange = () => brTest();
+  const brSec = el('details', { id: 'bridgeSec' }, el('summary', {}, '🔌 Hisse köprüsü (ücretsiz, 5 dk kurulum) — hisse verisi gelmiyorsa'),
+    el('ol', { class: 'muted' },
+      el('li', {}, 'Telefonda ya da bilgisayarda script.google.com adresini aç → “Yeni proje”.'),
+      el('li', {}, 'Aşağıdaki “Kodu kopyala” düğmesine bas, açılan sayfadaki her şeyi silip yapıştır, kaydet (💾).'),
+      el('li', {}, '“Dağıt” → “Yeni dağıtım” → tür: Web uygulaması · Yürütme: Ben · Erişimi olanlar: Herkes → Dağıt → izinleri onayla.'),
+      el('li', {}, 'Verilen “Web uygulaması URL’si”ni aşağıya yapıştır; Satürn kendiliğinden dener.')),
+    el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn ghost', onclick: async e => { try { await navigator.clipboard.writeText(gasCode()); e.target.textContent = '✓ Kod kopyalandı'; } catch { e.target.textContent = 'Kopyalanamadı'; } } }, '📋 Kodu kopyala'), el('button', { type: 'button', class: 'btn ghost', onclick: brTest }, 'Köprüyü dene')),
+    el('label', { for: 'bridgeUrl' }, 'Web uygulaması URL’si'), brIn, brMsg,
+    el('p', { class: 'muted' }, 'Köprü yalnız senin Google hesabında çalışır; içindeki gizli anahtarı bilmeyen kullanamaz. Ücretsizdir (günde 20.000 istek).'));
+  sec.append(brSec);
   const mp = $('p-market'); if (mp) mp.prepend(sec);
   let paintT = 0;
   function paintLive(flash) {

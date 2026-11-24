@@ -243,12 +243,29 @@ async function cryptoAnalysis(sym) {
   const volCh = ((sma(v, 7) / sma(v, 30) - 1) * 100).toFixed(0);
   return `${s} günlük (Binance): fiyat ${f(last)} USDT; değişim 1g ${ch(1)}, 7g ${ch(7)}, 30g ${ch(30)}. RSI14 ${rsi(c).toFixed(1)}${rsi(c) > 70 ? ' (aşırı alım)' : rsi(c) < 30 ? ' (aşırı satım)' : ''}. MACD ${f(macd.at(-1))} / sinyal ${f(sig.at(-1))} (${macd.at(-1) > sig.at(-1) ? 'pozitif' : 'negatif'} kesişim tarafı). SMA20 ${f(s20)}, SMA50 ${f(s50)}, SMA200 ${f(s200)} → rejim: ${regime}. 30g destek ${f(Math.min(...lo.slice(-30)))}, direnç ${f(Math.max(...h.slice(-30)))}. Yıllık oynaklık %${vol.toFixed(0)}. Hacim (7g/30g) ${volCh > 0 ? '+' : ''}${volCh}%.`;
 }
+// Döviz: Frankfurter (ECB, yeni adres) → ExchangeRate-API (ikisi de anahtarsız, CORS açık)
+async function fxLatest(base = 'USD', to = ['TRY']) {
+  const b = String(base || 'USD').toUpperCase().slice(0, 3), want = to.map(x => x.toUpperCase()).filter(x => x !== b);
+  const tries = [
+    async () => { const r = await withTimeout(fetch(`https://api.frankfurter.dev/v1/latest?base=${b}&symbols=${want.join(',')}`), 8000, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); const d = await r.json(); if (!d?.rates || !Object.keys(d.rates).length) throw Error('boş'); return { date: d.date, src: 'ECB', rates: d.rates }; },
+    async () => { const r = await withTimeout(fetch(`https://open.er-api.com/v6/latest/${b}`), 8000, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); const d = await r.json(); if (d?.result !== 'success') throw Error('boş'); return { date: String(d.time_last_update_utc || '').slice(5, 16), src: 'ExchangeRate-API', rates: Object.fromEntries(want.map(k => [k, d.rates?.[k]]).filter(x => x[1])) }; }
+  ];
+  let last;
+  for (const f of tries) { try { return await f(); } catch (e) { last = e; } }
+  throw Error('Döviz verisi alınamadı (' + (last?.message || 'bilinmiyor') + ')');
+}
+window.jarvisFx = fxLatest;
+// HİSSE/HABER KÖPRÜSÜ: Beyhan'ın kendi Google Apps Script web uygulaması (ücretsiz, anahtarlı, yalnız GET)
+const bridgeUrl = () => String(store.get('set.bridgeUrl', '') || '').trim();
+window.jarvisBridge = {
+  on: () => /^https:\/\/script\.google(usercontent)?\.com\/.+\/exec$/.test(bridgeUrl()),
+  key: () => { let k = store.get('bridgeKey', ''); if (!k) { k = Array.from(crypto.getRandomValues(new Uint8Array(12)), x => x.toString(16).padStart(2, '0')).join(''); store.set('bridgeKey', k); } return k; },
+  wrap: u => `${bridgeUrl()}?k=${encodeURIComponent(window.jarvisBridge.key())}&url=${encodeURIComponent(u)}`
+};
 async function fxRates(base = 'USD') {
   const b = String(base || 'USD').toUpperCase().slice(0, 3);
-  const r = await withTimeout(fetch(`https://api.frankfurter.app/latest?from=${b}&to=TRY,USD,EUR,GBP`), 10000, 'Döviz zaman aşımı');
-  if (!r.ok) throw Error('Döviz verisi alınamadı');
-  const d = await r.json().catch(() => null); if (!d?.rates || !Object.keys(d.rates).length) throw Error('Döviz verisi alınamadı (kur servisi geçici olarak yanıt vermiyor olabilir)');
-  return `${d.date} (ECB) 1 ${b} = ` + Object.entries(d.rates).map(([k, v]) => `${v} ${k}`).join(', ');
+  const d = await fxLatest(b, ['TRY', 'USD', 'EUR', 'GBP']);
+  return `${d.date} (${d.src}) 1 ${b} = ` + Object.entries(d.rates).map(([k, v]) => `${v} ${k}`).join(', ');
 }
 async function readPage(url) {
   if (!/^https?:\/\//.test(url)) throw Error('Geçerli bir adres değil');

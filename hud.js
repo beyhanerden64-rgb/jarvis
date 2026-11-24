@@ -218,7 +218,7 @@
   const tk = { wx: '', btc: '', fx: '', quake: '' };
   async function tickerData() {
     try { const r = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22%5D'); const d = await r.json(); tk.btc = d.map(x => `${x.symbol.replace('USDT', '')} ${Number(x.lastPrice).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}$ ${Number(x.priceChangePercent) >= 0 ? '▲' : '▼'}${Math.abs(Number(x.priceChangePercent)).toFixed(1)}%`).join('  ·  '); } catch {}
-    try { const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY'); const d = await r.json(); const e = await (await fetch('https://api.frankfurter.app/latest?from=EUR&to=TRY')).json(); tk.fx = `USD/TRY ${d.rates.TRY.toFixed(2)}  ·  EUR/TRY ${e.rates.TRY.toFixed(2)}`; } catch {}
+    try { const d = (await window.jarvisFx('USD', ['TRY', 'EUR'])).rates; tk.fx = `USD/TRY ${d.TRY.toFixed(2)}  ·  EUR/TRY ${(d.TRY / d.EUR).toFixed(2)}`; } catch {}
     try { tk.quake = await lastQuake(); } catch {}
     renderTicker();
   }
@@ -384,5 +384,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v22.1.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v22.2.0`;
 })();

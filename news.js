@@ -85,7 +85,8 @@
     ['doğrudan', u => u],
     ['rss2json', u => 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u)],
     ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)],
-    ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)]
+    ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)],
+    ['köprü', u => window.jarvisBridge.wrap(u)]
   ];
   const gateRank = () => { const ok = store.get('newsGate', {}); return [...GATES.keys()].sort((a, b) => (ok[GATES[b][0]] || 0) - (ok[GATES[a][0]] || 0)); };
   const markGate = (i, good) => { const ok = store.get('newsGate', {}); const k = GATES[i][0]; ok[k] = Math.max(-5, Math.min(20, (ok[k] || 0) + (good ? 1 : -1))); store.set('newsGate', ok); };
@@ -107,9 +108,11 @@
   async function rawFeed(url, name) {
     if (typeof pcLocal !== 'undefined' && pcLocal) { try { const it = parseFeed((await pcCall('web_al', [url], false)).text, name); if (it.length) return it; } catch {} }
     const failed = [];
-    for (const i of gateRank()) {
+    // kendi köprüsü kuruluysa en güvenilir yol odur: önce o
+    const order = gateRank().filter(i => GATES[i][0] !== 'köprü' || window.jarvisBridge?.on()).sort((a, b) => (GATES[b][0] === 'köprü') - (GATES[a][0] === 'köprü'));
+    for (const i of order) {
       try {
-        const r = await withTimeout(fetch(GATES[i][1](url)), i === 0 ? 5000 : 9000, 'zaman aşımı');
+        const r = await withTimeout(fetch(GATES[i][1](url)), i === 0 ? 5000 : 12000, 'zaman aşımı');
         if (!r.ok) throw Error('HTTP ' + r.status);
         const it = parseFeed(await r.text(), name);
         if (!it.length) throw Error('boş');
@@ -298,5 +301,5 @@
   // ana ekrandaki "Haberler" kısayolu artık canlı akışı açar
   try { if (typeof SKILLS !== 'undefined' && SKILLS.news) SKILLS.news.ask = 'gündem'; } catch {}
   window.jarvisTickerExtra = (prev => () => { const b = store.get('newsBreaking', null)?.items?.[0]; return [...(prev?.() || []), b ? (b.breaking ? '🔴 ' : '📰 ') + short(b.tr || b.title, 90) : '']; })(window.jarvisTickerExtra);
-  window.jarvisNews = { CATS, fetchCat, breaking, brief, showCat, quakes, outbreaks, cluster, translate, fmt, keyOf };
+  window.jarvisNews = { CATS, rawFeed, fetchCat, breaking, brief, showCat, quakes, outbreaks, cluster, translate, fmt, keyOf };
 })();

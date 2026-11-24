@@ -31,8 +31,8 @@
 
   /* ---------- prob araçları ---------- */
   const tFetch = (url, o = {}, ms = 10000) => withTimeout(fetch(url, o), ms, 'zaman aşımı');
-  const jOk = (url, test, o) => async () => { const r = await tFetch(url, o); if (!r.ok) throw Error('HTTP ' + r.status); const j = await r.json(); if (!test(j)) throw Error('beklenmeyen yanıt'); };
-  const tOk = (url, test) => async () => { const r = await tFetch(url); if (!r.ok) throw Error('HTTP ' + r.status); const t = await r.text(); if (!test(t)) throw Error('beklenmeyen yanıt'); };
+  const jOk = (url, test, o, ms) => async () => { const r = await tFetch(url, o, ms); if (!r.ok) throw Error('HTTP ' + r.status); const j = await r.json(); if (!test(j)) throw Error('beklenmeyen yanıt'); };
+  const tOk = (url, test, ms) => async () => { const r = await tFetch(url, {}, ms); if (!r.ok) throw Error('HTTP ' + r.status); const t = await r.text(); if (!test(t)) throw Error('beklenmeyen yanıt'); };
   const YURL = 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d';
   const RSS = 'https://feeds.bbci.co.uk/turkce/rss.xml';
   const YGATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)], ['corsproxy', u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)]];
@@ -53,17 +53,20 @@
     ['kripto', 'Binance vadeli (fonlama)', jOk('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT', j => 'lastFundingRate' in j)],
     ['kripto', 'Korku-Açgözlülük endeksi', jOk('https://api.alternative.me/fng/?limit=1', j => !!j.data?.[0]?.value)],
     ['kripto', 'CoinGecko', jOk('https://api.coingecko.com/api/v3/global', j => !!j.data)],
-    ['doviz', 'Döviz kuru (Frankfurter)', jOk('https://api.frankfurter.app/latest?from=USD&to=TRY', j => j.rates?.TRY > 0)],
+    ['doviz', 'Döviz kuru (Frankfurter/ECB)', jOk('https://api.frankfurter.dev/v1/latest?base=USD&symbols=TRY', j => j.rates?.TRY > 0)],
+    ['doviz', 'Döviz kuru (ExchangeRate-API)', jOk('https://open.er-api.com/v6/latest/USD', j => j.rates?.TRY > 0)],
     ['altin', 'Kapalıçarşı fiyatı (Truncgil)', jOk('https://finans.truncgil.com/v4/today.json', j => !!j && typeof j === 'object')],
+    ['hisse', 'Hisse · kendi Google köprün', async () => { if (!window.jarvisBridge?.on()) throw Error('kurulmadı — PİYASA → Hisse köprüsü'); await jOk(window.jarvisBridge.wrap(YURL.replace('AAPL', 'THYAO.IS')), yOk, undefined, 20000)(); }, 0, 'köprü'],
     ...YGATES.map(([n, g]) => ['hisse', 'Yahoo hisse · ' + n, jOk(g(YURL), yOk), 0, n]),
     ['haber', 'Haber geçidi · rss2json', jOk('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(RSS), j => Array.isArray(j.items) && j.items.length > 0), 0, 'rss2json'],
-    ['haber', 'Haber geçidi · allorigins', tOk('https://api.allorigins.win/raw?url=' + encodeURIComponent(RSS), t => /<item|<entry/.test(t)), 0, 'allorigins'],
-    ['haber', 'Haber geçidi · codetabs', tOk('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RSS), t => /<item|<entry/.test(t)), 0, 'codetabs'],
-    ['haber', 'GDELT dünya haberleri', jOk('https://api.gdeltproject.org/api/v2/doc/doc?query=economy&mode=artlist&format=json&maxrecords=1', j => Array.isArray(j.articles))],
+    ['haber', 'Haber geçidi · allorigins', tOk('https://api.allorigins.win/raw?url=' + encodeURIComponent(RSS), t => /<item|<entry/.test(t), 15000), 0, 'allorigins'],
+    ['haber', 'Haber geçidi · codetabs', tOk('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RSS), t => /<item|<entry/.test(t), 15000), 0, 'codetabs'],
+    ['haber', 'GDELT dünya haberleri', jOk('https://api.gdeltproject.org/api/v2/doc/doc?query=economy&mode=artlist&format=json&maxrecords=1', j => Array.isArray(j.articles), undefined, 20000)],
     ['afet', 'Deprem (USGS)', jOk('https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&limit=1', j => Array.isArray(j.features))],
     ['hava', 'Hava (Open-Meteo)', jOk('https://api.open-meteo.com/v1/forecast?latitude=37.33&longitude=42.19&current=temperature_2m', j => j.current?.temperature_2m != null)],
     ['gorsel', 'Görsel üretimi (Pollinations)', imgOk('https://image.pollinations.ai/prompt/blue%20circle?width=64&height=64&nologo=true&seed=7')],
-    ['arastirma', 'Tıbbi literatür (Europe PMC)', jOk('https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=physiotherapy&format=json&pageSize=1', j => j.hitCount >= 0)],
+    ['arastirma', 'Tıbbi literatür (Europe PMC)', jOk('https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=physiotherapy&format=json&pageSize=1', j => j.hitCount >= 0, undefined, 20000)],
+    ['arastirma', 'PubMed (NCBI)', jOk('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=physiotherapy&retmax=1&retmode=json', j => !!j.esearchresult, undefined, 15000)],
     ['yz', 'Gemini anahtarı', async () => { const k = keyOf(); if (!k) throw Error('anahtar girilmemiş'); const r = await tFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': k } }); if (r.status === 400 || r.status === 403) throw Error('anahtar geçersiz/izinsiz (HTTP ' + r.status + ')'); if (r.status === 429) throw Error('kota dolu (TSİ 11:00 yenilenir)'); if (!r.ok) throw Error('HTTP ' + r.status); }, 1]
   ];
   const CAT = { kripto: 'Kripto', doviz: 'Döviz', altin: 'Altın', hisse: 'Hisse', haber: 'Haber', afet: 'Afet', hava: 'Hava', gorsel: 'Görsel', arastirma: 'Araştırma', yz: 'Yapay zekâ' };
@@ -87,7 +90,8 @@
     const bad = [], healed = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i); if (!/^jarvisapp\./.test(k)) continue;
-      try { JSON.parse(localStorage.getItem(k)); } catch { bad.push(k); }
+      const v = localStorage.getItem(k) || ''; if (!/^\s*[[{"]/.test(v)) continue; // düz metin kayıtlar (ör. model adı) JSON değildir — bozuk sayılmaz
+      try { JSON.parse(v); } catch { bad.push(k); }
     }
     for (const k of bad) {
       if (CACHE.test(k)) { try { const q = JSON.parse(localStorage.getItem('jarvisapp.grdQuar') || '{}'); q[k] = String(localStorage.getItem(k)).slice(0, 2000); localStorage.setItem('jarvisapp.grdQuar', JSON.stringify(q)); localStorage.removeItem(k); healed.push(k.replace('jarvisapp.', '')); } catch {} }
@@ -105,6 +109,7 @@
       await Promise.all(Array.from({ length: 5 }, async () => {
         while (i < PROBES.length) {
           const [cat, name, fn, crit, gate] = PROBES[i++]; const s = Date.now();
+          if (gate === 'köprü' && !window.jarvisBridge?.on()) continue; // kurulmamış köprü arıza sayılmaz
           try { await fn(); res.push({ cat, name, ok: true, ms: Date.now() - s, crit, gate }); } catch (e) { res.push({ cat, name, ok: false, ms: Date.now() - s, why: String(e.message || e).slice(0, 90), crit, gate }); }
         }
       }));
@@ -156,7 +161,8 @@
     if (R.fixes?.length) L.push(`\nOTOMATİK ONARIM:\n• ` + R.fixes.join('\n• '));
     const dead = R.res.filter(r => !r.ok);
     if (dead.length) L.push('\nNE YAPMALI: ' + [
-      dead.some(r => r.cat === 'hisse') && R.res.filter(r => r.cat === 'hisse').every(r => !r.ok) ? 'hisse verisi için bilgisayar yardımcısını aç (Bağlantı → Bilgisayar)' : '',
+      dead.some(r => r.cat === 'hisse') && R.res.filter(r => r.cat === 'hisse').every(r => !r.ok) ? 'hisse verisi için 5 dakikalık ücretsiz Google köprüsünü kur (PİYASA → Hisse köprüsü) ya da bilgisayar yardımcısını aç' : '',
+      R.res.filter(r => r.cat === 'doviz').every(r => !r.ok) ? 'döviz: Binance USDT/TRY kuru yedek olarak kullanılıyor' : '',
       dead.some(r => r.name === 'Gemini anahtarı') ? 'Gemini anahtarını kontrol et (Ayarlar)' : '',
       dead.some(r => r.cat === 'kripto' && r.crit) ? 'kripto verisi alınamıyor: internet/VPN ya da Binance erişimini kontrol et' : '',
       'kalan sorunlar geçici olabilir; bekçi 6 saatte bir yeniden dener ve çalışanı öne alır'
