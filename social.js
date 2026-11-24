@@ -113,7 +113,7 @@
 
   // ticker + skills
   const _rt = window.jarvisTickerExtra;
-  window.jarvisTickerExtra = () => [yt?.subs != null ? `YOUTUBE ${n(yt.subs)} ABONE · ${n(yt.videos[0]?.views)} SON VİDEO` : '', ig ? `INSTAGRAM ${n(ig.me.followers_count)} TAKİPÇİ` : '', ...(_rt?.() || [])].filter(Boolean);
+  window.jarvisTickerExtra = (prev => () => [...(prev?.() || []), ...[yt?.subs != null ? `YOUTUBE ${n(yt.subs)} ABONE · ${n(yt.videos[0]?.views)} SON VİDEO` : '', ig ? `INSTAGRAM ${n(ig.me.followers_count)} TAKİPÇİ` : '', ...(_rt?.() || [])].filter(Boolean)])(window.jarvisTickerExtra);
   SKILLS.yt = { label: 'YouTube', run: () => { window.jarvisUnlock(); typedTurn('YouTube kanalım nasıl gidiyor? youtube aracıyla bak, kısa özetle ve bir öneri ver.', opt('speakOn') === '1'); } };
   $('mobileSkills').append(el('button', { type: 'button', onclick: SKILLS.yt.run }, 'YouTube'));
   setTimeout(() => ytLoad().catch(() => {}), 5000);

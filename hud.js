@@ -286,6 +286,22 @@
     const f = (await r.json()).features?.[0]; if (!f) return '';
     return `SON DEPREM M${f.properties.mag.toFixed(1)} ${f.properties.place.replace(/^.*? of /, '')} ${new Date(f.properties.time).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...TZ })}`;
   }
+  const PLACES = { cizre: [37.3276, 42.1903], sirnak: [37.5164, 42.4611], mardin: [37.3129, 40.7339], diyarbakir: [37.9144, 40.2306], batman: [37.8812, 41.1351], siirt: [37.9333, 41.95], ankara: [39.9334, 32.8597], istanbul: [41.0082, 28.9784], izmir: [38.4237, 27.1428], silopi: [37.2486, 42.4714], nusaybin: [37.0778, 41.2153], midyat: [37.4192, 41.3394] };
+  function prayerTimes(date, lat, lng, tz) {
+    const rad = Math.PI / 180, fix = (a, b) => ((a % b) + b) % b;
+    const jd = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), 12) / 86400000 + 2440587.5 - lng / 360;
+    const d = jd - 2451545, g = fix(357.529 + 0.98560028 * d, 360), q = fix(280.459 + 0.98564736 * d, 360);
+    const L = fix(q + 1.915 * Math.sin(g * rad) + 0.02 * Math.sin(2 * g * rad), 360), e = 23.439 - 0.00000036 * d;
+    const RA = fix(Math.atan2(Math.cos(e * rad) * Math.sin(L * rad), Math.cos(L * rad)) / rad / 15, 24);
+    const eqt = q / 15 - RA, dec = Math.asin(Math.sin(e * rad) * Math.sin(L * rad));
+    const noon = fix(12 + tz - lng / 15 - eqt, 24), phi = lat * rad;
+    const T = ang => Math.acos((-Math.sin(ang * rad) - Math.sin(dec) * Math.sin(phi)) / (Math.cos(dec) * Math.cos(phi))) / rad / 15;
+    const asrAng = -Math.atan(1 / (1 + Math.tan(Math.abs(phi - dec)))) / rad; // Şafii/Diyanet: gölge = 1 boy
+    const hm = h => { const m = Math.round(fix(h, 24) * 60); return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+    // Diyanet temkinleri (dk): güneş −7, öğle +5, ikindi +4, akşam +7
+    return { imsak: hm(noon - T(18)), gunes: hm(noon - T(0.833) - 7 / 60), ogle: hm(noon + 5 / 60), ikindi: hm(noon + T(asrAng) + 4 / 60), aksam: hm(noon + T(0.833) + 7 / 60), yatsi: hm(noon + T(17)) };
+  }
+  window.jarvisPrayer = prayerTimes;
   Object.assign(TOOLS, {
     vikipedi: { d: 'vikipedi|konu — Türkçe Vikipedi özeti ve bağlantısı', run: async ([q]) => {
       const s = await (await withTimeout(fetch('https://tr.wikipedia.org/w/api.php?action=opensearch&format=json&origin=*&limit=1&search=' + encodeURIComponent(q)), 10000)).json();
@@ -302,9 +318,16 @@
     } },
     namaz: { d: 'namaz|şehir (varsayılan Cizre) — bugünün namaz vakitleri (Diyanet yöntemi)', run: async ([c]) => {
       const city = c || 'Cizre';
-      const r = await withTimeout(fetch(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=Turkey&method=13`), 10000);
-      const t = (await r.json()).data?.timings; if (!t) throw Error('Vakitler alınamadı');
-      return `${city}: İmsak ${t.Fajr}, Güneş ${t.Sunrise}, Öğle ${t.Dhuhr}, İkindi ${t.Asr}, Akşam ${t.Maghrib}, Yatsı ${t.Isha}`;
+      try {
+        const r = await withTimeout(fetch(`https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=Turkey&method=13`), 8000);
+        const t = (await r.json()).data?.timings; if (!t) throw Error('boş');
+        return `${city}: İmsak ${t.Fajr}, Güneş ${t.Sunrise}, Öğle ${t.Dhuhr}, İkindi ${t.Asr}, Akşam ${t.Maghrib}, Yatsı ${t.Isha}`;
+      } catch { // internet/servis yoksa: cihazda astronomik hesap (Diyanet açıları + temkin)
+        const k = fold(city); const P = PLACES[k] || null;
+        if (!P) throw Error('Vakit servisine ulaşılamadı ve “' + city + '” için çevrimdışı konum yok (Cizre, Şırnak, Mardin, Diyarbakır, Batman, Siirt, Ankara, İstanbul, İzmir).');
+        const t = prayerTimes(new Date(), P[0], P[1], 3);
+        return `${city} (çevrimdışı hesap, ±2 dk): İmsak ${t.imsak}, Güneş ${t.gunes}, Öğle ${t.ogle}, İkindi ${t.ikindi}, Akşam ${t.aksam}, Yatsı ${t.yatsi}`;
+      }
     } },
     birim: { d: 'birim|değer|kaynak birim|hedef birim — uzunluk, ağırlık, sıcaklık, hacim, hız, enerji (ör. birim|70|kg|lb)', run: ([v, a, b]) => convert(Number(String(v).replace(',', '.')), a, b) }
   });
@@ -361,5 +384,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v12.0.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v12.1.0`;
 })();

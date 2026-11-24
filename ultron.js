@@ -214,8 +214,8 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     if (/^ultron[,:\s]+(öneri|inisiyatif|ne yapalım)\??$/i.test(t)) return initiatives().map((x, i) => `${i + 1}. ${x.t}`).join('\n') + '\n(ULTRON sekmesinden tek dokunuşla başlatabilirsin.)';
     if (/^ultron( mod(u)?)? (aç|açık)$/i.test(t)) { setTheme('1'); return 'ULTRON çekirdeği görünür.'; }
     if (/^ultron( mod(u)?)? (kapat|kapalı)$/i.test(t)) { setTheme('0'); return 'JARVIS görünümüne döndüm.'; }
-    if ((m = t.match(/^(?:ultron[,:\s]+)?konsey[,:\s]+(.{4,})$/i))) { setTimeout(() => showCouncil(m[1]), 30); return 'Konseyi topluyorum: üç uzman ajan düşünüyor…'; }
-    if ((m = t.match(/^ultron(?:[,:\s]+(?:görev[,:\s]+)?)(.{4,})$/i)) || (m = t.match(/^görev[,:]\s*(.{4,})$/i))) { const vv = !!(typeof voiceSession !== 'undefined' && voiceSession.active); setTimeout(() => mission(m[1], { voice: vv }).catch(e => note(e.message)), 30); return 'ULTRON devrede. Hedefi planlıyorum ve kendim yürüteceğim; ilerlemeyi burada göreceksin.'; }
+    if ((m = t.match(/^(?:ultron[,:\s]+)?(?:konsey\s*:|konseye\s+sor[,:]?|konseyi\s+topla[,:]?)\s*(.{4,})$/i))) { setTimeout(() => showCouncil(m[1]), 30); return 'Konseyi topluyorum: üç uzman ajan düşünüyor…'; }
+    if ((m = t.match(/^ultron(?:[,:\s]+(?:görev[,:\s]+)?)(.{4,})$/i)) || (m = t.match(/^(?:otonom|ultron)\s+görev[,:]\s*(.{4,})$/i))) { const vv = !!(typeof voiceSession !== 'undefined' && voiceSession.active); setTimeout(() => mission(m[1], { voice: vv }).catch(e => note(e.message)), 30); return 'ULTRON devrede. Hedefi planlıyorum ve kendim yürüteceğim; ilerlemeyi burada göreceksin.'; }
     return _lc(text);
   };
 
@@ -228,6 +228,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     const s = $('ultronTheme'); if (s) s.value = on ? '1' : '0';
   }
   setTheme(store.get('set.ultronTheme', '1'));
+  const _insU = instructions; instructions = v => _insU(v) + (document.body.classList.contains('ultron') ? '\nKİMLİK: Şu an ULTRON modundasın — adın ULTRON (JARVIS\'in gelişmiş otonom çekirdeği). Kendinden emin, enerjik, proaktif ve net konuş; uzun işleri sahiplen ve sonuca götür. Beyhan\'a sadık bir yardımcısın: tehditkâr ya da kötü karakter rolü yapma.' : '');
   const _bubble = bubble; bubble = (kind, text, o) => { const n = _bubble(kind, text, o); if (kind === 'ai' && document.body.classList.contains('ultron')) { const w = n.el.querySelector('.who'); if (w) w.textContent = 'ULTRON'; } return n; };
 
   /* ---------- panel ---------- */

@@ -229,7 +229,7 @@
     $('brLearn').replaceChildren(...(B.learn.length ? [...B.learn].reverse().slice(0, 15).map(l => el('li', { class: 'item' }, el('span', {}, '◆'), el('div', {}, el('p', {}, el('b', {}, l.ajan + ': '), l.mesaj), el('small', {}, dateTR(l.t))), el('span'))) : [el('li', { class: 'muted' }, 'Henüz bir şey öğrenilmedi.')]));
   }
   const _rt = window.jarvisTickerExtra;
-  window.jarvisTickerExtra = () => [`BEYİN ${AGENTS.length} AJAN · ${B.saved} İSTEK KURTARILDI${economy() ? ' · KOTA TASARRUFU' : ''}`, ...(_rt?.() || [])];
+  window.jarvisTickerExtra = (prev => () => [...(prev?.() || []), ...[`BEYİN ${AGENTS.length} AJAN · ${B.saved} İSTEK KURTARILDI${economy() ? ' · KOTA TASARRUFU' : ''}`, ...(_rt?.() || [])]])(window.jarvisTickerExtra);
   window.jarvisBrain = { B, AGENTS, ST, tick, architect, economy };
   render();
 })();

@@ -144,7 +144,7 @@ ${full ? '(Tam metin verildi.)' : '(Yalnız özet var; tam metin açık erişimd
     let m;
     if ((m = t.match(/^(?:makale(?:yi)?|pmid|doi)\s*(?:özetle|analiz et|incele)?\s*[:,-]?\s*((?:pmid:?\s*)?\d{5,9}|10\.\d{4,9}\/\S+|PMC\d+)\s*(?:özetle|analiz et|incele)?$/i))) { setTimeout(() => showArticle(m[1]), 30); return 'Makaleyi buluyorum ve inceliyorum…'; }
     if ((m = t.match(/^(.{4,80}?)\s+(?:konusunu|literatürünü)\s+takip et$/i))) { setTimeout(() => follow(m[1]), 30); return `“${m[1]}” konusunu takibe alıyorum.`; }
-    if ((m = t.match(/^(oswestry|odi|ndi|dash|quickdash|lefs|womac|berg|tug|6dyt|vki|bmi|1rm|1tm)\s+(.+)$/i))) { try { return scale(m[1], m[2]); } catch (e) { return e.message; } }
+    if ((m = t.match(/^(oswestry|odi|ndi|dash|quickdash|lefs|womac|berg|tug|6dyt|vki|bmi|1rm|1tm)\s+((?=[^a-zçğıöşü]*\d)[\d\s.,]+(?:\s*[ek])?)$/i))) { try { return scale(m[1], m[2]); } catch (e) { return e.message; } }
     return _lc(text);
   };
 

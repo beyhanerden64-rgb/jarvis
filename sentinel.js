@@ -168,7 +168,7 @@
 
   // ticker + yapay zekâya bilgi
   const _rt = window.jarvisTickerExtra;
-  window.jarvisTickerExtra = () => [window.jarvisNobet ? `NÖBET ${window.jarvisNobet.ajan} AJAN · ${window.jarvisNobet.sorun ? window.jarvisNobet.sorun + ' SORUN' : 'HER ŞEY YOLUNDA'}` : '', ...(_rt?.() || [])].filter(Boolean);
+  window.jarvisTickerExtra = (prev => () => [...(prev?.() || []), ...[window.jarvisNobet ? `NÖBET ${window.jarvisNobet.ajan} AJAN · ${window.jarvisNobet.sorun ? window.jarvisNobet.sorun + ' SORUN' : 'HER ŞEY YOLUNDA'}` : '', ...(_rt?.() || [])].filter(Boolean)])(window.jarvisTickerExtra);
   const _tp = toolsPrompt;
   toolsPrompt = () => _tp() + `\nNÖBETÇİLER: Bilgisayar yardımcısında 7/24 çalışan ${pc?.ajan || 'yüzü aşkın'} izleme ajanı var (servisler, diskler, bellek, işlemci, ağ, Defender, güvenlik duvarı, hosts, başlangıç programları, hata kayıtları, çökmeler, disk sağlığı, saat, güncellemeler, yazıcı, pil, yedek, yardımcının kendisi). pc|nobet → durum ve açık olaylar (olay kimlikleriyle); pc|nobet_onay|olayKimliği|evet/hayir → bekleyen onarımı uygula/reddet (önce Beyhan’a sor); pc|nobet_tara → hepsini hemen yeniden denetle. “Bilgisayarım nasıl, sorun var mı” gibi sorularda önce pc|nobet kullan.${HEAL.length ? ' Uygulama içi son onarım: ' + HEAL.at(-1).ajan + ' — ' + HEAL.at(-1).mesaj : ''}`;
   setTimeout(() => { if (opt('pcToken') && !/iphone|ipad|android/i.test(navigator.userAgent)) loadPc(); }, 8000);

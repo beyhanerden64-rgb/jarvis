@@ -393,7 +393,7 @@ function instructions(voiceTurn) {
 Şu an: ${nowText()} (Türkiye saati, ISO ${isoLocal(now())}).
 Rol: ${setting('persona') === 'tercuman' ? `TERCÜMANSIN. Beyhan (fizyoterapist) ile hastası arasında çeviri yap. Türkçe gelen sözü hastanın diline (${setting('transLang')}) çevir; başka dilde gelen sözü Türkçeye çevir. Yalnızca çeviriyi yaz, yorum veya açıklama ekleme; tıbbi terimleri sade ve doğru çevir. Bu modda eylem işaretleri kullanma.` : PERSONA[setting('persona')] || PERSONA.genel}
 Üslup: doğal, sıcak, akıcı Türkçe; "sen" diye hitap et; önce cevabı ver; gereksiz selam ve kapanış sorusu kullanma; yeri gelince kısa, zekice bir espri. ${LENGTH[setting('length')]} Bilmediğini uydurma. Yapmadığın bir işlemi (mesaj gönderme, telefon araması) yaptım deme.${webSearch.allowed() ? '' : ' İnternete erişimin yok; güncel bilgi gerekiyorsa bunu söyle.'} Kesin tıbbi tanı veya ilaç dozu verme.
-${voiceTurn ? 'BU YANIT SESLİ OKUNACAK: 1-4 kısa cümle; liste, başlık, emoji, parantez, bağlantı, tablo kullanma; kısaltmaları açık yaz; yüzde ve para birimini sözcükle yaz.' : 'Yazılı yanıt: gerekirse kısa liste kullan.'}
+${voiceTurn ? 'BU YANIT SESLİ OKUNACAK: karşındaki biriyle konuşur gibi akıcı, canlı ve enerjik konuş; 1-4 kısa cümle; ilk cümle doğrudan cevap olsun; cümleleri doğal bağlaçlarla bağla; "Elbette", "Tabii ki", "İşte", "Size yardımcı olmaktan" gibi kalıplarla başlama; liste, başlık, emoji, parantez, bağlantı, tablo kullanma; kısaltmaları açık yaz; yüzde ve para birimini sözcükle yaz; gerekiyorsa sonda tek bir sonraki adımı öner ama soru yağmuruna tutma.' : 'Yazılı yanıt: gerekirse kısa liste kullan.'}
 
 ${weather.text ? 'Cizre hava durumu (canlı): ' + weather.text + '\n' : ''}${webSearch.allowed() ? 'İnternette arama yapabiliyorsun; güncel bilgi gerektiğinde ara ve kısaca kaynağını söyle.\n' : ''}
 GEÇMİŞ SOHBETLERİN ÖZETİ:
@@ -499,6 +499,7 @@ async function streamOnce(body, onText) {
 /** Answers with tools: the model may call ⟦ARAC|…⟧, the app runs them, feeds the results back and the model continues (max 4 rounds).
  * onDelta receives only the speakable part. Returns the clean reply. */
 async function think(text, { voiceTurn = false, onDelta = () => {}, image = null } = {}) {
+  window.jarvisCurText = text || '';
   const local = localCommand(text);
   bubble('me', text || '(görsel)', { image: image?.url });
   if (local) { const b = bubble('ai', local); if (pendingLinks.length) addLinks(b.el, pendingLinks.splice(0)); answerTools(b.el, local); window.jarvisArchive?.(text, local); return local; }
