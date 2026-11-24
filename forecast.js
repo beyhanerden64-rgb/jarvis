@@ -113,7 +113,7 @@ YALNIZ JSON:
   setTimeout(() => autoResolve().catch(() => {}), 25000);
   setInterval(() => { if (!document.hidden) autoResolve().catch(() => {}); }, 6 * 3600000);
 
-  const zoiRecord = TOOLS.tahmin?.run, zoiDesc = TOOLS.tahmin?.d || '';
+  const zoiRecord = TOOLS.tahmin?.run;
   if (zoiRecord) TOOLS.tahmin = { d: 'tahmin|konu|vade — “ne olur / tahmin et” isteklerinde olasılıklı senaryo tahmini üretir (senaryo_tahmin ile aynı). Elinde hazır olasılık varsa: tahmin|olay|olasılık 0-100|YYYY-MM-DD → ZOİ’ye kaydeder.', run: async (args, ctx) => { const [a, b, c] = args; if (/^\s*%?\d{1,3}\s*%?$/.test(String(b || '')) && /\d{4}-\d{2}-\d{2}/.test(String(c || ''))) return zoiRecord(args, ctx); const r = await forecast(a, horizon(b || a)); setTimeout(() => show(r), 30); return text(r); } };
   const zoi = (...a) => (zoiRecord ? zoiRecord(...a) : null);
   window.jarvisZoiRecord = zoiRecord;
@@ -172,7 +172,6 @@ YALNIZ JSON:
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '').replace(/[?.!]+$/, '');
-    let m;
     if (/^(tahmin isabetim|tahminlerim ne kadar tuttu|isabet oranı)$/i.test(t)) return TOOLS.tahmin_durum.run([]);
 
     return _lc(text0);

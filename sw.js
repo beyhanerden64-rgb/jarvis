@@ -1,7 +1,7 @@
 'use strict';
 // SATÜRN uygulama kabuğu: arayüz çevrimdışı da açılır; /api/ istekleri asla önbelleğe alınmaz.
-const CACHE = 'jarvis-app-21.2.0';
-const SHELL = ['./', 'app.js?v=21.2.0', 'plus.js?v=21.2.0', 'hud.js?v=21.2.0', 'features.js?v=21.2.0', 'control.js?v=21.2.0', 'voices.js?v=21.2.0', 'social.js?v=21.2.0', 'agent.js?v=21.2.0', 'figure.js?v=21.2.0', 'sentinel.js?v=21.2.0', 'brain.js?v=21.2.0', 'pro.js?v=21.2.0', 'ultra.js?v=21.2.0', 'klinik.js?v=21.2.0', 'live.js?v=21.2.0', 'research.js?v=21.2.0', 'research2.js?v=21.2.0', 'markets.js?v=21.2.0', 'news.js?v=21.2.0', 'imagegen.js?v=21.2.0', 'visual.js?v=21.2.0', 'research3.js?v=21.2.0', 'klinik2.js?v=21.2.0', 'forecast.js?v=21.2.0', 'expert.js?v=21.2.0', 'voice2.js?v=21.2.0', 'ultron.js?v=21.2.0', 'ultron-life.js?v=21.2.0', 'voice-engine.js?v=21.2.0', 'audiohub.js?v=21.2.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=21.2.0'];
+const CACHE = 'jarvis-app-22.0.0';
+const SHELL = ['./', 'app.js?v=22.0.0', 'plus.js?v=22.0.0', 'hud.js?v=22.0.0', 'features.js?v=22.0.0', 'control.js?v=22.0.0', 'voices.js?v=22.0.0', 'social.js?v=22.0.0', 'agent.js?v=22.0.0', 'figure.js?v=22.0.0', 'sentinel.js?v=22.0.0', 'brain.js?v=22.0.0', 'pro.js?v=22.0.0', 'ultra.js?v=22.0.0', 'klinik.js?v=22.0.0', 'live.js?v=22.0.0', 'research.js?v=22.0.0', 'research2.js?v=22.0.0', 'markets.js?v=22.0.0', 'news.js?v=22.0.0', 'imagegen.js?v=22.0.0', 'visual.js?v=22.0.0', 'research3.js?v=22.0.0', 'klinik2.js?v=22.0.0', 'forecast.js?v=22.0.0', 'picks.js?v=22.0.0', 'expert.js?v=22.0.0', 'voice2.js?v=22.0.0', 'ultron.js?v=22.0.0', 'ultron-life.js?v=22.0.0', 'voice-engine.js?v=22.0.0', 'audiohub.js?v=22.0.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=22.0.0'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
