@@ -337,6 +337,12 @@ body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
 @keyframes ushine { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { #ultronPulse i, .uprog.live i { animation: none; } }
 @media (max-width: 700px) { #ultronPulse { top: calc(58px + env(safe-area-inset-top)); left: 16px; transform: none; font-size: 9px; max-width: calc(100vw - 150px); } }
+/* GÜNDEM */
+.newschips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.newschips .chip { font-size: 12px; padding: 6px 10px; cursor: pointer; }
+#newsList .item.breaking p a { color: var(--bad); font-weight: 600; }
+#newsList a { color: inherit; text-decoration: none; } #newsList a:hover { text-decoration: underline; }
+#newsAlertIn { flex: 1; min-width: 0; }
 /* PİYASA */
 #mktBody { white-space: pre-wrap; font: 12px/1.5 var(--f-mono); margin: 8px 0; }
 .mktalarm input, .mktalarm select { flex: 1; min-width: 0; }
@@ -405,7 +411,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 13.0.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 14.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -583,7 +589,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=13.0.0"></script><script src="audiohub.js?v=13.0.0"></script>
-<script src="direct.js?v=13.0.0"></script><script src="app.js?v=13.0.0"></script><script src="plus.js?v=13.0.0"></script><script src="hud.js?v=13.0.0"></script><script src="features.js?v=13.0.0"></script><script src="control.js?v=13.0.0"></script><script src="voices.js?v=13.0.0"></script><script src="social.js?v=13.0.0"></script><script src="agent.js?v=13.0.0"></script><script src="figure.js?v=13.0.0"></script><script src="sentinel.js?v=13.0.0"></script><script src="brain.js?v=13.0.0"></script><script src="pro.js?v=13.0.0"></script><script src="ultra.js?v=13.0.0"></script><script src="klinik.js?v=13.0.0"></script><script src="live.js?v=13.0.0"></script><script src="research.js?v=13.0.0"></script><script src="research2.js?v=13.0.0"></script><script src="markets.js?v=13.0.0"></script><script src="ultron.js?v=13.0.0"></script><script src="ultron-life.js?v=13.0.0"></script>
+<script src="voice-engine.js?v=14.0.0"></script><script src="audiohub.js?v=14.0.0"></script>
+<script src="direct.js?v=14.0.0"></script><script src="app.js?v=14.0.0"></script><script src="plus.js?v=14.0.0"></script><script src="hud.js?v=14.0.0"></script><script src="features.js?v=14.0.0"></script><script src="control.js?v=14.0.0"></script><script src="voices.js?v=14.0.0"></script><script src="social.js?v=14.0.0"></script><script src="agent.js?v=14.0.0"></script><script src="figure.js?v=14.0.0"></script><script src="sentinel.js?v=14.0.0"></script><script src="brain.js?v=14.0.0"></script><script src="pro.js?v=14.0.0"></script><script src="ultra.js?v=14.0.0"></script><script src="klinik.js?v=14.0.0"></script><script src="live.js?v=14.0.0"></script><script src="research.js?v=14.0.0"></script><script src="research2.js?v=14.0.0"></script><script src="markets.js?v=14.0.0"></script><script src="news.js?v=14.0.0"></script><script src="ultron.js?v=14.0.0"></script><script src="ultron-life.js?v=14.0.0"></script>
 </body>
 </html>
