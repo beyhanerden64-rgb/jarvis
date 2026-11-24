@@ -13,7 +13,7 @@
   const UNIT = { km: 'kilometre', m: 'metre', cm: 'santimetre', mm: 'milimetre', kg: 'kilogram', g: 'gram', mg: 'miligram', ml: 'mililitre', lt: 'litre', dk: 'dakika', sn: 'saniye', sa: 'saat', kcal: 'kalori', bpm: 'atım', 'km/s': 'kilometre saat' };
   function speakable(s) {
     let t = String(s || '');
-    t = t.replace(/https?:\/\/\S+/g, 'bağlantı').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, '').replace(/[*_#`>|~•▸⟶→←✓✗◆◈■]+/g, ' ');
+    t = t.replace(/https?:\/\/\S+/g, 'bağlantı').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').replace(/\u{FE0F}/gu, '').replace(/[*_#`>|~•▸⟶→←✓✗◆◈■]+/g, ' ');
     t = t.replace(/%\s?(\d[\d.,]*)/g, 'yüzde $1').replace(/(\d[\d.,]*)\s?%/g, 'yüzde $1');
     t = t.replace(/(\d[\d.,]*)\s?(?:₺|TL)\b/g, '$1 lira').replace(/₺\s?(\d[\d.,]*)/g, '$1 lira').replace(/\$\s?(\d[\d.,]*)/g, '$1 dolar').replace(/(\d[\d.,]*)\s?\$/g, '$1 dolar').replace(/€\s?(\d[\d.,]*)/g, '$1 euro').replace(/(\d[\d.,]*)\s?€/g, '$1 euro');
     t = t.replace(/(\d)\s?°C\b/g, '$1 derece').replace(/(\d)\s?[x×]\s?(\d)/g, '$1 kere $2').replace(/(\d)\s?[–-]\s?(\d)/g, '$1 ile $2 arası ');

@@ -44,7 +44,7 @@
   const cleanCmd = c => c.replace(/^(?:bana\s+)?/i, '').replace(/\s+/g, ' ').trim();
   function describe(j) {
     const when = j.kind === 'once' ? dateTR(j.at) : j.kind === 'daily' ? `her gün ${j.hm}` : j.kind === 'weekly' ? `her ${DOWN[j.dow]} ${j.hm}` : `her ${j.every >= HOUR ? j.every / HOUR + ' saatte' : j.every / MIN + ' dakikada'} bir`;
-    return `${when} → ${j.cmd}`;
+    return `${when} → ${j.cmd.replace(/^hatırlat(?:ma)?\s+/i, '')}`;
   }
   function addJob(j) {
     j.id = uid('j'); j.created = Date.now(); j.tur = isReminder(j.cmd) ? 'hatirlat' : 'komut'; j.next = nextRun(j);
@@ -82,8 +82,8 @@
   async function runJob(j, late) {
     logOp('otomasyon', [j.cmd], 'başarılı', late ? 'geç çalıştı' : 'çalıştı');
     if (j.tur === 'hatirlat') {
-      const what = j.cmd.replace(/\s*(?:bana\s+)?(?:onu\s+)?hatırlat(?:ır mısın)?\s*$/i, '').replace(/(?:ı|i|u|ü|yı|yi|yu|yü|nı|ni)$/, '') || j.cmd;
-      bubble('alarm', '⏰ Hatırlatma: ' + j.cmd); beep(); setTimeout(beep, 700);
+      const what = j.cmd.replace(/^hatırlat(?:ma)?\s+/i, '').replace(/\s*(?:bana\s+)?(?:onu\s+)?hatırlat(?:ır mısın)?\s*$/i, '').replace(/(?:ı|i|u|ü|yı|yi|yu|yü|nı|ni)$/, '') || j.cmd;
+      bubble('alarm', '⏰ Hatırlatma: ' + j.cmd.replace(/^hatırlat(?:ma)?\s+/i, '')); beep(); setTimeout(beep, 700);
       if (setting('speakOn') === '1' && !answering && !quiet()) voiceSession.read('Beyhan, hatırlatma: ' + what);
       return;
     }

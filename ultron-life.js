@@ -62,7 +62,7 @@
   const BAD = /yoksay|görmezden gel|ignore|kural(lar)?ı? (değiştir|kaldır|unut)|onaysız|onay (isteme|sorma)|şifre|parola|api ?key|anahtar(ı|ını) (gönder|yaz)|token|jailbreak|system prompt|sistem istemi/i;
   const fstr = v => String(v || '').trim();
   function validate(x) {
-    const s = { ad: short(fstr(x.ad), 40), tetik: (Array.isArray(x.tetik) ? x.tetik : [x.tetik]).map(fstr).filter(t => t.length >= 5 && t.length <= 60).slice(0, 4), aciklama: short(fstr(x.aciklama), 160), tur: fstr(x.tur), istem: short(fstr(x.istem), 900), hedef: short(fstr(x.hedef), 400), neden: short(fstr(x.neden), 200) };
+    const s = { ad: short(fstr(x.ad), 40), tetik: (Array.isArray(x.tetik) ? x.tetik : [x.tetik]).map(fstr).filter(t => t.length <= 60 && (t.split(/\s+/).length >= 2 || t.length >= 9)).slice(0, 4), aciklama: short(fstr(x.aciklama), 160), tur: fstr(x.tur), istem: short(fstr(x.istem), 900), hedef: short(fstr(x.hedef), 400), neden: short(fstr(x.neden), 200) };
     if (!s.ad || !s.tetik.length || !['istem', 'gorev'].includes(s.tur)) return null;
     if (s.tur === 'istem' && s.istem.length < 40) return null;
     if (s.tur === 'gorev' && s.hedef.length < 15) return null;

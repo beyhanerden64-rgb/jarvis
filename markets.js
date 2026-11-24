@@ -85,11 +85,16 @@
     let j = {}; try { j = JSON.parse((t.match(/\{[\s\S]*\}/) || ['{}'])[0]); } catch {}
     return list.map(s => { const v = j[s] || j[s.replace('.IS', '')] || j[LABEL[s]]; return v && +v.fiyat ? { sym: s, name: LABEL[s] || s.replace('.IS', ''), price: +v.fiyat, ch: +v.degisim_yuzde, cur: v.para, src: 'web araması' + (v.saat ? ' · ' + v.saat : ''), web: true } : null; }).filter(Boolean);
   }
+  // 10 dk önbellek: web araması (yapay zekâ kotası) her panel açılışında tekrarlanmasın
+  const eqCache = new Map();
   async function equities(list) {
-    const got = await Promise.all(list.map(s => yahoo(s).catch(() => null)));
-    const miss = list.filter((s, i) => !got[i]);
+    const fresh = s => { const c = eqCache.get(s); return c && Date.now() - c.t < (c.v.web ? 15 : 3) * 60000 ? c.v : null; };
+    const need = list.filter(s => !fresh(s));
+    const got = await Promise.all(need.map(s => yahoo(s).catch(() => null)));
+    const miss = need.filter((s, i) => !got[i]);
     const extra = miss.length ? await viaSearch(miss).catch(() => []) : [];
-    return [...got.filter(Boolean), ...extra];
+    for (const v of [...got.filter(Boolean), ...extra]) eqCache.set(v.sym, { t: Date.now(), v });
+    return list.map(fresh).filter(Boolean);
   }
 
   /* ---------- tek fiyat: her şeyi çözen sembol çözücü ---------- */
@@ -201,6 +206,10 @@
     const fired = [];
     for (const a of alarms) {
       try {
+        // hisse/endeks web aramasıyla geliyorsa (bilgisayar yardımcısı yok) en çok saatte bir bak: yapay zekâ kotasını koru
+        const r = await resolve(a.sym);
+        if (r.kind === 'eq' && !(typeof pcLocal !== 'undefined' && pcLocal) && Date.now() - (a.lastWeb || 0) < 3600000) continue;
+        if (r.kind === 'eq') a.lastWeb = Date.now();
         const q = await quote(a.sym);
         if ((a.op === '>' && q.value > a.val) || (a.op === '<' && q.value < a.val)) fired.push({ a, q });
       } catch {}

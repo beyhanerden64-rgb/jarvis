@@ -11,7 +11,7 @@
   const CATS = {
     ekonomi: { ad: 'Ekonomi', q: '(economy OR inflation OR GDP OR recession OR unemployment OR enflasyon OR ekonomi OR büyüme OR işsizlik)' },
     finans: { ad: 'Para & finans', q: '(stocks OR "stock market" OR bonds OR "oil prices" OR gold OR bitcoin OR borsa OR piyasalar OR dolar OR altın)' },
-    merkez: { ad: 'Merkez bankaları', q: '("Federal Reserve" OR "European Central Bank" OR "Bank of England" OR "Bank of Japan" OR "People\'s Bank of China" OR "Central Bank of Russia" OR "Merkez Bankası" OR TCMB OR "interest rate decision" OR "faiz kararı")' },
+    merkez: { ad: 'Merkez bankaları', q: '("Federal Reserve" OR "European Central Bank" OR "Bank of England" OR "Bank of Japan" OR "Peoples Bank of China" OR "Central Bank of Russia" OR "Merkez Bankası" OR TCMB OR "interest rate decision" OR "faiz kararı")' },
     saglik: { ad: 'Sağlık', q: '("World Health Organization" OR outbreak OR epidemic OR pandemic OR vaccine OR "public health" OR salgın OR aşı OR "Sağlık Bakanlığı" OR hastalık)' },
     siyaset: { ad: 'Siyaset & dünya', q: '(president OR parliament OR election OR summit OR "prime minister" OR war OR ceasefire OR cumhurbaşkanı OR meclis OR seçim OR zirve)' },
     karar: { ad: 'Hükümet kararları', q: '("Resmi Gazete" OR kararname OR "executive order" OR sanctions OR yaptırım OR "new law" OR regulation OR tariff OR gümrük OR "government decision")' },
@@ -22,7 +22,6 @@
     rusya: { ad: 'Rusya', q: '(Russia OR Kremlin OR Moscow OR Putin OR Rusya OR Kremlin)' },
     turkiye: { ad: 'Türkiye', q: '(Türkiye OR Turkey OR Ankara OR Erdoğan OR TBMM OR Bakanlık)', extra: ' sourcecountry:turkey' }
   };
-  const GROUPS = { son: ['ekonomi', 'finans', 'merkez', 'saglik', 'siyaset', 'karar', 'afet', 'abd', 'avrupa', 'cin', 'rusya', 'turkiye'] };
   const DAY = 86400000;
   let feed = store.get('newsFeed', {}); // kategori → {t, items}
   const saveFeed = () => { try { store.set('newsFeed', feed); } catch { feed = {}; } };
@@ -104,7 +103,8 @@
   const SON_Q = '("Federal Reserve" OR "central bank" OR "interest rate" OR inflation OR economy OR recession OR outbreak OR "World Health Organization" OR president OR election OR sanctions OR earthquake OR flood OR Kremlin OR Beijing OR "European Union" OR "White House" OR NATO OR "Merkez Bankası" OR ekonomi OR enflasyon OR deprem OR seçim OR "son dakika")';
   const TERMS = Object.fromEntries(Object.entries(CATS).map(([k, c]) => [k, c.q.replace(/[()]/g, '').split(/\s+OR\s+/).map(x => fold(x.replace(/"/g, '').trim())).filter(x => x.length > 2)]));
   const catOf = title => { const f = fold(title); const c = Object.keys(TERMS).filter(k => TERMS[k].some(w => f.includes(w))); return c.length ? c.slice(0, 3) : ['siyaset']; };
-  async function breaking({ force = false, status = () => {} } = {}) {
+  async function breaking(opts = {}) {
+    const { force = false, status = () => {} } = opts;
     if (busy) return store.get('newsBreaking', null)?.items || null; busy = true;
     try {
       status('Dünya gündemi taranıyor…');
@@ -120,7 +120,7 @@
       const merged = [];
       for (const i of all.sort((a, b) => b.src - a.src)) { const t = toks(i.title); const m = merged.find(x => sim(toks(x.title), t) >= 0.5); if (m) { m.cats = [...new Set([...m.cats, ...i.cats])]; m.src = Math.max(m.src, i.src); m.breaking ||= i.breaking; } else merged.push({ ...i }); }
       const top = merged.sort((a, b) => (b.breaking - a.breaking) || (b.src - a.src) || (b.t - a.t)).slice(0, 25);
-      const tr = await translate(top);
+      const tr = opts.translate === false ? top.map(i => ({ ...i, tr: i.tr || trCache[i.title] || i.title })) : await translate(top);
       if (tr.length) store.set('newsBreaking', { t: Date.now(), items: tr.slice(0, 15) });
       alertCheck(tr);
       return tr;
@@ -163,12 +163,13 @@
 
   /* ---------- ilgi alarmları + canlı akış ---------- */
   const interests = () => store.get('newsAlerts', ['faiz kararı', 'deprem', 'Merkez Bankası', 'Cizre', 'Şırnak']);
-  function alertCheck(items) {
+  async function alertCheck(items) {
     const seen = new Set(store.get('newsSeen', []));
-    const hits = items.filter(i => !seen.has(i.url) && (i.breaking || interests().some(k => fold(i.tr || i.title).includes(fold(k)) || fold(i.title).includes(fold(k)))));
+    let hits = items.filter(i => !seen.has(i.url) && (i.breaking || interests().some(k => fold(i.tr || i.title).includes(fold(k)) || fold(i.title).includes(fold(k)))));
     for (const i of items) seen.add(i.url);
     store.set('newsSeen', [...seen].slice(-800));
     if (!hits.length || opt('newsLive') === '0') return;
+    hits = await translate(hits.slice(0, 5)).catch(() => hits);
     const n = bubble('ai', '🔴 ANLIK HABER\n' + fmt(hits, 5)); addLinks(n.el, hits.slice(0, 5).map(i => ({ url: i.url, title: short(i.tr || i.title, 60) })));
     if (opt('ntfyOn') === '1' && document.hidden) window.jarvisPushPhone?.(hits.slice(0, 3).map(i => i.tr || i.title).join(' · '), { title: 'JARVIS son dakika', tags: 'newspaper' }).catch(() => {});
   }
@@ -176,7 +177,7 @@
   async function liveTick() {
     if (document.hidden || opt('newsLive') === '0' || !navigator.onLine || window.jarvisUltra?.guest?.()) return;
     if (first) { first = false; store.set('newsSeen', [...new Set([...store.get('newsSeen', []), ...(store.get('newsBreaking', null)?.items || []).map(i => i.url)])]); }
-    await breaking().catch(() => {});
+    await breaking({ translate: false }).catch(() => {}); // arka plan: çeviri yok (kota); yalnız bildirilecekler çevrilir
     renderPanel();
   }
   setTimeout(() => liveTick(), 45000);
@@ -184,7 +185,7 @@
 
   /* ---------- araçlar + komutlar ---------- */
   const KEYMAP = [[/son dakika|gündem|haber(ler)?$|dünya gündemi|neler oluyor/i, 'son'], [/merkez bankas|fed\b|ecb|faiz kararı|tcmb/i, 'merkez'], [/ekonomi/i, 'ekonomi'], [/finans|para|borsa haber|piyasa haber/i, 'finans'], [/sağlık|salgın/i, 'saglik'], [/siyaset|politika|dünya/i, 'siyaset'], [/hükümet karar|resmi gazete|kararname|yaptırım/i, 'karar'], [/afet|deprem|sel\b|yangın|kasırga|tsunami|doğal/i, 'afet'], [/abd|amerika|washington|beyaz saray/i, 'abd'], [/avrupa|ab\b|brüksel/i, 'avrupa'], [/çin|pekin/i, 'cin'], [/rusya|kremlin|moskova/i, 'rusya'], [/türkiye/i, 'turkiye']];
-  const keyOf = s => (KEYMAP.find(([re]) => re.test(s)) || [, null])[1];
+  const keyOf = s => KEYMAP.find(([re]) => re.test(s))?.[1] || null;
   Object.assign(TOOLS, {
     haber: { d: 'haber|son veya ekonomi/finans/merkez/saglik/siyaset/karar/afet/abd/avrupa/cin/rusya/turkiye — anlık haber akışı (binlerce kaynak, kümelenmiş, kaynak sayılı, Türkçe)', run: async ([k]) => { const key = CATS[fold(k || '')] ? fold(k) : keyOf(k || '') || 'son'; const items = key === 'son' ? await breaking() : await translate(await fetchCat(key)); return fmt(items || [], 10) + '\n(Tarafsız aktar; kaynak sayısını belirt; doğrulanmamışı iddia olarak söyle.)'; } },
     gundem_brifing: { d: 'gundem_brifing|kategori (boş: tümü) — ekonomi/sağlık/siyaset başlıklarında tarafsız gündem özeti', run: async ([k]) => (await brief(CATS[fold(k || '')] ? fold(k) : 'son')) || 'brifing yok' }
@@ -224,7 +225,7 @@
   tb.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x === tb))); document.querySelectorAll('.pane').forEach(x => x.hidden = x.id !== 'p-news'); renderPanel(); };
   function renderPanel() {
     const b = store.get('newsBreaking', null);
-    list.replaceChildren(...(b?.items?.length ? b.items.map(i => el('li', { class: 'item' + (i.breaking ? ' breaking' : '') }, el('span', {}, i.breaking ? '🔴' : '•'), el('div', {}, el('p', {}, el('a', { href: i.url, target: '_blank', rel: 'noopener' }, i.tr || i.title)), el('small', {}, `${i.domain}${i.src > 1 ? ' +' + (i.src - 1) + ' kaynak' : ''} · ${ago(i.t)}`)))) : [el('li', { class: 'muted' }, 'Henüz akış yok — bir başlığa dokun.')]));
+    list.replaceChildren(...(b?.items?.length ? b.items.map(i => el('li', { class: 'item' + (i.breaking ? ' breaking' : '') }, el('span', {}, i.breaking ? '🔴' : '•'), el('div', {}, el('p', {}, el('a', { href: /^https?:\/\//.test(i.url || '') ? i.url : '#', target: '_blank', rel: 'noopener' }, i.tr || i.title)), el('small', {}, `${i.domain}${i.src > 1 ? ' +' + (i.src - 1) + ' kaynak' : ''} · ${ago(i.t)}`)))) : [el('li', { class: 'muted' }, 'Henüz akış yok — bir başlığa dokun.')]));
     aList.replaceChildren(...interests().map(k => el('li', { class: 'item' }, el('span', {}, '🔔'), el('div', {}, el('p', {}, k)), el('button', { type: 'button', class: 'btn ghost', 'aria-label': k + ' alarmını sil', onclick: () => { store.set('newsAlerts', interests().filter(x => x !== k)); renderPanel(); } }, '×'))));
   }
   renderPanel();
