@@ -112,7 +112,31 @@ $('install').onclick = async () => {
   else note('Tarayıcının adres çubuğundaki “Yükle” simgesini veya menüdeki “Uygulamayı yükle”yi kullan.');
 };
 $('iosClose').onclick = () => { $('iosSheet').hidden = true; };
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// Güncelleme bekçisi: telefon eski sürümde takılı kalmasın (iPhone ana ekran uygulamaları önbelleği uzun tutar).
+const APP_V = '__V__';
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => { document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }); }).catch(() => {});
+async function checkUpdate(manual = false) {
+  try {
+    const r = await fetch('sw.js?u=' + Date.now(), { cache: 'no-store' });
+    const v = ((await r.text()).match(/jarvis-app-([\d.]+)/) || [])[1];
+    if (!v || v === APP_V) { if (manual) note('SATÜRN güncel: ' + APP_V); return false; }
+    const busy = (typeof answering !== 'undefined' && answering) || window.jarvisLive?.active?.() || window.jarvisUltron?.running?.();
+    if (!manual && (busy || sessionStorage.getItem('jarvis.upd') === v)) { // konuşma sürerken yenileme yapma; düğme göster
+      const n = bubble('note', `Yeni sürüm hazır: ${v} (şu an ${APP_V}).`); n.el.append(el('button', { type: 'button', class: 'undo', onclick: () => hardUpdate(v) }, 'Şimdi güncelle'));
+      return true;
+    }
+    await hardUpdate(v); return true;
+  } catch { if (manual) note('Güncelleme denetlenemedi (internet?).'); return false; }
+}
+async function hardUpdate(v) {
+  sessionStorage.setItem('jarvis.upd', v);
+  try { for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister(); } catch {}
+  try { for (const k of await caches.keys()) await caches.delete(k); } catch {} // yalnız uygulama dosyaları; notlar/hastalar/ayarlar (localStorage) KORUNUR
+  location.replace(location.pathname + '?v=' + encodeURIComponent(v));
+}
+setTimeout(() => checkUpdate(false), 4000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(false); });
+window.jarvisCheckUpdate = checkUpdate;
 
 /* ================= phase & reactor ================= */
 const LABEL = { idle: 'HAZIR', starting: 'MİKROFON', listening: 'DİNLİYORUM', thinking: 'DÜŞÜNÜYORUM', speaking: 'KONUŞUYORUM', error: 'DİKKAT' };

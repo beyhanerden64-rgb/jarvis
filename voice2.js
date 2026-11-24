@@ -104,6 +104,7 @@
   localCommand = text => {
     const t = fold(text).replace(/[.!?,]/g, '').replace(/^(jarvis|ultron)\s+/, '').trim();
     if (/^(canli mod(u)? varsayilan yap|mikrofon(u)? canli yap|akici konus)$/.test(t)) { tm.value = 'canli'; tm.onchange(); return 'Tamam: mikrofon düğmesi artık doğrudan CANLI açıyor — akıcı, doğal sesle konuşacağız.'; }
+    if (/^(guncelle|uygulamayi guncelle|guncellemeleri? (kontrol et|denetle)|surum kac|hangi surumdesin)$/.test(t)) { setTimeout(() => window.jarvisCheckUpdate?.(true), 30); return 'Sürümü denetliyorum; yeni sürüm varsa hemen kurup yeniden açacağım (notların ve ayarların silinmez).'; }
     if (/^(klasik (moda gec|dinleme)|mikrofon(u)? klasik yap)$/.test(t)) { tm.value = 'klasik'; tm.onchange(); return 'Klasik dinleme moduna geçtim.'; }
     return _lc(text);
   };
