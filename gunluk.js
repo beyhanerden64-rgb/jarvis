@@ -154,7 +154,7 @@
     let eff = '';
     if (withKm.length >= 2) { const a = withKm.at(-2), b = withKm.at(-1), dist = b.km - a.km; if (dist > 0) eff = ` Son dolumdan beri ${Math.round(dist)} km: 100 km’de ${(b.litre / dist * 100).toFixed(1)} L, km başı ${(b.tutar / dist).toFixed(2)} TL.`; }
     const m = today().slice(0, 7), mt = F.filter(x => x.d.startsWith(m)).reduce((a, x) => a + x.tutar, 0);
-    try { if (opt('fuelToLedger') === '1') TOOLS.kasa?.run(['gider', String(t), 'Yakıt']); } catch {}
+    try { if (opt('fuelToLedger') === '1') TOOLS.kasa?.run(['gider', String(t).replace('.', ','), 'Yakıt']); } catch {}
     return `⛽ Kaydedildi: ${tl(t)}${l ? ' · ' + l + ' L (' + (t / l).toFixed(2) + ' TL/L)' : ''}.${eff} Bu ay yakıt: ${tl(mt)}.`;
   }
   function fuelReport() {

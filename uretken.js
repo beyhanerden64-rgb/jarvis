@@ -132,7 +132,7 @@
       const total = list.reduce((x, r) => x + due(r), 0); if (!(a > 0)) a = total;
       let left = a; for (const r of list.sort((x, y) => x.t - y.t)) { const pay = Math.min(left, due(r)); if (pay > 0) { r.odenen.push({ amt: pay, t: Date.now() }); left -= pay; } }
       saveRecs(R);
-      try { TOOLS.kasa?.run(['gelir', String(a - left), 'Tahsilat: ' + name]); } catch {}
+      try { TOOLS.kasa?.run(['gelir', String(Math.round((a - left) * 100) / 100).replace('.', ','), 'Tahsilat: ' + name]); /* kasa noktayı binlik sayar → ondalık virgülle */ } catch {}
       const rest = mine().reduce((x, r) => x + due(r), 0);
       return `✓ ${name} ${tl(a - left)} ödedi (kasaya gelir yazıldı). ${rest > 0 ? 'Kalan borcu: ' + tl(rest) + '.' : 'Borcu kapandı. ✔'}`;
     }
@@ -329,7 +329,7 @@
     if ((m = t.match(/^(?:(.{2,40}?) için )?(onam formu|kvkk(?: aydınlatma)?(?: metni)?|aydınlatma metni|bilgilendirme(?: formu)?|seans kuralları|randevu kartı)(?: hazırla| oluştur| yap)?$/i))) return doc(m[2], m[1] || '');
     if (/^(haftalık özet|haftanın özeti|bu hafta nasıl geçti)$/i.test(t)) return weekly();
     if (/^(pdf özetle|pdf oku|pdf özeti|belge özetle)$/i.test(t)) return pdfCard();
-    if (/^(neler yapabilirsin|üretken araçlar|yeni özellikler)$/i.test(t)) return '🚀 ÜRETKEN ARAÇLAR\n• “günümü planla” — randevular + işler saat bloklarına\n• “odak başlat” / “odak 50” — Pomodoro\n• “alışkanlık ekle 2 litre su” → “su içtim”\n• “Ali Kaya’nın 1500 TL borcu var” → “Ali Kaya 500 ödedi” → “alacaklar”\n• “yorum iste Ayşe Yılmaz” (önce “yorum linki: https://…”)\n• “qr: metin”, “wifi qr AğAdı Şifre”, “yorum qr”\n• “Ayşe Yılmaz için onam formu”, “KVKK aydınlatma metni”, “randevu kartı”\n• “haftalık özet” (pazar 20:00’de kendiliğinden)\n• “pdf özetle”\nPratik günlük araçlar için: “günlük araçlar”. Ayrıca: haftalık nicel seçim, tahmin, derin araştırma, görsel/tasarım, klinik araçları, sistem taraması…';
+    if (/^(neler yapabilirsin|üretken araçlar|yeni özellikler)$/i.test(t)) return '🚀 ÜRETKEN ARAÇLAR\n• “günümü planla” — randevular + işler saat bloklarına\n• “odak başlat” / “odak 50” — Pomodoro\n• “alışkanlık ekle 2 litre su” → “su içtim”\n• “Ali Kaya’nın 1500 TL borcu var” → “Ali Kaya 500 ödedi” → “alacaklar”\n• “yorum iste Ayşe Yılmaz” (önce “yorum linki: https://…”)\n• “qr: metin”, “wifi qr AğAdı Şifre”, “yorum qr”\n• “Ayşe Yılmaz için onam formu”, “KVKK aydınlatma metni”, “randevu kartı”\n• “haftalık özet” (pazar 20:00’de kendiliğinden)\n• “pdf özetle”\nPratik günlük araçlar için: “günlük araçlar” ve “pratik araçlar”. Ayrıca: haftalık nicel seçim, tahmin, derin araştırma, görsel/tasarım, klinik araçları, sistem taraması…';
     return _lc(text0);
   };
   window.jarvisUretken = { openDoc, lastDoc: () => lastDoc, plan, focusStart, focusStop, focusStatus, habit, streak, alacak, review, qr, qrPayload, doc, weekly, pdfSummary, pdfCard, F };
