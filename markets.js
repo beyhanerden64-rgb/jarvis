@@ -180,7 +180,7 @@
       const s = await scan(); let t = scanText(s);
       if (withAI) {
         setPhase('thinking', 'Piyasa yorumu hazırlıyorum…');
-        const c = await window.jarvisResearch.ask('Sen tarafsız bir piyasa analistisin. TÜRKÇE, en çok 120 kelime: genel risk iştahı, öne çıkan hareketler, dikkat edilmesi gerekenler. Al/sat tavsiyesi verme, fiyat tahmini yapma; teknik sinyallerin kesinlik taşımadığını hatırlat. Sonunda "Yatırım tavsiyesi değildir."', t, 'default').catch(() => '');
+        const c = await window.jarvisResearch.ask('Sen tarafsız bir piyasa analistisin. TÜRKÇE, en çok 120 kelime: genel risk iştahı, öne çıkan hareketler, dikkat edilmesi gerekenler. Kesin al/sat tavsiyesi verme; gelecek için olasılıklı bir eğilim cümlesi kurabilirsin; teknik sinyallerin kesinlik taşımadığını hatırlat. Sonunda "Yatırım tavsiyesi değildir."', t, 'default').catch(() => '');
         if (c) t += '\n\nYORUM: ' + c;
         setPhase('idle', 'Hazır.');
       }
@@ -235,7 +235,7 @@
   });
   WRITE_TOOLS.add?.('piyasa_alarm');
   const _tp = toolsPrompt;
-  toolsPrompt = () => _tp() + '\nPİYASA: fiyat sorularında fiyat, genel piyasa/“piyasalar nasıl” sorularında piyasa_tara, fiyat alarmı için piyasa_alarm kullan. Asla al/sat tavsiyesi verme, fiyat tahmini yapma; teknik göstergelerin kesinlik taşımadığını ve “yatırım tavsiyesi değildir” notunu ekle. Gerçek işlem (alım/satım/transfer) yapamazsın.';
+  toolsPrompt = () => _tp() + '\nPİYASA: fiyat sorularında fiyat, genel piyasa/“piyasalar nasıl” sorularında piyasa_tara, fiyat alarmı için piyasa_alarm kullan. Fiyat ya da yön tahmini istenirse senaryo_tahmin ile olasılıklı senaryolar ver; garanti verme, “kesin al/sat” deme; teknik göstergelerin kesinlik taşımadığını ve kararın Beyhan’a ait olduğunu belirt.';
   const known = x => { const f = fold(x.trim()); return /altin|ceyrek|ons\b|dolar|euro|avro|sterlin|frank|bitcoin|ethereum|borsa|bist|nasdaq|dax|petrol|brent|gumus|hisse|coin/.test(f) || !!INDEX[f] || !!NAMES[f] || /^(btc|eth|sol|xrp|bnb|doge|ada|avax|trx|ton|link|dot|ltc|usdt)$/.test(f) || /^[A-Z]{3,6}$/.test(x.trim()); };
   const _lc = localCommand;
   localCommand = text => {
