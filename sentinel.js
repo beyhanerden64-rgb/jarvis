@@ -94,6 +94,7 @@
   }
   setInterval(() => { if (phase !== lastPhase) { lastPhase = phase; since.t = Date.now(); } }, 1000);
   setInterval(tick, 20000); setTimeout(tick, 6000);
+  window.jarvisSentinel = { tick, since, state, heal: () => HEAL.slice(), force: () => { for (const a of AGENTS) state[a.id].son = 0; lastPhase = phase; return tick(); }, agents: AGENTS.map(a => a.ad) };
   window.addEventListener('online', () => { healLog('İnternet', 'Bağlantı geri geldi.', 'düzeldi'); });
 
   /* ---------- 2) bilgisayar nöbetçileri ---------- */

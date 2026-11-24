@@ -205,6 +205,9 @@
   vs.value = store.get('set.liveVoice', 'Puck') || 'Puck'; vs.onchange = () => store.set('set.liveVoice', vs.value);
   const f = el('div', { class: 'field' }, el('label', { for: 'liveVoice' }, 'Canlı mod sesi (Gemini Live · doğal, akıcı)'), vs);
   ($('voice')?.closest('.field') || $('p-settings')).after(f);
+  const lt = el('select', { id: 'liveTts' }); lt.append(new Option('Açık — doğal ses kotası dolunca canlı hatla seslendir (önerilen)', '1'), new Option('Kapalı', '0'));
+  lt.value = store.get('set.liveTts', '1'); lt.onchange = () => store.set('set.liveTts', lt.value);
+  f.after(el('div', { class: 'field' }, el('label', { for: 'liveTts' }, 'Kota dolunca kaliteli ses'), lt));
 
   const _lc = localCommand;
   localCommand = text => {
@@ -215,5 +218,56 @@
   };
   addEventListener('pagehide', () => stop());
   $('voiceDiag') && ($('voiceDiag').onclick = () => { window.jarvisUnlock?.(); $('drawer').classList.remove('open'); note('Ses ve CANLI testi yapılıyor (10-30 sn)…'); diag().catch(e => note(e.message)); });
+  /* ---------- CANLI HAT ÜZERİNDEN SESLENDİRME (Gemini TTS kotası dolunca) ----------
+   * Doğal ses (TTS) kotası ayrı, canlı ses modelinin kotası ayrıdır. TTS 429 verince metin, canlı ses modeline
+   * "kelimesi kelimesine oku" talimatıyla gönderilir; gelen 24 kHz ses WAV'a çevrilip normal oynatıcıda çalınır.
+   * Bağlantı açık tutulur (60 sn boşta kalırsa kapanır), istekler sıraya girer, 8 turda bir oturum tazelenir (sapma olmasın). */
+  const TTS_SYS = 'Sen bir seslendirme motorusun. Sana gönderilen her Türkçe metni KELİMESİ KELİMESİNE, eksiksiz ve aynen oku. Hiçbir şey ekleme, çıkarma, yorumlama; soru sorma, cevap verme, selam verme. Doğal, akıcı, canlı, sıcak ve kendinden emin bir tonla, uygun vurgu ve duraklamalarla konuş.';
+  let T = null, tq = Promise.resolve(), tFail = 0;
+  const tClose = () => { try { T?.ws.close(); } catch {} T = null; };
+  function tOpen() {
+    return new Promise((res, rej) => {
+      const model = store.get('liveModel', '') || MODELS[0];
+      let ws; try { ws = new WebSocket(WS + encodeURIComponent(getKey())); } catch (e) { return rej(e); }
+      const o = { ws, model, turns: 0, cur: null, idle: 0 };
+      const dog = setTimeout(() => { try { ws.close(); } catch {} rej(Error('canlı ses hattı cevap vermedi')); }, 8000);
+      ws.onopen = () => ws.send(JSON.stringify({ setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opt('liveVoice') || 'Puck' } } } }, systemInstruction: { parts: [{ text: TTS_SYS }] } } }));
+      ws.onmessage = async ev => {
+        let m = {}; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text()); } catch {}
+        if (m.setupComplete) { clearTimeout(dog); res(o); return; }
+        const c = o.cur; if (!c) return;
+        for (const p of m.serverContent?.modelTurn?.parts || []) if (p.inlineData?.data) { c.chunks.push(unb64(p.inlineData.data)); c.rate = Number((p.inlineData.mimeType || '').match(/rate=(\d+)/)?.[1]) || 24000; c.last = Date.now(); }
+        if (m.serverContent?.turnComplete || m.serverContent?.generationComplete) c.done();
+      };
+      ws.onclose = e => { clearTimeout(dog); if (T === o) T = null; o.cur?.fail(Error('canlı ses hattı kapandı (' + e.code + ')')); rej(Error('kapandı ' + e.code + ' ' + (e.reason || ''))); };
+    });
+  }
+  function liveTts(text, signal) {
+    const run = async () => {
+      if (!getKey()) throw Error('anahtar yok');
+      if (S) throw Error('CANLI sohbet açık'); // sohbet sırasında ikinci hat açma
+      if (!T || T.turns >= 8) { tClose(); T = await tOpen(); }
+      clearTimeout(T.idle);
+      const o = T;
+      const out = await new Promise((res, rej) => {
+        const c = { chunks: [], rate: 24000, last: Date.now() };
+        const dog = setInterval(() => { if (Date.now() - c.last > 8000) { clearInterval(dog); c.chunks.length ? c.done() : c.fail(Error('ses gelmedi')); } }, 500);
+        c.done = () => { clearInterval(dog); o.cur = null; res(c); };
+        c.fail = e => { clearInterval(dog); o.cur = null; rej(e); };
+        signal?.addEventListener?.('abort', () => c.fail(Object.assign(Error('durduruldu'), { name: 'AbortError' })));
+        o.cur = c;
+        o.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: 'Aynen oku: ' + String(text).slice(0, 1500) }] }], turnComplete: true } }));
+      });
+      o.turns++;
+      o.idle = setTimeout(() => { if (T === o) tClose(); }, 60000);
+      const n = out.chunks.reduce((a, b) => a + b.length, 0); if (n < 2000) throw Error('ses çok kısa');
+      const bytes = new Uint8Array(n); let k = 0; for (const b of out.chunks) { bytes.set(b, k); k += b.length; }
+      tFail = 0;
+      return { bytes, rate: out.rate, model: o.model };
+    };
+    const p = tq.then(run, run); tq = p.catch(() => { tFail++; });
+    return p;
+  }
+  window.jarvisLiveTts = (text, signal) => (opt('liveTts') === '0' || tFail >= 3 ? Promise.reject(Error('kapalı')) : liveTts(text, signal));
   window.jarvisLive = { diag, start, stop, active: () => !!S, state: () => S && { model: S.model, ready: S.ready } };
 })();

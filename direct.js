@@ -170,11 +170,17 @@
 
   // ---- kısa ifadelerin doğal sesi önbellekte tutulur (aynı “Tamam.”, “Hazırım.” için kota harcanmaz) ----
   const TTS_CACHE = 'jarvis-tts-v1';
+  let ttsBlockedUntil = 0;
   async function cachedTts(text, voice, signal) {
     const key = new Request('https://tts.jarvis/' + encodeURIComponent([voice || setv('ttsVoice') || 'Charon', setv('ttsStyle') || 'jarvis', text.trim()].join('|')));
     const short = text.trim().length <= 160;
     if (short && window.caches) { try { const c = await caches.open(TTS_CACHE); const hit = await c.match(key); if (hit) { const h = new Headers(hit.headers); h.set('X-Jarvis-Speech', (h.get('X-Jarvis-Speech') || 'Gemini') + ' · önbellek'); return new Response(await hit.blob(), { headers: h }); } } catch {} }
-    const r = await geminiTts(text, voice, signal);
+    // kota dolduysa 15 dk boyunca boşuna denemeyip doğrudan canlı hatta geç (gecikme olmasın)
+    let r = Date.now() < ttsBlockedUntil && window.jarvisLiveTts ? json(429, { error: 'kota', code: 'speech_quota_exceeded' }) : await geminiTts(text, voice, signal);
+    if (r.status === 429) ttsBlockedUntil = Math.max(ttsBlockedUntil, Date.now() + 900000);
+    if (!r.ok && window.jarvisLiveTts && !signal?.aborted) { // TTS kotası doldu/çalışmadı → canlı ses hattıyla seslendir (ayrı kota)
+      try { const o = await window.jarvisLiveTts(text, signal); r = new Response(wav(o.bytes, o.rate), { headers: { 'Content-Type': 'audio/wav', 'X-Jarvis-Speech': 'Gemini canli hat · ' + o.model.replace('gemini-', ''), 'X-Jarvis-Voice': setv('liveVoice') || 'Puck' } }); } catch {}
+    }
     if (short && r.ok && window.caches) { try { const c = await caches.open(TTS_CACHE); await c.put(key, r.clone()); const ks = await c.keys(); for (const k of ks.slice(0, Math.max(0, ks.length - 300))) await c.delete(k); } catch {} }
     return r;
   }
