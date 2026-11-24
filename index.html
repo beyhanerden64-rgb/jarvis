@@ -327,6 +327,16 @@ body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
 #ultronCur { white-space: pre-wrap; font: 12px/1.4 var(--f-mono); max-height: 220px; overflow: auto; margin: 6px 0; }
 #p-ultron textarea { width: 100%; box-sizing: border-box; }
 @media (prefers-reduced-motion: reduce) { body.ultron-busy .brand { animation: none; } }
+#ultronPulse { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid rgb(255 59 59 / .45); background: rgb(30 6 8 / .78); color: #ffd0c8; font: 600 10px var(--f-mono); letter-spacing: .12em; backdrop-filter: blur(6px); cursor: pointer; white-space: nowrap; max-width: calc(100vw - 32px); overflow: hidden; text-overflow: ellipsis; }
+#ultronPulse i { width: 8px; height: 8px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 10px #ff3b3b; animation: ubeat 1.6s ease-in-out infinite; flex: none; }
+#ultronPulse.busy i { animation-duration: .5s; background: #ffb547; box-shadow: 0 0 12px #ffb547; }
+@keyframes ubeat { 0%, 100% { transform: scale(.8); opacity: .7; } 15% { transform: scale(1.35); opacity: 1; } 30% { transform: scale(.9); } 45% { transform: scale(1.15); } }
+.uprog { height: 3px; margin: 4px 0 6px; background: rgb(255 59 59 / .15); border-radius: 2px; overflow: hidden; }
+.uprog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ff3b3b, #ffb547); transition: width .4s ease; }
+.uprog.live i { animation: ushine 1.2s linear infinite; background-size: 200% 100%; background-image: linear-gradient(90deg, #ff3b3b, #ffb547, #ff3b3b); }
+@keyframes ushine { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { #ultronPulse i, .uprog.live i { animation: none; } }
+@media (max-width: 700px) { #ultronPulse { top: calc(58px + env(safe-area-inset-top)); left: 16px; transform: none; font-size: 9px; max-width: calc(100vw - 150px); } }
 /* ARAŞTIRMA */
 .resfilters select{flex:1;min-width:0}
 #res2 h3{margin-top:14px}
@@ -391,7 +401,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 11.0.0</small></div>
+    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 12.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -569,7 +579,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=11.0.0"></script><script src="audiohub.js?v=11.0.0"></script>
-<script src="direct.js?v=11.0.0"></script><script src="app.js?v=11.0.0"></script><script src="plus.js?v=11.0.0"></script><script src="hud.js?v=11.0.0"></script><script src="features.js?v=11.0.0"></script><script src="control.js?v=11.0.0"></script><script src="voices.js?v=11.0.0"></script><script src="social.js?v=11.0.0"></script><script src="agent.js?v=11.0.0"></script><script src="figure.js?v=11.0.0"></script><script src="sentinel.js?v=11.0.0"></script><script src="brain.js?v=11.0.0"></script><script src="pro.js?v=11.0.0"></script><script src="ultra.js?v=11.0.0"></script><script src="klinik.js?v=11.0.0"></script><script src="live.js?v=11.0.0"></script><script src="research.js?v=11.0.0"></script><script src="research2.js?v=11.0.0"></script><script src="ultron.js?v=11.0.0"></script>
+<script src="voice-engine.js?v=12.0.0"></script><script src="audiohub.js?v=12.0.0"></script>
+<script src="direct.js?v=12.0.0"></script><script src="app.js?v=12.0.0"></script><script src="plus.js?v=12.0.0"></script><script src="hud.js?v=12.0.0"></script><script src="features.js?v=12.0.0"></script><script src="control.js?v=12.0.0"></script><script src="voices.js?v=12.0.0"></script><script src="social.js?v=12.0.0"></script><script src="agent.js?v=12.0.0"></script><script src="figure.js?v=12.0.0"></script><script src="sentinel.js?v=12.0.0"></script><script src="brain.js?v=12.0.0"></script><script src="pro.js?v=12.0.0"></script><script src="ultra.js?v=12.0.0"></script><script src="klinik.js?v=12.0.0"></script><script src="live.js?v=12.0.0"></script><script src="research.js?v=12.0.0"></script><script src="research2.js?v=12.0.0"></script><script src="ultron.js?v=12.0.0"></script><script src="ultron-life.js?v=12.0.0"></script>
 </body>
 </html>

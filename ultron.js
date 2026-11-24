@@ -35,6 +35,16 @@ ${Object.entries(TOOLS).filter(([k]) => !SELF.has(k)).map(([, v]) => '- ' + v.d)
 ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
   const lessons = () => items.filter(i => i.kind === 'lesson').slice(-12).map(l => '- ' + short(l.text, 200)).join('\n');
   const maxSteps = () => Number(opt('ultronMax')) || 12;
+  // akıcı sesli anlatım: görevi sesle başlattıysan ya da eller serbestse, ULTRON ne yaptığını kısa cümlelerle söyler
+  let voiced = false;
+  function voice(t) {
+    try {
+      if (opt('ultronVoice') === '0' || setting('speakOn') !== '1' || window.jarvisLive?.active?.()) return;
+      if (!voiced && !(typeof continuous !== 'undefined' && continuous)) return;
+      if (typeof answering !== 'undefined' && answering) return;
+      voiceSession.read(String(t).replace(/[•▸⟶✓✗#*_]/g, ' ').slice(0, 420));
+    } catch {}
+  }
 
   function view() {
     if (!M) return '';
@@ -52,6 +62,8 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
       card.el.append(bar); card.bar = bar;
     }
     card.body.textContent = view();
+    if (!card.prog) { card.prog = el('div', { class: 'uprog' }, el('i')); card.el.insertBefore(card.prog, card.body); }
+    card.prog.firstChild.style.width = Math.min(100, M.status === 'done' ? 100 : M.steps.length / M.max * 100) + '%'; card.prog.classList.toggle('live', M.status === 'run');
     const done = M.status !== 'run';
     card.bar.hidden = done;
     if (done && !card.final) { card.final = true; answerTools(card.el, M.result || view()); }
@@ -62,6 +74,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     if (goal.length < 4) throw Error('Hedefi yaz.');
     if (guest()) throw Error('Misafir modunda kapalı.');
     if (running) throw Error('Bir ULTRON görevi zaten çalışıyor (önce “ultron dur”).');
+    voiced = !!arguments[1]?.voice || (typeof phase === 'string' && /listening|speaking/.test(phase));
     M = { id: Date.now().toString(36), goal, max: Math.min(20, max), steps: [], plan: [], status: 'run', start: Date.now(), result: '', verified: 0 };
     card = null; save(); return loop();
   }
@@ -78,13 +91,14 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
         const past = M.steps.slice(-8).map((s, i) => `ADIM ${M.steps.length - Math.min(8, M.steps.length) + i + 1}: ${s.thought}\nARAÇLAR: ${(s.calls || []).join(' ; ') || '-'}\nSONUÇ: ${short(s.result || '-', 1500)}`).join('\n\n');
         let raw, j;
         for (let a = 0; a < 2 && !j; a++) {
-          raw = await ask(SYS(), `HEDEF: ${M.goal}\n\n${past ? 'ŞİMDİYE KADAR:\n' + past : 'Henüz adım yok. Önce kısa plan yap ve ilk adımı at.'}${M.fix ? '\n\nDOĞRULAYICI EKSİK BULDU: ' + M.fix : ''}\n\nSıradaki JSON:`, M.steps.length ? 'default' : 'complex');
+          raw = await ask(SYS(), `HEDEF: ${M.goal}\n\n${past ? 'ŞİMDİYE KADAR:\n' + past : 'Henüz adım yok. Önce kısa plan yap ve ilk adımı at.'}${M.fix ? '\n\nDOĞRULAYICI EKSİK BULDU: ' + M.fix : ''}\n\nSıradaki JSON:`, M.steps.length ? (opt('ultronDepth') === 'derin' ? 'default' : 'quick') : (opt('ultronDepth') === 'derin' ? 'complex' : 'default'));
           j = parseJson(raw);
         }
         if (!j) { M.steps.push({ thought: 'Yanıt çözümlenemedi', calls: [], result: 'BAŞARISIZ — biçim' }); continue; }
         if (Array.isArray(j.plan) && j.plan.length) M.plan = j.plan.slice(0, 8).map(x => short(String(x), 90));
         const calls = (Array.isArray(j.araclar) ? j.araclar : []).map(String).filter(c => c && !SELF.has(fold(c.split('|')[0]))).slice(0, 3);
         const step = { thought: short(String(j.dusunce || ''), 200), calls, result: '', t: Date.now() };
+        if (M.steps.length === 0 && M.plan.length) voice(`Görevi aldım. ${M.plan.length} adımlık plan: ${M.plan.slice(0, 3).join(', ')}.`);
         M.steps.push(step); delete M.fix; save(); draw();
         if (calls.length && !stopFlag) {
           const r = await window.jarvisRunTools(calls, { voiceTurn: false, say: t => note('ULTRON: ' + t) });
@@ -102,6 +116,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
             if (v?.ders && (M.corrected || M.steps.some(s => /BAŞARISIZ/.test(s.result || '')))) learn(v.ders);
           }
           M.status = 'done';
+          voice('Görev tamam. ' + M.result);
         }
       }
     } catch (e) {
@@ -200,7 +215,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     if (/^ultron( mod(u)?)? (aç|açık)$/i.test(t)) { setTheme('1'); return 'ULTRON çekirdeği görünür.'; }
     if (/^ultron( mod(u)?)? (kapat|kapalı)$/i.test(t)) { setTheme('0'); return 'JARVIS görünümüne döndüm.'; }
     if ((m = t.match(/^(?:ultron[,:\s]+)?konsey[,:\s]+(.{4,})$/i))) { setTimeout(() => showCouncil(m[1]), 30); return 'Konseyi topluyorum: üç uzman ajan düşünüyor…'; }
-    if ((m = t.match(/^ultron(?:[,:\s]+(?:görev[,:\s]+)?)(.{4,})$/i)) || (m = t.match(/^görev[,:]\s*(.{4,})$/i))) { setTimeout(() => mission(m[1]).catch(e => note(e.message)), 30); return 'ULTRON devrede. Hedefi planlıyorum ve kendim yürüteceğim; ilerlemeyi burada göreceksin.'; }
+    if ((m = t.match(/^ultron(?:[,:\s]+(?:görev[,:\s]+)?)(.{4,})$/i)) || (m = t.match(/^görev[,:]\s*(.{4,})$/i))) { const vv = !!(typeof voiceSession !== 'undefined' && voiceSession.active); setTimeout(() => mission(m[1], { voice: vv }).catch(e => note(e.message)), 30); return 'ULTRON devrede. Hedefi planlıyorum ve kendim yürüteceğim; ilerlemeyi burada göreceksin.'; }
     return _lc(text);
   };
 
@@ -213,6 +228,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     const s = $('ultronTheme'); if (s) s.value = on ? '1' : '0';
   }
   setTheme(store.get('set.ultronTheme', '1'));
+  const _bubble = bubble; bubble = (kind, text, o) => { const n = _bubble(kind, text, o); if (kind === 'ai' && document.body.classList.contains('ultron')) { const w = n.el.querySelector('.who'); if (w) w.textContent = 'ULTRON'; } return n; };
 
   /* ---------- panel ---------- */
   const tabs = document.querySelector('.tabs'), tb = el('button', { role: 'tab', id: 't-ultron', 'aria-selected': 'false', 'data-p': 'ultron' }, 'ULTRON');

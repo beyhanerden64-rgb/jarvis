@@ -11,6 +11,7 @@
   window.jarvisLevelNow = () => level;
   const getPhase = () => (typeof phase === 'string' ? phase : 'idle');
   const COLORS = { idle: [87, 211, 255], starting: [140, 225, 255], listening: [255, 181, 71], thinking: [160, 150, 255], speaking: [110, 240, 255], error: [255, 100, 100] };
+  const UCOL = { idle: [255, 52, 52], starting: [255, 110, 90], listening: [255, 181, 71], thinking: [255, 60, 150], speaking: [255, 96, 64], error: [255, 220, 80] };
   let col = [87, 211, 255], think = 0, speak = 0, listen = 0;
   const mix = (a, b, f) => a + (b - a) * f;
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -54,7 +55,8 @@
     if (ph === 'speaking') target = Math.max(target * 0.9, 0.3 + 0.5 * Math.abs(Math.sin(t * 11) * Math.sin(t * 4.3)));
     else if (ph !== 'listening') target *= 0.92;
     level = mix(level, target, 0.25);
-    col = col.map((v, i) => mix(v, (COLORS[ph] || COLORS.idle)[i], 0.05));
+    const PAL = document.body.classList.contains('ultron') ? UCOL : COLORS;
+    col = col.map((v, i) => mix(v, (PAL[ph] || PAL.idle)[i], 0.05));
     think = mix(think, ph === 'thinking' ? 1 : 0, 0.05);
     speak = mix(speak, ph === 'speaking' ? 1 : 0, 0.08);
     listen = mix(listen, ph === 'listening' || ph === 'starting' ? 1 : 0, 0.08);
