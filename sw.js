@@ -1,7 +1,7 @@
 'use strict';
 // JARVIS uygulama kabuğu: arayüz çevrimdışı da açılır; /api/ istekleri asla önbelleğe alınmaz.
-const CACHE = 'jarvis-app-12.1.1';
-const SHELL = ['./', 'app.js?v=12.1.1', 'plus.js?v=12.1.1', 'hud.js?v=12.1.1', 'features.js?v=12.1.1', 'control.js?v=12.1.1', 'voices.js?v=12.1.1', 'social.js?v=12.1.1', 'agent.js?v=12.1.1', 'figure.js?v=12.1.1', 'sentinel.js?v=12.1.1', 'brain.js?v=12.1.1', 'pro.js?v=12.1.1', 'ultra.js?v=12.1.1', 'klinik.js?v=12.1.1', 'live.js?v=12.1.1', 'research.js?v=12.1.1', 'research2.js?v=12.1.1', 'ultron.js?v=12.1.1', 'ultron-life.js?v=12.1.1', 'voice-engine.js?v=12.1.1', 'audiohub.js?v=12.1.1', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=12.1.1'];
+const CACHE = 'jarvis-app-13.0.0';
+const SHELL = ['./', 'app.js?v=13.0.0', 'plus.js?v=13.0.0', 'hud.js?v=13.0.0', 'features.js?v=13.0.0', 'control.js?v=13.0.0', 'voices.js?v=13.0.0', 'social.js?v=13.0.0', 'agent.js?v=13.0.0', 'figure.js?v=13.0.0', 'sentinel.js?v=13.0.0', 'brain.js?v=13.0.0', 'pro.js?v=13.0.0', 'ultra.js?v=13.0.0', 'klinik.js?v=13.0.0', 'live.js?v=13.0.0', 'research.js?v=13.0.0', 'research2.js?v=13.0.0', 'markets.js?v=13.0.0', 'ultron.js?v=13.0.0', 'ultron-life.js?v=13.0.0', 'voice-engine.js?v=13.0.0', 'audiohub.js?v=13.0.0', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'direct.js?v=13.0.0'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });

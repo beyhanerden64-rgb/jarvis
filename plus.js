@@ -388,7 +388,7 @@ const TOOL_GROUPS = [
   [/hasta|seans|randevu|program|egzersiz|kasa|gelir|gider|paket|takip|iyileş|gün sonu|gun sonu|envanter|stok|malzeme|klinik|tedavi plan|hatırlatma mesaj/i, /^(hasta_|seans_|randevular|eksik_program|program_|kasa|envanter|paket|takip_listesi|iyilesme|gun_sonu)/],
   [/araştır|makale|pubmed|kanıt|çalışma|ilaç|gen\b|genet|tedavi|tanı|teşhis|mr\b|röntgen|ölçek|oswestry|ndi\b|dash|lefs|womac|berg|tug\b|literatür|meta|kılavuz|pmid|doi/i, /^(pubmed|europepmc|klinik_calisma|ilac_bilgi|gen|ansiklopedi|derin_arastirma|makale_ozet|konu_takip|olcek|uzman)$/],
   [/bilgisayar|\bpc\b|ekran|dosya|klasör|windows|indir|program aç|word|excel|chrome|yazıcı|tıkla|masaüstü|kapat|yeniden başlat|ses(i)? (aç|kıs)/i, /^(pc|pc_ajan|ekran_tikla|mini)$/],
-  [/kripto|btc|bitcoin|eth|dolar|euro|kur\b|döviz|altın|portföy|borsa|backtest|coin/i, /^(kripto|kripto_risk|doviz|backtest|portfoy)$/],
+  [/kripto|btc|bitcoin|eth|dolar|euro|kur\b|döviz|altın|gümüş|ons|çeyrek|portföy|borsa|bist|hisse|nasdaq|dax|endeks|petrol|brent|emtia|piyasa|fiyat|backtest|coin|apple|tesla|nvidia|yatırım|alarm/i, /^(kripto|kripto_risk|doviz|backtest|portfoy|piyasa_tara|fiyat|piyasa_alarm)$/],
   [/ışık|lamba|klima|priz|ev\b|evde|kombi|perde|home assistant/i, /^(ev|ev_durum)$/],
   [/whatsapp|\bara\b|arama yap|mesaj|sms|instagram|youtube|telefon|iphone|alarm|fener|kestirme|paylaş|konum|neredeyim|titreş|abone|takipçi|sosyal|e-?posta|mail/i, /^(ac|kestirme|iphone|konum|konum_hatirlat|paylas|titresim|telefona_bildir|youtube|instagram|sosyal_rapor|eposta)$/],
   [/hatırlat|her gün|her hafta|yarın|sayaç|zamanlayıcı|takvim|toplantı|dakika sonra|saat \d|otomasyon|beceri|rutin/i, /^(otomasyon|zamanlayici|takvim|takvim_oku|telefona_bildir|beceri)$/],
