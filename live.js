@@ -104,7 +104,7 @@
   function connect(mi = 0, shape = 0) {
     const order = [...new Set([store.get('liveModel', ''), ...MODELS].filter(Boolean))];
     if (mi >= order.length) {
-      const a = S.attempts, last = a.at(-1), why = [...new Set(a.map(explain))];
+      const a = S.attempts, why = [...new Set(a.map(explain))];
       return stop('CANLI mod açılamadı: ' + why.join('; ') + '. ' + (why.some(w => /kota/.test(w)) ? 'Google’ın ücretsiz kotası yenilenince (TSİ 11:00) tekrar dene.' : why.some(w => /anahtar/.test(w)) ? 'Gemini anahtarının Live API iznini aistudio.google.com’da kontrol et.' : 'Ayarlar → “Ses ve CANLI testi” ile ayrıntı alabilirsin.'));
     }
     if (shape >= SHAPES) return connect(mi + 1, 0);

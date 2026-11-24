@@ -136,8 +136,14 @@
   // Yahoo (her borsa): bilgisayar yardımcısı → doğrudan → açık vekil geçitler (en başarılı olan öne alınır)
   const GATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)], ['corsproxy', u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)]];
   const bump = (i, d) => { const r = store.get('pkGate', {}); const k = GATES[i][0]; r[k] = Math.max(-5, Math.min(20, (r[k] || 0) + d)); store.set('pkGate', r); };
-  async function proxied(url, ms = 12000) {
+  // devre kesici: bir taramada Yahoo'ya hiçbir yoldan ulaşılamıyorsa kalan sembolleri dakikalarca bekletme
+  const yh = { ok: 0, dead: 0 };
+  async function proxied(url, ms = 9000) {
     if (typeof pcLocal !== 'undefined' && pcLocal) { try { return JSON.parse((await pcCall('web_al', [url], false)).text); } catch {} }
+    if (yh.dead >= 2 && !yh.ok) throw Error('hisse kaynağına şu an ulaşılamıyor');
+    try { const j = await proxiedRaw(url, ms); yh.ok++; return j; } catch (e) { yh.dead++; throw e; }
+  }
+  async function proxiedRaw(url, ms) {
     const r = store.get('pkGate', {}), fails = [];
     for (const i of [...GATES.keys()].sort((a, b) => (r[GATES[b][0]] || 0) - (r[GATES[a][0]] || 0))) {
       try { const res = await withTimeout(fetch(GATES[i][1](url)), i ? ms : 6000, 'zaman aşımı'); if (!res.ok) throw Error(); const j = await res.json(); bump(i, 1); fails.forEach(f => bump(f, -1)); return j; } catch { fails.push(i); }
@@ -181,6 +187,7 @@
     if (busy) return busy;
     if (window.jarvisUltra?.guest?.()) throw Error('Misafir modunda kapalı.');
     busy = (async () => {
+      yh.ok = 0; yh.dead = 0;
       const R = { t: Date.now(), wk: isoWeek(), kinds, thr: Math.max(50, Math.min(95, +(store.get('set.picksMin', '80')) || 80)) / 100 };
       setPhase('thinking', 'Kripto evrenini indiriyorum (hacmi en yüksek 45 varlık, 400 günlük mum)…');
       const jobs = {};

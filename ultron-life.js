@@ -55,7 +55,9 @@
     const f = await pulse(true);
     let doc = '';
     try { const d = await window.jarvisUltra?.doctor?.(); if (d?.text) doc = 'Sistem doktoru: ' + d.text; } catch {}
-    return (f.length ? 'Onardığım: ' + f.join('; ') + '.' : 'Nabız temiz, onarılacak bir şey yok.') + (Object.keys(faults).length ? ' Şu an arızalı işaretli araçlar: ' + Object.keys(faults).join(', ') + '.' : '') + (doc ? ' ' + doc : '');
+    let grd = '';
+    try { const G = window.jarvisGuardian; if (G) { const R = await G.scan({ silent: true }); grd = '\n\n' + G.report(R); } } catch {}
+    return (f.length ? 'Onardığım: ' + f.join('; ') + '.' : 'Nabız temiz, onarılacak bir şey yok.') + (Object.keys(faults).length ? ' Şu an arızalı işaretli araçlar: ' + Object.keys(faults).join(', ') + '.' : '') + (doc ? ' ' + doc : '') + grd;
   }
 
   /* ---------- B) evrim: kendine yeni beceri ekleme ---------- */
@@ -80,7 +82,7 @@
     try {
       const red = t => (window.jarvisRedact ? window.jarvisRedact(t) : t);
       const asks = (typeof archive !== 'undefined' ? archive : []).slice(-40).map(x => '- ' + short(red(x.q), 140)).join('\n');
-      const fails = (typeof opLog !== 'undefined' ? opLog : []).filter(o => o.status === 'başarısız').slice(-10).map(o => `- ${o.tool}: ${short(o.result, 100)}`).join('\n');
+      const fails = (typeof opLog !== 'undefined' ? opLog : []).filter(o => o.status === 'başarısız').slice(-10).map(o => `- ${o.tool}: ${short(o.result, 100)}`).join('\n') + ((store.get('grdLast', null)?.res || []).filter(r => !r.ok).map(r => `\n- veri kaynağı çalışmıyor: ${r.name} (${r.why})`).join('')) + (window.jarvisGuardian?.errors?.() || []).slice(0, 5).map(e => `\n- çalışma hatası (${e.mod}): ${short(e.msg, 90)}`).join('');
       const tools = Object.keys(TOOLS).join(', ');
       setPhase('thinking', 'ULTRON evrimleşiyor: yenilikleri araştırıyorum…');
       const news = await R().ask('Sen ULTRON\'un araştırma birimisin. İnterneti kullan. TÜRKÇE, kısa madde madde (en çok 8 madde), her maddede kaynak adı.',
@@ -179,5 +181,5 @@ KURALLAR: Mevcut becerileri tekrarlama. Güvenlik kurallarını, onay mekanizmas
   setInterval(paint, 15000); paint(); renderPanel();
   new MutationObserver(paint).observe(document.body, { attributes: true, attributeFilter: ['class'] });
   window.jarvisTickerExtra = (prev => () => [...(prev?.() || []), `YAŞAM ${L.repairs} ONARIM · EVRİM ${skills.length} BECERİ`])(window.jarvisTickerExtra);
-  window.jarvisUltronLife = { pulse, repairNow, evolve, skills: () => skills, faults: () => faults, match, L, validate };
+  window.jarvisUltronLife = { log: life, pulse, repairNow, evolve, skills: () => skills, faults: () => faults, match, L, validate };
 })();

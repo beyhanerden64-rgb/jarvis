@@ -487,7 +487,7 @@ function localCommand(text) {
   if ((m = t.match(/^(?:jarvis\s+)?(?:haritada|haritadan)\s+(.+?)\s+(?:göster|bul|aç)$/))) { pendingLinks.push({ url: 'https://www.google.com/maps/search/' + encodeURIComponent(m[1]), title: 'Harita: ' + m[1] }); return `${m[1]} için harita bağlantısı hazır.`; }
   const apps = { whatsapp: 'https://web.whatsapp.com/', instagram: 'https://www.instagram.com/', youtube: 'https://www.youtube.com/', gmail: 'https://mail.google.com/', takvim: 'https://calendar.google.com/', harita: 'https://www.google.com/maps' };
   if ((m = t.match(/^(?:jarvis\s+)?(whatsapp|instagram|youtube|gmail|takvim|harita)(?:'?[ıiyu]?)?\s*(?:aç|başlat)$/))) { pendingLinks.push({ url: apps[m[1]], title: m[1][0].toLocaleUpperCase('tr-TR') + m[1].slice(1) }); return `${m[1][0].toLocaleUpperCase('tr-TR') + m[1].slice(1)} bağlantısı hazır; açmak için dokun.`; }
-  if ((m = text.match(/^\s*(?:jarvis[,\s]+)?(?:sesli\s+)?not\s+al[:,\s]+(.{3,})$/i))) { const id = saveItem({ kind: 'note', title: m[1].slice(0, 50), text: m[1] }); window.jarvisLogOp?.('not', [m[1]], 'başarılı', 'Not kaydedildi'); return 'Not aldım: ' + m[1]; }
+  if ((m = text.match(/^\s*(?:jarvis[,\s]+)?(?:sesli\s+)?not\s+al[:,\s]+(.{3,})$/i))) { saveItem({ kind: 'note', title: m[1].slice(0, 50), text: m[1] }); window.jarvisLogOp?.('not', [m[1]], 'başarılı', 'Not kaydedildi'); return 'Not aldım: ' + m[1]; }
   const len = v => { $('length').value = v; store.set('set.length', v); };
   if (/^(?:jarvis\s+)?(?:kısa (?:cevap|yanıt) ver|kısa konuş|kısa tut)$/.test(t)) { len('kisa'); return 'Tamam, kısa yanıt vereceğim.'; }
   if (/^(?:jarvis\s+)?(?:detaylı|ayrıntılı|uzun) (?:anlat|cevap ver|yanıt ver)$/.test(t)) { len('detay'); return 'Tamam, ayrıntılı anlatacağım.'; }
