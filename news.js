@@ -39,7 +39,7 @@
   function cluster(arts) {
     const cl = [];
     for (const a of arts) {
-      const tk = toks(a.title); if (tk.size < 3) continue;
+      const tk = toks(a.title); if (tk.size < 2) continue;
       const c = cl.find(c => sim(c.tk, tk) >= 0.5);
       if (c) { if (!c.domains.includes(a.domain)) c.domains.push(a.domain); c.t = Math.max(c.t, a.t); c.n++; c.img ||= a.img; }
       else cl.push({ title: a.title, url: a.url, img: a.img || '', domain: a.domain, domains: [a.domain], lang: a.lang, t: a.t, n: 1, tk });
@@ -173,7 +173,7 @@
   const TERMS = Object.fromEntries(Object.entries(CATS).map(([k, c]) => [k, c.q.replace(/[()]/g, '').split(/\s+OR\s+/).map(x => fold(x.replace(/"/g, '').trim())).filter(x => x.length > 2)]));
   const catOf = title => { const f = fold(title); const c = Object.keys(TERMS).filter(k => TERMS[k].some(w => f.includes(w))); return c.length ? c.slice(0, 3) : ['siyaset']; };
   async function breaking(opts = {}) {
-    const { force = false, status = () => {} } = opts;
+    const { status = () => {} } = opts;
     if (busy) return store.get('newsBreaking', null)?.items || null; busy = true;
     try {
       status('Dünya gündemi taranıyor…');

@@ -417,7 +417,7 @@ class JarvisVoice {
       .replace(/^\s*\|.*\|\s*$/gm, ' ')
       .replace(/[*_~#]+/g, '')
       .replace(/\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*/gu, ' ')
-      .replace(/[\u{1F1E6}-\u{1F1FF}️‍]/gu, '')
+      .replace(/(?:[\u{1F1E6}-\u{1F1FF}]|\u{FE0F}|\u{200D})/gu, '')
       .replace(/(\d)\s*[x×]\s*(\d)/g, '$1 kere $2')
       .replace(/%\s*(\d+(?:[.,]\d+)?)/g, 'yüzde $1')
       .replace(/(\d+(?:[.,]\d+)?)\s*%/g, 'yüzde $1')

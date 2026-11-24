@@ -68,7 +68,7 @@
     { id: 'sw', ad: 'Çevrimdışı çalışma (servis çalışanı)', every: 600000, run: async () => {
       if (!('serviceWorker' in navigator)) return 'atla';
       const reg = await navigator.serviceWorker.getRegistration(); if (reg) return 'ok';
-      await navigator.serviceWorker.register('sw.js'); healLog('Çevrimdışı çalışma', 'Servis çalışanı yeniden kaydedildi.'); return 'onarıldı';
+      await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }); healLog('Çevrimdışı çalışma', 'Servis çalışanı yeniden kaydedildi.'); return 'onarıldı';
     } },
     { id: 'ag', ad: 'İnternet', run: () => (navigator.onLine ? 'ok' : 'sorun') },
     { id: 'ekran', ad: 'Ekran şişmesi', every: 120000, run: () => {

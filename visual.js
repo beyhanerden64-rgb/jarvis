@@ -10,6 +10,11 @@
  *    Güvenlik: tasarım yalnız resim olarak çizilir (içindeki hiçbir kod çalışmaz); dış bağlantı ve betikler ayıklanır. */
 (() => {
   const ask = (s, u, tier = 'default') => window.jarvisResearch.ask(s, u, tier);
+  async function askLong(system, user) { // tasarım SVG'si uzun: yüksek çıktı sınırı
+    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system, maxTokens: 24000, messages: [{ role: 'user', content: user }] }) });
+    if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch {} throw Error(m || 'Yapay zekâ yanıt vermedi (' + r.status + ')'); }
+    return (await r.text()).replace(/\u0000[^\n]*\n?/g, '').trim();
+  }
   const guest = () => !!window.jarvisUltra?.guest?.();
 
   /* ================= SAHNE ================= */
@@ -77,15 +82,16 @@
     return list.length;
   }
   // bilgi sorusu → konu
-  const PERSONAL = /\b(hasta|seans|kasa|randevu|görev|not al|hatırlat|sayaç|alarm|takvim|yedek|şifre|ayar|beceri|otomasyon|bilgisayar|telefon|whatsapp|mesaj|ara\b|fener|ışık|klima|ultron|konsey|tasarım|görsel oluştur|çiz)/i;
+  const PERSONAL = /\b(hasta|seans|kasa|randevu|görev|not al|hatırlat|sayaç|alarm|takvim|yedek|şifre|ayar|beceri|otomasyon|bilgisayar|telefon|whatsapp|mesaj|ara\b|fener|ışık|klima|ultron|konsey|tasarım|yüzünü|kendini|seni|beni|görsel oluştur|çiz)/i;
   function topicOf(text) {
     const t = String(text || '').trim().replace(/^\s*(?:hey\s+)?(?:s[aâ]t[uüıi]r[uüı]?n|jarvis)(?![\s,]*gezegen)\s*[,:!.]?\s+/iu, '');
-    if (t.length < 4 || t.length > 140 || PERSONAL.test(t)) return '';
+    if (t.length < 4 || t.length > 140 || PERSONAL.test(t) || /\b[\wçğıöşü]+(?:ım|im|um|üm|ımı|imi|umu|ümü|larım|lerim|larımı|lerimi)\b/i.test(t)) return ''; // “notlarımı / programımı göster” → kişisel
     if (!/(nedir|kimdir|neresi|nerede|nasıl bir|ne demek|hakkında|tarihçesi|göster|resmi|resmini|fotoğraf|görünüm|haritası|anlat|tanıt|bilgi ver|araştır|kim|ne zaman)/i.test(t)) return '';
     return t.replace(/[?!.]+$/g, '')
       .replace(/\b(bana|lütfen|biraz|kısaca|hakkında|ile ilgili|bilgi ver|anlat|tanıt|nedir|kimdir|neresi|nerede|nasıl bir yer|nasıl bir|ne demek|ne zaman|kim|göster|bul|araştır|tarihçesi|resmini|resmi|fotoğrafını|fotoğrafları|fotoğrafı|görselini|görselleri|görüntüsü|haritasını|haritası)\b/gi, ' ')
       .replace(/['’](n?[iıuü]n|n?[iıuü]|d[ae]|t[ae]|n?[ae])\b/gi, '').replace(/\s+/g, ' ').trim()
-      .replace(/(\S{4,}?)(n[ıiuü]n)$/u, '$1'); // “Eyfel kulesinin (resmi)” → “Eyfel kulesi”
+      .replace(/(\S{4,}?)(n[ıiuü]n)$/u, '$1') // “Eyfel kulesinin (resmi)” → “Eyfel kulesi”
+      .replace(/(\S{4,}?)(?:n[ıiuü]|y[ıiuü])$/u, (m0, w) => (/göster\W*$/i.test(t) ? w : m0)); // yalnız “… kulesini göster” → “kulesi”
   }
   const _think = think;
   think = async (text, o = {}) => {
@@ -117,7 +123,9 @@
   const formatOf = s => { const f = fold(s); return /hikaye|story|reels/.test(f) ? 'hikaye' : /afis|poster|brosur/.test(f) ? 'afis' : /infografi/.test(f) ? 'infografik' : /slayt|sunum/.test(f) ? 'slayt' : /sema|diyagram|akis|harita|surec|organizasyon/.test(f) ? 'sema' : /egzersiz kart|kart/.test(f) ? 'kart' : /logo/.test(f) ? 'logo' : /kapak|youtube|thumbnail/.test(f) ? 'kapak' : 'gonderi'; };
   const brand = () => ({ ad: opt('brandName') || 'FİZYOVİTA', alt: opt('brandSub') || 'Fizik Tedavi ve Rehabilitasyon Merkezi · Cizre', renk: opt('brandColors') || '#0e7c86, #0b2530, #f5a623, #ffffff', iletisim: opt('brandContact') || '' });
   function sanitize(raw) {
-    const m = String(raw || '').match(/<svg[\s\S]*<\/svg>/i); if (!m) throw Error('tasarım üretilemedi');
+    let body = String(raw || '');
+    if (/<svg/i.test(body) && !/<\/svg>/i.test(body)) body = body.replace(/<[^>]*$/, '') + '</svg>'; // kesik geldiyse kapat
+    const m = body.match(/<svg[\s\S]*<\/svg>/i); if (!m) throw Error('tasarım üretilemedi');
     const doc = new DOMParser().parseFromString(m[0], 'image/svg+xml');
     if (doc.querySelector('parsererror')) throw Error('tasarım bozuk geldi');
     const svg = doc.documentElement;
@@ -157,7 +165,7 @@ KESİN KURALLAR:
     setPhase('thinking', revise ? 'Tasarımı düzeltiyorum…' : `${fmt} tasarlıyorum…`);
     let raw;
     try {
-      raw = await ask(DESIGN_SYS(fmt, W, H, b), revise ? `MEVCUT TASARIM (SVG):\n${revise.svg.replace(/data:image\/[^"']+/g, '{{FOTO}}').slice(0, 30000)}\n\nİSTENEN DEĞİŞİKLİK: ${request}\n\nDeğişikliği uygulayıp TAM SVG'yi yeniden yaz.` : `İSTEK: ${request}`, 'complex');
+      raw = await askLong(DESIGN_SYS(fmt, W, H, b), revise ? `MEVCUT TASARIM (SVG):\n${revise.svg.replace(/data:image\/[^"']+/g, '{{FOTO}}').slice(0, 30000)}\n\nİSTENEN DEĞİŞİKLİK: ${request}\n\nDeğişikliği uygulayıp TAM SVG'yi yeniden yaz.` : `İSTEK: ${request}`);
     } catch (e) { setPhase('idle', 'Hazır.'); throw e; }
     let svg = sanitize(raw), photo = '';
     const fp = (String(raw).match(/<!--\s*FOTO:\s*([\s\S]*?)-->/) || [])[1]?.trim();
@@ -211,7 +219,7 @@ KESİN KURALLAR:
     const t = text.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '');
     let m;
     if ((m = t.match(/^(?:tasarımı|tasarımda)\s+(?:değiştir|düzelt|güncelle|revize et)\s*[:,-]?\s*(.{3,})$/i))) { if (!designs[0]) return 'Önce bir tasarım yapalım: “tasarım yap: …”'; setTimeout(() => runDesign(m[1], { revise: designs[0] }), 30); return '🎨 Tasarımı düzeltiyorum…'; }
-    if ((m = t.match(/^(?:tasarım|tasarla|tasarım yap|tasarla(?:r mısın)?)\s*[:,-]\s*(.{3,})$/i)) || (m = t.match(/^(.{4,}?)\s+(?:tasarla|tasarımı yap|tasarımını yap|infografiği yap|şemasını çiz|şeması çiz|diyagramını çiz|slaytı hazırla|sunumu hazırla)\.?$/i)) || (m = t.match(/^(?:(?:akış\s+)?şema|diyagram|infografik|afiş|slayt|egzersiz kartı)\s+(?:yap|çiz|hazırla|tasarla)\s*[:,-]?\s*(.{3,})$/i))) {
+    if ((m = t.match(/^(?:tasarım|tasarla|tasarım yap|tasarla(?:r mısın)?)\s*[:,-]\s*(.{3,})$/i)) || (m = t.match(/^(.{4,}?)\s+(?:tasarla|tasarımı yap|tasarımını yap|infografiği yap|şemasını çiz|şeması çiz|diyagramını çiz|slaytı hazırla|sunumu hazırla)\.?$/i)) || (m = t.match(/^(?:(?:akış\s+)?şema|diyagram|infografik|afiş|slayt|egzersiz kartı|logo)\s+(?:yap|çiz|hazırla|tasarla)\s*[:,-]?\s*(.{3,})$/i))) {
       setTimeout(() => runDesign(m[1] + (/(şema|diyagram|infografik|afiş|slayt|kart|logo|hikaye|hikâye|kapak)/i.test(t) && !/(şema|diyagram|infografik|afiş|slayt|kart|logo)/i.test(m[1]) ? ' (' + t.match(/(şema|diyagram|infografik|afiş|slayt|kart|logo|hikaye|hikâye|kapak)/i)[1] + ')' : '')), 30);
       return '🎨 Tasarlıyorum… (20-60 saniye) — bitince ana ekranda göreceksin.';
     }
@@ -219,6 +227,7 @@ KESİN KURALLAR:
       setTimeout(() => showSearch(m[1]), 30); return `“${m[1]}” görsellerini ana ekrana getiriyorum…`;
     }
     if (/^(sahneyi|ekranı)\s+(kapat|temizle)$/i.test(t)) { close(); return 'Sahneyi kapattım.'; }
+    if (/\sgöster\.?$/i.test(t)) { const tp = topicOf(t); if (tp && tp.length >= 3) { setTimeout(() => showSearch(tp), 30); return `“${tp}” görsellerini ana ekrana getiriyorum…`; } }
     return _lc(text);
   };
 

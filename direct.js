@@ -200,7 +200,7 @@
       parts: typeof m.content === 'string' ? [{ text: m.content }] : m.content.map(c => (c.type === 'image' || c.type === 'document' ? { inlineData: { mimeType: c.source.media_type, data: c.source.data } } : { text: c.text }))
     }));
     const tier = ['quick', 'default', 'complex'].includes(body.tier) ? body.tier : 'default';
-    const out = { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: MAX_TOKENS[tier] * 2 } };
+    const out = { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: Math.min(32000, Number(body.maxTokens) || MAX_TOKENS[tier] * 2) } }; // tasarım gibi uzun çıktılar daha fazla isteyebilir
     if (body.search) out.tools = [{ google_search: {} }];
     return out;
   }

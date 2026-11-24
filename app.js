@@ -113,13 +113,13 @@ $('install').onclick = async () => {
 };
 $('iosClose').onclick = () => { $('iosSheet').hidden = true; };
 // Güncelleme bekçisi: telefon eski sürümde takılı kalmasın (iPhone ana ekran uygulamaları önbelleği uzun tutar).
-const APP_V = '__V__';
+const APP_V = (document.querySelector('script[src*="app.js?v="]')?.getAttribute('src').match(/v=([\d.]+)/) || [])[1] || ''; // sayfanın yüklediği sürüm
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => { document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }); }).catch(() => {});
 async function checkUpdate(manual = false) {
   try {
     const r = await fetch('sw.js?u=' + Date.now(), { cache: 'no-store' });
     const v = ((await r.text()).match(/jarvis-app-([\d.]+)/) || [])[1];
-    if (!v || v === APP_V) { if (manual) note('SATÜRN güncel: ' + APP_V); return false; }
+    if (!APP_V || !v || v === APP_V) { if (manual) note('SATÜRN güncel: ' + APP_V); return false; }
     const busy = (typeof answering !== 'undefined' && answering) || window.jarvisLive?.active?.() || window.jarvisUltron?.running?.();
     if (!manual && (busy || sessionStorage.getItem('jarvis.upd') === v)) { // konuşma sürerken yenileme yapma; düğme göster
       const n = bubble('note', `Yeni sürüm hazır: ${v} (şu an ${APP_V}).`); n.el.append(el('button', { type: 'button', class: 'undo', onclick: () => hardUpdate(v) }, 'Şimdi güncelle'));

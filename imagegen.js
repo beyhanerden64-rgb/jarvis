@@ -25,8 +25,8 @@
     let last = '';
     for (const m of IMG_MODELS) {
       try {
-        const r = await withTimeout(fetch(GEMINI + m + ':generateContent', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }) }), 60000, 'zaman aşımı');
-        if (!r.ok) { last = 'HTTP ' + r.status; continue; }
+        const r = await withTimeout(fetch(GEMINI + m + ':generateContent', { method: 'POST', signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }) }), 35000, 'zaman aşımı');
+        if (!r.ok) { last = 'HTTP ' + r.status; if (r.status === 429 || r.status === 403 || r.status === 400) break; continue; } // kota/izin yok → diğer modelleri bekleme
         const parts = (await r.json()).candidates?.[0]?.content?.parts || [];
         const im = parts.find(p => p.inlineData?.data);
         if (im) return { src: `data:${im.inlineData.mimeType || 'image/png'};base64,${im.inlineData.data}`, via: 'Gemini' };
@@ -88,7 +88,7 @@
   localCommand = text => {
     const t = text.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '');
     let m;
-    if ((m = t.match(/^(?:görsel|resim|afiş|poster|infografik|çizim|fotoğraf|logo)\s*(?:oluştur|yap|çiz|üret|hazırla)\s*[:,-]?\s*(.{3,})$/i)) || (m = t.match(/^(.{3,}?)\s+(?:görseli|görselini|resmi|resmini|afişi|afişini|infografiği|infografiğini|çizimi|fotoğrafı)\s+(?:oluştur|yap|çiz|üret|hazırla)\.?$/i)) || (m = t.match(/^bana\s+(.{3,}?)\s+(?:çiz|resmet|çizer misin)\.?\??$/i))) {
+    if ((m = t.match(/^(?:görsel|resim|afiş|poster|infografik|çizim|fotoğraf)\s*(?:oluştur|yap|çiz|üret|hazırla)\s*[:,-]?\s*(.{3,})$/i)) || (m = t.match(/^(.{3,}?)\s+(?:görseli|görselini|resmi|resmini|afişi|afişini|infografiği|infografiğini|çizimi|fotoğrafı)\s+(?:oluştur|yap|çiz|üret|hazırla)\.?$/i)) || (m = t.match(/^bana\s+(.{3,}?)\s+(?:çiz|resmet|çizer misin)\.?\??$/i))) {
       const what = m[1]; setTimeout(() => run(what, { style: pickStyle(t), size: pickSize(t) }), 30); return '🎨 Çiziyorum… (10-40 saniye sürebilir)';
     }
     return _lc(text);
