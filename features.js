@@ -270,7 +270,7 @@
     tabs.insertBefore(t, tabs.querySelector('[data-p="settings"]'));
     t.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', String(x === t))); document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'p-zoi'); };
     const f = el('form', { class: 'add pat-add' }, el('input', { id: 'zText', placeholder: 'Olay (ör. Aralıkta yeni hasta sayısı 40’ı geçer)', 'aria-label': 'Olay' }), el('input', { id: 'zP', placeholder: 'Olasılık %', inputmode: 'numeric', 'aria-label': 'Olasılık' }), el('input', { id: 'zDue', type: 'date', 'aria-label': 'Hedef tarih' }), el('button', {}, 'Tahmin ekle'));
-    f.onsubmit = e => { e.preventDefault(); try { TOOLS.tahmin.run([$('zText').value, $('zP').value, $('zDue').value]); f.reset(); } catch (er) { note(er.message); } };
+    f.onsubmit = e => { e.preventDefault(); try { (window.jarvisZoiRecord || TOOLS.tahmin.run)([$('zText').value, $('zP').value, $('zDue').value]); f.reset(); } catch (er) { note(er.message); } };
     const p = el('div', { class: 'pane', id: 'p-zoi', role: 'tabpanel' }, el('h3', {}, 'ZOİ · ZAMAN-OLASILIK MOTORU'),
       el('p', { class: 'muted' }, 'Ölçülebilir tahminler: olay, olasılık ve tarih yaz; zamanı gelince sonucu işaretle. Motor isabetini Brier skoru ve kalibrasyonla ölçer; SATÜRN de “tahmin” aracıyla kayıt açabilir. Ana beyinden bağımsız, deneysel bir modüldür.'),
       el('div', { class: 'summary', id: 'zoiStats' }), f, el('ul', { class: 'list', id: 'zoiList' }),

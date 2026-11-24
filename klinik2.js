@@ -259,7 +259,7 @@
   WRITE_TOOLS.add('seans_notu'); WRITE_TOOLS.add('anket_kaydet');
   const _tp = toolsPrompt;
   toolsPrompt = () => _tp() + '\nKLİNİK II: dikte edilen seans bilgisi → seans_notu; hasta seyri → ilerleme; gelişmeyenler → gelismeyen; ev egzersiz kartı → egzersiz_karti; anket → anket_gonder/anket_kaydet/anket_ozet; ay sonu → aylik_rapor; Instagram planı → sosyal_takvim; sabah özeti → sabah_brifingi; tercüman → tercuman; belge özetleri → belgeler; yedek → yedek_durumu.';
-  TOOL_GROUPS.push([/seans not|dikte|ilerleme|gelişme|seyri|egzersiz kart|anket|memnuniyet|aylık rapor|ay sonu|işletme rapor|stok|malzeme|instagram plan|sosyal medya takvim|içerik takvim|sabah|brifing|tercüman|çevir|arapça|kürtçe|belge|rapor fotoğraf|yedek/i, /^(seans_notu|ilerleme|gelismeyen|egzersiz_karti|anket_gonder|anket_kaydet|anket_ozet|aylik_rapor|stok_uyari|sosyal_takvim|sabah_brifingi|tercuman|belgeler|yedek_durumu)$/]);
+  TOOL_GROUPS.push([/seans not|dikte|ilerleme|gelişme|seyri|egzersiz kart|anket|memnuniyet|aylık rapor|ayın rapor|bu ay|geçen ay|ay sonu|işletme rapor|ciro|kazanç|stok|malzeme|instagram plan|sosyal medya takvim|içerik takvim|sabah|brifing|tercüman|çevir|arapça|kürtçe|belge|rapor fotoğraf|yedek/i, /^(seans_notu|ilerleme|gelismeyen|egzersiz_karti|anket_gonder|anket_kaydet|anket_ozet|aylik_rapor|stok_uyari|sosyal_takvim|sabah_brifingi|tercuman|belgeler|yedek_durumu)$/]);
 
   /* ===== komutlar ===== */
   const _lc = localCommand;

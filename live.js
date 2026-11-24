@@ -17,9 +17,11 @@
 
   function liveInstructions() {
     let base = '';
+    const prevQ = window.jarvisCurText; window.jarvisCurText = ''; // CANLI'da her konu konuşulabilir: tüm araçlar ayrıntılı
     try { base = instructions(true); } catch {}
+    window.jarvisCurText = prevQ;
     if (window.jarvisKlinik2?.interp?.()) return base; // canlı tercüman: yalnız çeviri talimatı
-    return (base.slice(0, 24000) + `\n\nCANLI SESLİ SOHBET: Şu an Beyhan'la gerçek zamanlı sesli konuşuyorsun. Doğal, akıcı, canlı ve sıcak bir Türkçe ile konuş; kısa cümleler kur, gereksiz uzatma, liste okuma. Sözün kesilirse hemen dur ve dinle. Bir iş yapman gerekiyorsa jarvis_arac fonksiyonunu kullan (komut = araç biçimi, ör. "hatirlat|yarın 10:00|ilaç", "takvim_oku|bugün", "hava|Cizre"); sonucu kısaca söyle. Silme, kapatma gibi işler için Beyhan'a ekranda onay sorulur.`).trim();
+    return (base.slice(0, 38000) + `\n\nCANLI SESLİ SOHBET: Şu an Beyhan'la gerçek zamanlı sesli konuşuyorsun. Doğal, akıcı, canlı ve sıcak bir Türkçe ile konuş; kısa cümleler kur, gereksiz uzatma, liste okuma. Sözün kesilirse hemen dur ve dinle. Bir iş yapman gerekiyorsa jarvis_arac fonksiyonunu kullan (komut = araç biçimi, ör. "hatirlat|yarın 10:00|ilaç", "takvim_oku|bugün", "hava|Cizre"); sonucu kısaca söyle. Silme, kapatma gibi işler için Beyhan'a ekranda onay sorulur.`).trim();
   }
   const setupMsg = (model, shape) => {
     const voice = opt('liveVoice') || 'Puck';

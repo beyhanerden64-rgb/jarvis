@@ -59,19 +59,24 @@ Verilen nicel veriyi ÇAPA olarak kullan; aralıkları bu oynaklıkla tutarlı t
 YALNIZ JSON:
 {"ozet":"2 cümle, doğrudan cevap (en olası sonuç ve olasılığı)","senaryolar":[{"ad":"İyimser","olasilik":25,"aralik":"sayısal aralık ya da sonuç","aciklama":"neden, hangi koşulda"},{"ad":"Temel",...},{"ad":"Kötümser",...}],"gostergeler":["tahmini destekleyen/zayıflatan veriler"],"izlenecek":["bu tahmini değiştirecek olaylar/tarihler"],"guven":"düşük|orta|yüksek","olculebilir":{"metin":"vade sonunda doğrulanabilir TEK cümle (temel senaryo)","olasilik":55,"alt":sayı ya da null,"ust":sayı ya da null}}`,
       `KONU: ${subject}\n${quant}\nGÜNCEL BAĞLAM: ${ctx.text || '(alınamadı)'}`, 'complex');
-    const j = jsonOf(raw); if (!j?.senaryolar?.length) throw Error('Tahmin üretilemedi, tekrar dener misin?');
+    let j = jsonOf(raw);
+    if (!j?.senaryolar?.length) { // ikinci deneme: daha sıkı biçim, başka model katmanı
+      const raw2 = await window.jarvisResearch.ask('Aşağıdaki tahmin metnini YALNIZ şu JSON’a dönüştür, başka hiçbir şey yazma: {"ozet":"…","senaryolar":[{"ad":"İyimser","olasilik":0,"aralik":"…","aciklama":"…"},{"ad":"Temel",…},{"ad":"Kötümser",…}],"gostergeler":[],"izlenecek":[],"guven":"orta","olculebilir":{"metin":"…","olasilik":50,"alt":null,"ust":null}}', String(raw).slice(0, 6000), 'default').catch(() => '');
+      j = jsonOf(raw2);
+    }
+    if (!j?.senaryolar?.length) j = { ozet: String(raw || '').replace(/[{}"\[\]]/g, ' ').slice(0, 1500).trim() || 'Bu konuda şu an yeterli veriyle tahmin üretemedim.', senaryolar: [], gostergeler: [], izlenecek: [], guven: 'düşük' }; // en kötü durumda düz metin tahmin
     const tot = j.senaryolar.reduce((a, s) => a + (+s.olasilik || 0), 0) || 1;
     j.senaryolar = j.senaryolar.slice(0, 4).map(s => ({ ...s, olasilik: Math.round((+s.olasilik || 0) / tot * 100) }));
     // ZOİ kaydı + otomatik sonuçlandırma
-    let zoi = '';
+    let zoiNote = '';
     try {
       const m = j.olculebilir; const pr = Math.max(1, Math.min(99, Math.round(+m?.olasilik || j.senaryolar.find(s => /temel/i.test(s.ad))?.olasilik || 50)));
       if (m?.metin) {
-        TOOLS.tahmin.run([`${m.metin} (${until})`, String(pr), until]); zoi = `Temel senaryo ZOİ'ye %${pr} olasılıkla kaydedildi; ${until} tarihinde ${st?.sym && Number.isFinite(+m.alt) && Number.isFinite(+m.ust) ? 'kendiliğinden sonuçlanacak' : 'sonucunu işaretleyebilirsin'}.`;
+        zoi([`${m.metin} (${until})`, String(pr), until]); zoiNote = `Temel senaryo ZOİ'ye %${pr} olasılıkla kaydedildi; ${until} tarihinde ${st?.sym && Number.isFinite(+m.alt) && Number.isFinite(+m.ust) ? 'kendiliğinden sonuçlanacak' : 'sonucunu işaretleyebilirsin'}.`;
         if (st?.sym && Number.isFinite(+m.alt) && Number.isFinite(+m.ust)) { const a = store.get('fcAuto', []); a.push({ text: m.metin, subject, lo: +m.alt, hi: +m.ust, due: Date.now() + days * DAY }); store.set('fcAuto', a.slice(-50)); }
       }
     } catch {}
-    const rec = { t: Date.now(), subject, days, until, st, j, sources: ctx.sources || [], zoi };
+    const rec = { t: Date.now(), subject, days, until, st, j, sources: ctx.sources || [], zoi: zoiNote };
     const h = store.get('fcHist', []); h.unshift({ t: rec.t, subject, days, ozet: j.ozet, senaryolar: j.senaryolar }); store.set('fcHist', h.slice(0, 30));
     logOp('senaryo tahmini', [short(subject, 50)], 'başarılı', `${days} gün · güven ${j.guven || '-'}`);
     setPhase('idle', 'Hazır.');
@@ -90,7 +95,7 @@ YALNIZ JSON:
     const t = text(r); const n = bubble('ai', t);
     if (r.sources?.length) addLinks(n.el, r.sources.slice(0, 6).map(s => ({ url: s.url, title: short(s.title || new URL(s.url).hostname, 60) })));
     answerTools(n.el, t);
-    window.jarvisStage?.chart(`${r.st?.label || r.subject} · ${r.days} gün senaryoları (%)`, r.j.senaryolar.map(s => [s.ad, s.olasilik]), 'bar');
+    if (r.j.senaryolar.length) window.jarvisStage?.chart(`${r.st?.label || r.subject} · ${r.days} gün senaryoları (%)`, r.j.senaryolar.map(s => [s.ad, s.olasilik]), 'bar');
   }
   async function run(subject, days) { bubble('me', `🔮 Tahmin: ${subject}`); try { const r = await forecast(subject, days); show(r); return r; } catch (e) { setPhase('idle', 'Hazır.'); note('Tahmin yapılamadı: ' + e.message); } }
 
@@ -107,24 +112,49 @@ YALNIZ JSON:
   setTimeout(() => autoResolve().catch(() => {}), 25000);
   setInterval(() => { if (!document.hidden) autoResolve().catch(() => {}); }, 6 * 3600000);
 
+  const zoiRecord = TOOLS.tahmin?.run, zoiDesc = TOOLS.tahmin?.d || '';
+  if (zoiRecord) TOOLS.tahmin = { d: 'tahmin|konu|vade — “ne olur / tahmin et” isteklerinde olasılıklı senaryo tahmini üretir (senaryo_tahmin ile aynı). Elinde hazır olasılık varsa: tahmin|olay|olasılık 0-100|YYYY-MM-DD → ZOİ’ye kaydeder.', run: async (args, ctx) => { const [a, b, c] = args; if (/^\s*%?\d{1,3}\s*%?$/.test(String(b || '')) && /\d{4}-\d{2}-\d{2}/.test(String(c || ''))) return zoiRecord(args, ctx); const r = await forecast(a, horizon(b || a)); setTimeout(() => show(r), 30); return text(r); } };
+  const zoi = (...a) => (zoiRecord ? zoiRecord(...a) : null);
+  window.jarvisZoiRecord = zoiRecord;
+  /* ---------- hava durumu tahmini (Open-Meteo, ücretsiz, kotasız) ---------- */
+  const WMO = c => c === 0 ? 'açık' : c <= 2 ? 'az bulutlu' : c === 3 ? 'kapalı' : c <= 48 ? 'sisli' : c <= 57 ? 'çiseleme' : c <= 67 ? 'yağmurlu' : c <= 77 ? 'karlı' : c <= 82 ? 'sağanak' : c <= 86 ? 'kar sağanağı' : 'gök gürültülü fırtına';
+  async function weather(place = 'Cizre', dayOffset = 0, span = 1) {
+    let lat = 37.33, lon = 42.19, name = 'Cizre';
+    const pl = String(place || '').trim();
+    if (pl && !/^cizre$/i.test(pl)) {
+      const g = await withTimeout(fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(pl)}&count=1&language=tr`).then(r => r.json()), 8000, 'zaman aşımı');
+      const x = g.results?.[0]; if (!x) throw Error(`“${pl}” bulunamadı`); lat = x.latitude; lon = x.longitude; name = x.name + (x.admin1 && x.admin1 !== x.name ? ', ' + x.admin1 : '');
+    }
+    const d = await withTimeout(fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max&timezone=Europe%2FIstanbul&forecast_days=${Math.min(16, dayOffset + span)}`).then(r => r.json()), 8000, 'zaman aşımı');
+    const D = d.daily; if (!D?.time) throw Error('hava verisi alınamadı');
+    const rows = [];
+    for (let i = dayOffset; i < Math.min(D.time.length, dayOffset + span); i++) {
+      const gun = i === 0 ? 'Bugün' : i === 1 ? 'Yarın' : new Date(D.time[i] + 'T12:00:00').toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'short' });
+      rows.push(`${gun}: ${WMO(D.weather_code[i])}, ${Math.round(D.temperature_2m_min[i])}–${Math.round(D.temperature_2m_max[i])}°C, yağış olasılığı %${D.precipitation_probability_max?.[i] ?? '—'}${D.precipitation_sum?.[i] ? ' (' + D.precipitation_sum[i] + ' mm)' : ''}, rüzgâr ${Math.round(D.wind_speed_10m_max[i])} km/s${D.uv_index_max?.[i] >= 6 ? ', UV yüksek' : ''}`);
+    }
+    return `🌤 ${name} hava tahmini\n` + rows.join('\n');
+  }
   Object.assign(TOOLS, {
+    hava_tahmini: { d: 'hava_tahmini|şehir (boş: Cizre)|gün (bugün/yarın/hafta/3 gün) — günlük hava tahmini: durum, sıcaklık, yağış olasılığı, rüzgâr, UV (16 güne kadar)', run: ([pl, g]) => { const f = fold(g || ''); return weather(pl || 'Cizre', /yarin/.test(f) ? 1 : 0, /hafta|7/.test(f) ? 7 : /(\d+)\s*gun/.test(f) ? +f.match(/(\d+)\s*gun/)[1] : /yarin/.test(f) ? 1 : 1); } },
     senaryo_tahmin: { d: 'senaryo_tahmin|konu (ör. gram altın, bitcoin, dolar, BIST 100, enflasyon, maç, seçim, hava)|vade (ör. 1 hafta, 1 ay, yıl sonu) — gerekçeli olasılıklı tahmin: iyimser/temel/kötümser senaryo, oynaklık aralığı, göstergeler; isabet ZOİ ile ölçülür', run: async ([s, v]) => { const r = await forecast(s, horizon(v || s)); setTimeout(() => show(r), 30); return text(r); } }
   });
   const _tp = toolsPrompt;
   toolsPrompt = () => _tp() + '\nTAHMİN: Beyhan “ne olur, yükselir mi, düşer mi, tahmin et, kim kazanır” gibi bir gelecek sorusu sorarsa reddetme; senaryo_tahmin ile olasılıklı, gerekçeli tahmin ver. Garanti verme, “kesin al/sat” deme; olasılık ve belirsizliği açıkça söyle.';
-  TOOL_GROUPS.push([/tahmin|ne olur|yükselir mi|düşer mi|nereye gider|kim kazanır|olasılık|ihtimal|senaryo|beklenti|öngörü|gelecek/i, /^(senaryo_tahmin|tahmin|tahmin_durum)$/]);
+  TOOL_GROUPS.push([/hava|yağmur|kar yağ|sıcaklık|derece|rüzgar|rüzgâr|şemsiye|güneşli/i, /^hava_tahmini$/]);
+  TOOL_GROUPS.push([/tahmin|ne olur|ne olacak|nasıl olacak|kaç olacak|olur mu|olacak mı|yükselir mi|yükselecek|düşer mi|düşecek|artar mı|artacak|azalacak|nereye gider|kim kazanır|kazanır mı|kazanacak|olasılık|ihtimal|şans|senaryo|beklenti|öngörü|gelecek|ileride/i, /^(senaryo_tahmin|tahmin|tahmin_durum)$/]);
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '').replace(/[?.!]+$/, '');
     let m;
-    if ((m = t.match(/^(.{2,60}?)\s+(?:için\s+)?(?:tahmin(?:in)?|tahmini|senaryo(?:ları)?)\s*(?:ver|yap|nedir|ne|et)?$/i)) || (m = t.match(/^(?:tahmin et|tahmin ver|tahminin ne)\s*[:,-]?\s*(.{2,60})$/i)) || (m = t.match(/^(.{2,40}?)\s+((?:önümüzdeki\s+\S+\s+|bu hafta\s+|yarın\s+|yıl sonu(?:na kadar)?\s+|\d+\s*(?:gün|hafta|ay|yıl)\s+(?:içinde\s+|sonra\s+)?)?(?:yükselir mi|düşer mi|ne olur|nereye gider|ne kadar olur|kaç olur))$/i))) {
+    if ((m = t.match(/^(.{2,60}?)\s+(?:için\s+)?(?:tahmin(?:in)?|tahmini|senaryo(?:ları)?)\s*(?:ver|yap|nedir|ne|et)?$/i)) || (m = t.match(/^(?:tahmin et|tahmin ver|tahminin ne)\s*[:,-]?\s*(.{2,60})$/i)) || (m = t.match(/^(.{2,40}?)\s+((?:önümüzdeki\s+\S+\s+|bu hafta\s+|yarın\s+|yıl sonu(?:na kadar)?\s+|\d+\s*(?:gün|hafta|ay|yıl)\s+(?:içinde\s+|sonra\s+)?)?(?:yükselir mi|yükselecek mi|düşer mi|düşecek mi|artar mı|artacak mı|azalır mı|azalacak mı|ne olur|ne olacak|nasıl olacak|nereye gider|ne kadar olur|ne kadar olacak|kaç olur|kaç olacak|kazanır mı|kazanacak mı|kim kazanır|kim kazanacak))$/i))) {
       const subj = m[1].replace(/\s+(önümüzdeki|bu|gelecek)\s+(hafta|ay|yıl)$/i, '');
-      if (/^(bu|şu|o|hava)$/i.test(subj)) return _lc(text0);
+      if (/^(bu|şu|o|ne|yarın|bugün|hava)$/i.test(subj) || /\b(hava|hasta|seans|randevu|görev|ben|sen|biz|bize|bana)\b/i.test(subj)) return _lc(text0);
       const days = horizon(t); setTimeout(() => run(subj, days), 30);
       return `🔮 “${subj}” için ${days} günlük senaryoları hesaplıyorum…`;
     }
     if (/^(tahmin isabetim|tahminlerim ne kadar tuttu|isabet oranı)$/i.test(t)) return TOOLS.tahmin_durum.run([]);
+
     return _lc(text0);
   };
-  window.jarvisForecast = { forecast, run, show, text, horizon, marketStats, band, autoResolve };
+  window.jarvisForecast = { weather, forecast, run, show, text, horizon, marketStats, band, autoResolve };
 })();
