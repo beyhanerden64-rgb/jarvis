@@ -1,0 +1,6 @@
+{
+  "topic": "saturn-piyasa-9gtmwv4rx3rvg2",
+  "click": "https://beyhanerden64-rgb.github.io/jarvis/",
+  "symbols": ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "PAXGUSDT", "USDTTRY"],
+  "thresholds": { "kripto": [2.5, 4], "altin": [0.8, 1.2], "doviz": [0.5, 0.8] }
+}

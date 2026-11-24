@@ -1,0 +1,26 @@
+# SATÜRN arka plan piyasa bekçisi — uygulama kapalıyken de 10 dakikada bir piyasayı tarar, sert harekette telefona bildirir.
+# Yalnız herkese açık piyasa verisi; ayrı ntfy kanalı (bg/config.json). Kişisel bildirim kanalı kullanılmaz.
+name: saturn-piyasa-bekcisi
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # hareket taraması
+    - cron: '30 6 * * *'     # 09:30 TSİ sabah özeti
+    - cron: '30 15 * * *'    # 18:30 TSİ akşam özeti
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: saturn-watch
+  cancel-in-progress: false
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: bg
+      - name: Piyasa bekçisi
+        env:
+          MODE: ${{ (github.event.schedule == '30 6 * * *' || github.event.schedule == '30 15 * * *') && 'brief' || 'watch' }}
+        run: node bg/watch.mjs
