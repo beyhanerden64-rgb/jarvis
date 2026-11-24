@@ -364,7 +364,7 @@
     ws.onmessage = ev => {
       try {
         const d = JSON.parse(ev.data).data; if (!d?.s) return;
-        const p = +d.c, o = +d.o; live.prices[d.s] = { p, ch: o ? (p / o - 1) * 100 : 0, t: Date.now() }; live.last = Date.now();
+        const p = +d.c, o = +d.o; live.prices[d.s] = { p, ch: o ? (p / o - 1) * 100 : 0, t: Date.now(), h: +d.h || 0, l: +d.l || 0, q: +d.q || 0 }; live.last = Date.now();
         for (const f of live.fn) { try { f(d.s, live.prices[d.s]); } catch {} }
         paintLive(d.s);
       } catch {}
