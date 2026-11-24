@@ -337,6 +337,14 @@ body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
 @keyframes ushine { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { #ultronPulse i, .uprog.live i { animation: none; } }
 @media (max-width: 700px) { #ultronPulse { top: calc(58px + env(safe-area-inset-top)); left: 16px; transform: none; font-size: 9px; max-width: calc(100vw - 150px); } }
+/* GÖRSEL PRO */
+.vgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; max-width: 420px; }
+.vgrid.one { display: none; }
+.vthumb { padding: 0; border: 2px solid transparent; border-radius: 10px; overflow: hidden; background: var(--glass); cursor: pointer; aspect-ratio: 1; }
+.vthumb.on { border-color: var(--holo); }
+.vthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vrow { margin: 6px 0; max-width: 520px; }
+.vref { flex: 1; min-width: 0; }
 /* KLİNİK II */
 #klinik2 textarea { width: 100%; box-sizing: border-box; }
 #klinik2 .row select { flex: 1; min-width: 0; }
@@ -447,7 +455,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">SATÜRN<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 18.0.0</small></div>
+    <div class="brand">SATÜRN<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 19.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -625,7 +633,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=18.0.0"></script><script src="audiohub.js?v=18.0.0"></script>
-<script src="direct.js?v=18.0.0"></script><script src="app.js?v=18.0.0"></script><script src="plus.js?v=18.0.0"></script><script src="hud.js?v=18.0.0"></script><script src="features.js?v=18.0.0"></script><script src="control.js?v=18.0.0"></script><script src="voices.js?v=18.0.0"></script><script src="social.js?v=18.0.0"></script><script src="agent.js?v=18.0.0"></script><script src="figure.js?v=18.0.0"></script><script src="sentinel.js?v=18.0.0"></script><script src="brain.js?v=18.0.0"></script><script src="pro.js?v=18.0.0"></script><script src="ultra.js?v=18.0.0"></script><script src="klinik.js?v=18.0.0"></script><script src="live.js?v=18.0.0"></script><script src="research.js?v=18.0.0"></script><script src="research2.js?v=18.0.0"></script><script src="markets.js?v=18.0.0"></script><script src="news.js?v=18.0.0"></script><script src="imagegen.js?v=18.0.0"></script><script src="visual.js?v=18.0.0"></script><script src="klinik2.js?v=18.0.0"></script><script src="voice2.js?v=18.0.0"></script><script src="ultron.js?v=18.0.0"></script><script src="ultron-life.js?v=18.0.0"></script>
+<script src="voice-engine.js?v=19.0.0"></script><script src="audiohub.js?v=19.0.0"></script>
+<script src="direct.js?v=19.0.0"></script><script src="app.js?v=19.0.0"></script><script src="plus.js?v=19.0.0"></script><script src="hud.js?v=19.0.0"></script><script src="features.js?v=19.0.0"></script><script src="control.js?v=19.0.0"></script><script src="voices.js?v=19.0.0"></script><script src="social.js?v=19.0.0"></script><script src="agent.js?v=19.0.0"></script><script src="figure.js?v=19.0.0"></script><script src="sentinel.js?v=19.0.0"></script><script src="brain.js?v=19.0.0"></script><script src="pro.js?v=19.0.0"></script><script src="ultra.js?v=19.0.0"></script><script src="klinik.js?v=19.0.0"></script><script src="live.js?v=19.0.0"></script><script src="research.js?v=19.0.0"></script><script src="research2.js?v=19.0.0"></script><script src="markets.js?v=19.0.0"></script><script src="news.js?v=19.0.0"></script><script src="imagegen.js?v=19.0.0"></script><script src="visual.js?v=19.0.0"></script><script src="research3.js?v=19.0.0"></script><script src="klinik2.js?v=19.0.0"></script><script src="voice2.js?v=19.0.0"></script><script src="ultron.js?v=19.0.0"></script><script src="ultron-life.js?v=19.0.0"></script>
 </body>
 </html>

@@ -9,7 +9,6 @@
  *    Tasarım sahnede anında görünür; “başlığı büyüt, rengi maviye çevir” gibi düzeltmelerle revize edilir; PNG/SVG indirilir.
  *    Güvenlik: tasarım yalnız resim olarak çizilir (içindeki hiçbir kod çalışmaz); dış bağlantı ve betikler ayıklanır. */
 (() => {
-  const ask = (s, u, tier = 'default') => window.jarvisResearch.ask(s, u, tier);
   async function askLong(system, user) { // tasarım SVG'si uzun: yüksek çıktı sınırı
     const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system, maxTokens: 24000, messages: [{ role: 'user', content: user }] }) });
     if (!r.ok) { let m = ''; try { m = (await r.json()).error; } catch {} throw Error(m || 'Yapay zekâ yanıt vermedi (' + r.status + ')'); }
