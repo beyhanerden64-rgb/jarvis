@@ -1,4 +1,4 @@
-/* JARVIS ışık huzmeleri — sağdan sola akan, sese ve duruma tepki veren ışık akışı + holografik çekirdek halkaları.
+/* SATÜRN ışık huzmeleri — sağdan sola akan, sese ve duruma tepki veren ışık akışı + holografik çekirdek halkaları.
  * Okur: global `phase` (idle | starting | listening | thinking | speaking | error). Sağlar: jarvisAvatarLevel(v), jarvisLevelNow(). */
 (function beams() {
   const canvas = document.getElementById('orb');

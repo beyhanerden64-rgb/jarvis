@@ -1,5 +1,5 @@
 "use strict";
-/* ---- JARVIS 0.39.0 · voice-core.js ---- */
+/* ---- SATÜRN 0.39.0 · voice-core.js ---- */
 
 class JarvisVoice {
   constructor({
@@ -176,7 +176,7 @@ class JarvisVoice {
         r.abort();
       } catch {}
       this.recognition = null;
-      if (/^(jarvis[ ,]*)?(dur|sus|sesli modu kapat|konuşmayı bitir)[.!?]*$/i.test(text)) {
+      if (/^((?:jarvis|sat[uü]rn)[ ,]*)?(dur|sus|sesli modu kapat|konuşmayı bitir)[.!?]*$/i.test(text)) {
         this.stop();
         return;
       }
@@ -528,7 +528,7 @@ class JarvisVoice {
 }
 if (typeof module !== 'undefined') module.exports = JarvisVoice;
 
-/* ---- JARVIS 0.39.0 · voice-recovery.js ---- */
+/* ---- SATÜRN 0.39.0 · voice-recovery.js ---- */
 
 // Local recovery policy; contains no transcript, audio, key or model call.
 class JarvisVoiceRecovery {
@@ -602,7 +602,7 @@ class JarvisVoiceRecovery {
 }
 if (typeof module !== 'undefined') module.exports = JarvisVoiceRecovery;
 
-/* ---- JARVIS 0.39.0 · speech-player.js ---- */
+/* ---- SATÜRN 0.39.0 · speech-player.js ---- */
 
 class JarvisSpeechPlayer {
   static SILENT = 'data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YSADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
@@ -1063,7 +1063,7 @@ class JarvisSpeechPlayer {
 }
 if (typeof module !== 'undefined') module.exports = JarvisSpeechPlayer;
 
-/* ---- JARVIS 0.39.0 · live-dictation.js ---- */
+/* ---- SATÜRN 0.39.0 · live-dictation.js ---- */
 
 // One recognition generation at a time. Interim text is display-only.
 class JarvisLiveDictation {
@@ -1240,7 +1240,7 @@ class JarvisLiveDictation {
 }
 if (typeof module !== 'undefined') module.exports = JarvisLiveDictation;
 
-/* ---- JARVIS 0.39.0 · handsfree-core.js ---- */
+/* ---- SATÜRN 0.39.0 · handsfree-core.js ---- */
 
 class JarvisHandsFree {
   constructor({
@@ -1615,7 +1615,7 @@ class JarvisHandsFree {
 }
 if (typeof module !== 'undefined') module.exports = JarvisHandsFree;
 
-/* ---- JARVIS 0.39.0 · wake-core.js ---- */
+/* ---- SATÜRN 0.39.0 · wake-core.js ---- */
 
 class JarvisWakeGate {
   constructor({ enabled = () => true, clock = () => Date.now(), windowMs = 60000 } = {}) {
@@ -1633,19 +1633,19 @@ class JarvisWakeGate {
     if (!this.enabled()) return text;
     const t = text.toLocaleLowerCase('tr-TR');
     if (
-      /^(?:(?:(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis))[\s,:.!-]*)?(?:dur|sus|konuşmayı bitir|sesli modu kapat|mikrofonu kapat|dinlemeyi durdur)[.!?]*$/u.test(
+      /^(?:(?:(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis|s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen)))[\s,:.!-]*)?(?:dur|sus|konuşmayı bitir|sesli modu kapat|mikrofonu kapat|dinlemeyi durdur)[.!?]*$/u.test(
         t
       )
     )
       return text;
-    if (/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis)(?:[\s,:.!-]|$)/u.test(t)) {
+    if (/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis|s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen))(?:[\s,:.!-]|$)/u.test(t)) {
       this.touch();
-      return text.replace(/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis)[\s,:.!-]*/iu, '').trim() || null;
+      return text.replace(/^(?:hey[\s,]+|hey\s*)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis|s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen))[\s,:.!-]*/iu, '').trim() || null;
     }
     // isim cümlenin herhangi bir yerinde: "saat kaç Jarvis", "bugün hava nasıl jarvis?"
-    const any = /(^|[\s,;:])(?:hey\s+)?(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis)(?=[\s,;:.!?]|$)/iu;
+    const any = /(^|[\s,;:])(?:hey\s+)?(?:j[ae]rv[ıi][sz]|[cç][ae]rv[ıi][sz]|jarviz|ceyvis|s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen))(?=[\s,;:.!?]|$)/iu;
     if (any.test(t)) {
-      const rest = text.replace(/(^|[\s,;:])(?:hey\s+)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis)(?=[\s,;:.!?]|$)[\s,;:.!?]*/iu, '$1').replace(/[\s,;:]+$/u, '').trim();
+      const rest = text.replace(/(^|[\s,;:])(?:hey\s+)?(?:j[ae]rv[ıiİ][sz]|[cç][ae]rv[ıiİ][sz]|jarviz|ceyvis|s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen))(?=[\s,;:.!?]|$)[\s,;:.!?]*/iu, '$1').replace(/[\s,;:]+$/u, '').trim();
       this.touch();
       return rest.length > 1 ? rest : null;
     }

@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 9.1 — KLİNİK ASİSTANI (FİZYOVİTA'nın günlük işini kısaltan, yapay zekâ kotası harcamayan araçlar)
+/* SATÜRN 9.1 — KLİNİK ASİSTANI (FİZYOVİTA'nın günlük işini kısaltan, yapay zekâ kotası harcamayan araçlar)
  *  1) Hasta randevu hatırlatması: yarınki hastalara tek dokunuşla WhatsApp mesajı (Beyhan gönderir)
  *  2) Seans paketi takibi: 10'luk paket → kalan seans; bitene yakın uyarı
  *  3) Kayıp hasta takibi: 14+ gündür gelmeyen ve paketi bitmemiş hastalar + arama/WhatsApp bağlantısı

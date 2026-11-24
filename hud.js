@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 3.1 HUD katmanı: açılış dizisi, radar, dairesel göstergeler, canlı ses dalgası, bilgi şeridi, komut paleti, arayüz sesleri,
+/* SATÜRN 3.1 HUD katmanı: açılış dizisi, radar, dairesel göstergeler, canlı ses dalgası, bilgi şeridi, komut paleti, arayüz sesleri,
  * kenar telemetrisi + yeni araçlar (Vikipedi, deprem, namaz vakitleri, birim çevirme) ve rutinler. plus.js'ten sonra yüklenir. */
 (() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -31,7 +31,7 @@
   /* ---------- açılış dizisi (oturum başına bir kez) ---------- */
   if (!sessionStorage.getItem('jarvis.booted') && !reduce && opt('pBoot') !== '0') {
     sessionStorage.setItem('jarvis.booted', '1');
-    const lines = ['JARVIS ÇEKİRDEĞİ BAŞLATILIYOR', 'IŞIK HUZMELERİ HİZALANIYOR · ' + (mobile ? '70' : '150') + ' HUZME', 'DOĞAL SES · GEMINI · ' + (opt('ttsVoice') || 'CHARON').toLocaleUpperCase('tr-TR'), 'HAFIZA ÇÖZÜLÜYOR · ' + items.length + ' KAYIT', 'ARAÇLAR · ' + Object.keys(TOOLS).length + ' · UZMAN AJANLAR · ' + Object.keys(AGENTS).length, 'GÜVENLİK · YEREL ŞİFRELEME AKTİF', 'SİSTEM HAZIR'];
+    const lines = ['SATÜRN ÇEKİRDEĞİ BAŞLATILIYOR', 'IŞIK HUZMELERİ HİZALANIYOR · ' + (mobile ? '70' : '150') + ' HUZME', 'DOĞAL SES · GEMINI · ' + (opt('ttsVoice') || 'CHARON').toLocaleUpperCase('tr-TR'), 'HAFIZA ÇÖZÜLÜYOR · ' + items.length + ' KAYIT', 'ARAÇLAR · ' + Object.keys(TOOLS).length + ' · UZMAN AJANLAR · ' + Object.keys(AGENTS).length, 'GÜVENLİK · YEREL ŞİFRELEME AKTİF', 'SİSTEM HAZIR'];
     const box = el('div', { class: 'boot', 'aria-hidden': 'true' }, el('div', { class: 'boot-ring' }, el('i'), el('i'), el('i')), el('div', { class: 'boot-title' }, 'J.A.R.V.I.S'), el('pre', { class: 'boot-log' }), el('div', { class: 'boot-bar' }, el('b')));
     document.body.append(box);
     const log = box.querySelector('.boot-log'), bar = box.querySelector('.boot-bar b');
@@ -173,7 +173,7 @@
     plot(hist2, '#ffb547', false); plot(hist, colr, true);
     sx.globalAlpha = 0.7; sx.fillStyle = colr; sx.font = '10px "Share Tech Mono", monospace'; sx.fillText('SES', 4, 11); sx.fillStyle = '#ffb547'; sx.fillText('YÜK', 34, 11); sx.globalAlpha = 1;
   }, 100);
-  /* ---------- canlı ses dalgası (dinlerken gerçek mikrofon, konuşurken JARVIS) ---------- */
+  /* ---------- canlı ses dalgası (dinlerken gerçek mikrofon, konuşurken SATÜRN) ---------- */
   const wave = el('canvas', { class: 'wave', id: 'wave', height: 36, 'aria-hidden': 'true' });
   document.querySelector('.composer').before(wave);
   const wg = wave.getContext('2d');

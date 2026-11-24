@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 7.1 — BEYİN: JARVIS'i onaran ve yeniden yapılandıran akıllı ajanlar.
+/* SATÜRN 7.1 — BEYİN: SATÜRN'ü onaran ve yeniden yapılandıran akıllı ajanlar.
  * Kota harcamazlar: ölçer, öğrenir ve kurallarla karar verirler (yapay zekâ çağrısı yok).
  * Tek istisna MİMAR: günde en çok 1 kısa çağrı ile tüm ölçümleri okuyup ayar önerir; güvenli olanları uygular (geri alınabilir).
  * Ajanlar: model yönlendirici, kota koruyucu, ses yönlendirici, tekrar önleyici, araç doktoru, performans ayarcısı,
@@ -65,13 +65,13 @@
   };
   function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
 
-  /* ========== 5) ARAÇ DOKTORU (sık bozulan aracı tanır, JARVIS'e alternatif kullandırır) ========== */
+  /* ========== 5) ARAÇ DOKTORU (sık bozulan aracı tanır, SATÜRN'e alternatif kullandırır) ========== */
   function toolDoctor() {
     const by = {};
     for (const o of opLog.slice(-120)) { if (!['başarılı', 'başarısız'].includes(o.status)) continue; (by[o.tool] ||= []).push(o); }
     const bad = {};
     for (const [tool, arr] of Object.entries(by)) { const last = arr.slice(-5), f = last.filter(o => o.status === 'başarısız').length; if (last.length >= 3 && f >= 3 && last.at(-1).status === 'başarısız') bad[tool] = short(last.at(-1).result || 'hata', 90); }
-    for (const t of Object.keys(bad)) if (!B.tools[t]) learn('Araç doktoru', `“${t}” aracı üst üste bozuluyor; JARVIS artık alternatif yol deneyecek.`);
+    for (const t of Object.keys(bad)) if (!B.tools[t]) learn('Araç doktoru', `“${t}” aracı üst üste bozuluyor; SATÜRN artık alternatif yol deneyecek.`);
     for (const t of Object.keys(B.tools)) if (!bad[t]) learn('Araç doktoru', `“${t}” aracı yeniden çalışıyor.`);
     const changed = JSON.stringify(bad) !== JSON.stringify(B.tools); B.tools = bad; if (changed) save();
     return Object.keys(bad).length ? 'sorun' : 'ok';
@@ -127,7 +127,7 @@
     fails++;
     if (fails >= 2 && idle(3 * MIN)) {
       const lastR = Number(sessionStorage.getItem('jarvis.healReloadAt') || 0);
-      if (NOW() - lastR > HOUR) { sessionStorage.setItem('jarvis.healReloadAt', String(NOW())); sessionStorage.setItem('jarvis.healReason', bad.join(', ')); learn('Öz-test', 'Bozuk: ' + bad.join(', ') + ' → JARVIS kendini yeniden başlattı.'); store.set('brain', B); location.reload(); }
+      if (NOW() - lastR > HOUR) { sessionStorage.setItem('jarvis.healReloadAt', String(NOW())); sessionStorage.setItem('jarvis.healReason', bad.join(', ')); learn('Öz-test', 'Bozuk: ' + bad.join(', ') + ' → SATÜRN kendini yeniden başlattı.'); store.set('brain', B); location.reload(); }
     }
     return 'sorun';
   }
@@ -162,7 +162,7 @@
   }
   async function architect(force) {
     if (!force && (store.get('set.brainAi', '1') === '0' || (B.arch && B.arch.day === ptDay()) || !idle(MIN))) return B.arch ? 'ok' : 'atla';
-    const sys = 'Sen JARVIS uygulamasının MİMAR ajanısın. Ölçümleri incele; sorunları bul ve uygulamayı daha hızlı, kararlı ve kotaya dayanıklı yapmak için ayar öner. YALNIZCA JSON yaz: {"ozet":"2 cümle Türkçe durum","oneriler":[{"ayar":"...","deger":"...","neden":"kısa"}],"ipuclari":["Beyhan için en fazla 3 kısa öneri"]}. Ayar yalnız şunlardan olabilir: ' + JSON.stringify(SAFE) + '. Gereksiz değişiklik önerme; her şey iyiyse oneriler boş olsun.';
+    const sys = 'Sen SATÜRN uygulamasının MİMAR ajanısın. Ölçümleri incele; sorunları bul ve uygulamayı daha hızlı, kararlı ve kotaya dayanıklı yapmak için ayar öner. YALNIZCA JSON yaz: {"ozet":"2 cümle Türkçe durum","oneriler":[{"ayar":"...","deger":"...","neden":"kısa"}],"ipuclari":["Beyhan için en fazla 3 kısa öneri"]}. Ayar yalnız şunlardan olabilir: ' + JSON.stringify(SAFE) + '. Gereksiz değişiklik önerme; her şey iyiyse oneriler boş olsun.';
     const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'quick', system: sys, messages: [{ role: 'user', content: JSON.stringify(telemetry()) }] }) });
     if (!r.ok) throw Error('mimar yanıt alamadı (' + r.status + ')');
     const text = (await r.text()).replace(/\u0000[^\n]*$/s, '');
@@ -210,7 +210,7 @@
   const aiSel = el('select', { id: 'brainAi' }); aiSel.append(new Option('Açık · günde en çok 1 kısa yapay zekâ çağrısı', '1'), new Option('Kapalı · yalnız kural tabanlı ajanlar', '0'));
   aiSel.value = store.get('set.brainAi', '1') || '1'; aiSel.onchange = () => store.set('set.brainAi', aiSel.value);
   const box = el('div', { id: 'brainBox', class: 'brainbox' },
-    el('h3', {}, 'BEYİN · JARVIS’İ ONARAN AJANLAR'), el('p', { class: 'muted' }, 'Bu ajanlar kota harcamaz: ölçer, öğrenir, kurallarla karar verir. Yalnız Mimar günde bir kez yapay zekâya danışır.'),
+    el('h3', {}, 'BEYİN · SATÜRN’İ ONARAN AJANLAR'), el('p', { class: 'muted' }, 'Bu ajanlar kota harcamaz: ölçer, öğrenir, kurallarla karar verir. Yalnız Mimar günde bir kez yapay zekâya danışır.'),
     el('ul', { class: 'list', id: 'brAgents' }),
     el('h3', {}, 'MODEL SAĞLIĞI'), el('div', { class: 'kvs', id: 'brModels' }),
     el('h3', {}, 'MİMAR RAPORU'), el('div', { id: 'brArch', class: 'muted' }),

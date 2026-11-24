@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 13 — PİYASA MERKEZİ: tüm dijital piyasaları tarar (bilgi amaçlı; işlem yapmaz, yatırım tavsiyesi vermez).
+/* SATÜRN 13 — PİYASA MERKEZİ: tüm dijital piyasaları tarar (bilgi amaçlı; işlem yapmaz, yatırım tavsiyesi vermez).
  *  • Kripto: CoinGecko ilk 100 (piyasa değeri, 1s/24s/7g değişim) + Binance canlı fiyat ve günlük mumlar (RSI, SMA50/200, hacim patlaması)
  *  • Altın/gümüş: PAXG (ons altın karşılığı, canlı) × USDT/TRY → gram, çeyrek, yarım, tam (has altın karşılığı); varsa Kapalıçarşı fiyatı (Truncgil)
  *  • Döviz: USD, EUR, GBP / TRY (Binance canlı + ECB)
@@ -218,7 +218,7 @@
       alarms = alarms.filter(a => !fired.some(f => f.a === a)); saveA();
       const t = '🔔 PİYASA ALARMI\n' + fired.map(f => `• ${f.q.text}  →  koşul: ${f.a.op === '>' ? '>' : '<'} ${nf(f.a.val)}`).join('\n');
       const n = bubble('ai', t); answerTools(n.el, t);
-      if (opt('ntfyOn') === '1') window.jarvisPushPhone?.(fired.map(f => f.q.text).join(' · '), { title: 'JARVIS piyasa alarmı', tags: 'chart_with_upwards_trend', priority: 4 }).catch(() => {});
+      if (opt('ntfyOn') === '1') window.jarvisPushPhone?.(fired.map(f => f.q.text).join(' · '), { title: 'SATÜRN piyasa alarmı', tags: 'chart_with_upwards_trend', priority: 4 }).catch(() => {});
       try { navigator.vibrate?.([200, 100, 200]); } catch {}
       logOp('piyasa alarmı', fired.map(f => f.a.sym), 'başarılı');
     }

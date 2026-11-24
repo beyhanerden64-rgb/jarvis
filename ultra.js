@@ -1,9 +1,9 @@
 'use strict';
-/* JARVIS 9 — dünyadaki en iyi JARVIS projelerinde olup bizde eksik kalan özellikler:
+/* SATÜRN 9 — dünyadaki en iyi SATÜRN projelerinde olup bizde eksik kalan özellikler:
  *  1) Anlamsal hafıza araması (OpenClaw memory_search, isair "unlimited memory"): anlamca benzer kayıtları bulur (Gemini embedding, ücretsiz)
  *  2) Tam yedek / geri yükleme + işlem kaydı CSV (vierisid "backup & restore", "audit trail")
  *  3) Sistem teşhisi — "doctor" (OpenJarvis/vierisid): tek dokunuşla tüm sağlık raporu, yapay zekâsız
- *  4) Mini JARVIS — her zaman üstte duran yüzen pencere (vierisid "floating desktop interface")
+ *  4) Mini SATÜRN — her zaman üstte duran yüzen pencere (vierisid "floating desktop interface")
  *  5) Bas-konuş kısayolu: Boşluk / Ctrl+Boşluk (vierisid, akshayaggarwal "hold to talk")
  *  6) Takvim bağlantısı (iCal gizli adres; OpenJarvis Calendar, Saner daily planning): brifing ve nabız takvimi görür
  *  7) Sağlık günlüğü: su, uyku, egzersiz, ağrı (isair "nutrition / well-being tracking")
@@ -44,7 +44,7 @@
   }
   const docs = () => [
     ...items.filter(i => !i.private).map(i => ({ k: 'i:' + i.id + ':' + (i.text || '').length, src: i, text: `${i.kind} ${i.title || ''} ${i.text}` })),
-    ...archive.slice(-400).map(x => ({ k: 'a:' + x.t, src: x, text: `Beyhan: ${x.q}\nJARVIS: ${x.a}` }))
+    ...archive.slice(-400).map(x => ({ k: 'a:' + x.t, src: x, text: `Beyhan: ${x.q}\nSATÜRN: ${x.a}` }))
   ];
   let indexing = false;
   async function indexMore(max = 100) {
@@ -93,11 +93,11 @@
   }
   async function restore(file) {
     const j = JSON.parse(await file.text());
-    if (j?.jarvis !== 'yedek' || typeof j.veri !== 'object') throw Error('Bu bir JARVIS yedeği değil');
+    if (j?.jarvis !== 'yedek' || typeof j.veri !== 'object') throw Error('Bu bir SATÜRN yedeği değil');
     if (!(await confirmAction(`${dateTR(j.tarih)} tarihli yedek geri yüklensin mi? Bu cihazdaki şimdiki veriler yedektekilerle değiştirilir (önce otomatik yedek alınır).`))) return;
     backup(false);
     for (const [k, v] of Object.entries(j.veri)) if (k.startsWith('jarvisapp.')) localStorage.setItem(k, v);
-    note('Yedek geri yüklendi; JARVIS yeniden başlıyor…'); setTimeout(() => location.reload(), 1500);
+    note('Yedek geri yüklendi; SATÜRN yeniden başlıyor…'); setTimeout(() => location.reload(), 1500);
   }
   function exportOps() {
     const rows = [['zaman', 'araç', 'durum', 'ayrıntı', 'sonuç'], ...opLog.map(o => [new Date(o.t).toLocaleString('tr-TR'), o.tool, o.status, o.args, o.result])];
@@ -147,7 +147,7 @@
     return r.text;
   }
 
-  /* ================= 4) MİNİ JARVIS (yüzen pencere) ================= */
+  /* ================= 4) MİNİ SATÜRN (yüzen pencere) ================= */
   let pip = null;
   async function miniJarvis() {
     if (!window.documentPictureInPicture) throw Error('Bu tarayıcı yüzen pencereyi desteklemiyor (Chrome/Edge masaüstü gerekir)');
@@ -162,11 +162,11 @@
       main{padding:8px 12px;overflow:auto;color:#cfe9f5;white-space:pre-wrap} form{display:flex;gap:6px;padding:8px 10px;border-top:1px solid #57d3ff33}
       input{flex:1;background:#071521;border:1px solid #57d3ff55;color:#dff6ff;border-radius:6px;padding:7px} button{background:#0e2a3a;color:#9be9ff;border:1px solid #57d3ff77;border-radius:6px;padding:6px 10px;cursor:pointer}` }));
     const core = d.createElement('div'); core.className = 'core'; core.title = 'Konuş'; core.textContent = '◉';
-    const h = d.createElement('div'); h.innerHTML = '<h1>JARVIS</h1><small>HAZIR</small>';
+    const h = d.createElement('div'); h.innerHTML = '<h1>SATÜRN</h1><small>HAZIR</small>';
     const head = d.createElement('header'); head.append(core, h);
     const main = d.createElement('main'); main.textContent = 'Mikrofona dokun ya da yaz.';
     const form = d.createElement('form'), inp = d.createElement('input'), btn = d.createElement('button');
-    inp.placeholder = 'JARVIS’e yaz…'; btn.textContent = '➤'; form.append(inp, btn);
+    inp.placeholder = 'SATÜRN’e yaz…'; btn.textContent = '➤'; form.append(inp, btn);
     d.body.append(head, main, form);
     core.onclick = () => { window.jarvisUnlock?.(); if (voiceSession.active) voiceSession.stop(''); else voiceSession.start(); };
     form.onsubmit = e => { e.preventDefault(); const v = inp.value.trim(); if (!v) return; inp.value = ''; typedTurn(v, false); };
@@ -274,7 +274,7 @@
   setGuest(guest());
   const _instr = instructions;
   instructions = voiceTurn => (guest()
-    ? `Sen JARVIS'sin, FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'nin (Cizre) yardımcı asistanı. ŞU AN MİSAFİR MODUNDASIN: konuştuğun kişi Beyhan değil, bir misafir veya danışan. Beyhan'ın kişisel bilgilerini, hafızasını, hastalarını, randevularını, kasa/para bilgilerini, bilgisayarını ve kayıtlarını ASLA paylaşma, bunlarla ilgili işlem yapma; sorulursa kibarca "bunu Beyhan Bey'e sorabilirsiniz" de. Genel sorulara, egzersiz ve sağlıklı yaşam hakkında genel bilgiye yardımcı ol; tıbbi teşhis koyma, gerekirse fizyoterapiste yönlendir. Kısa, nazik, "siz" diye hitap et. Şu an: ${nowText()}.\nKullanabileceğin araçlar (⟦ARAC|ad|argüman⟧): ${[...GUEST_TOOLS].filter(k => TOOLS[k]).map(k => TOOLS[k].d).join(' · ')}`
+    ? `Sen SATÜRN'sün, FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'nin (Cizre) yardımcı asistanı. ŞU AN MİSAFİR MODUNDASIN: konuştuğun kişi Beyhan değil, bir misafir veya danışan. Beyhan'ın kişisel bilgilerini, hafızasını, hastalarını, randevularını, kasa/para bilgilerini, bilgisayarını ve kayıtlarını ASLA paylaşma, bunlarla ilgili işlem yapma; sorulursa kibarca "bunu Beyhan Bey'e sorabilirsiniz" de. Genel sorulara, egzersiz ve sağlıklı yaşam hakkında genel bilgiye yardımcı ol; tıbbi teşhis koyma, gerekirse fizyoterapiste yönlendir. Kısa, nazik, "siz" diye hitap et. Şu an: ${nowText()}.\nKullanabileceğin araçlar (⟦ARAC|ad|argüman⟧): ${[...GUEST_TOOLS].filter(k => TOOLS[k]).map(k => TOOLS[k].d).join(' · ')}`
     : _instr(voiceTurn));
   const _rt = window.jarvisRunTools;
   window.jarvisRunTools = async (calls, ctx) => {
@@ -299,17 +299,17 @@
 
   /* ================= ARAÇLAR ================= */
   Object.assign(TOOLS, {
-    teshis: { d: 'teshis — JARVIS’in tüm sistem sağlığını kontrol eder (anahtar, internet, modeller, mikrofon, depolama, bilgisayar yardımcısı, nöbetçiler, yedek)', run: async () => (await doctor()).text },
+    teshis: { d: 'teshis — SATÜRN’ün tüm sistem sağlığını kontrol eder (anahtar, internet, modeller, mikrofon, depolama, bilgisayar yardımcısı, nöbetçiler, yedek)', run: async () => (await doctor()).text },
     takvim_oku: { d: 'takvim_oku|bugün/yarın/hafta/ay — Beyhan’ın bağlı takviminden (iCal) etkinlikler', run: async ([w]) => calText(w || 'bugün') },
     saglik: { d: 'saglik|su|ml veya saglik|uyku|saat veya saglik|egzersiz|açıklama veya saglik|agri|0-10|bölge veya saglik|rapor|gün — Beyhan’ın kişisel sağlık günlüğü', run: ([k, v, x]) => { k = fold(k || 'rapor'); if (k === 'rapor') return hReport(Number(v) || 7); hLog(k, v, x); return 'Kaydedildi. ' + hReport(1); } },
     grafik: { d: 'grafik|başlık|etiket:değer, etiket:değer, …|bar veya cizgi — sohbette grafik çizer (veri karşılaştırma, trend)', run: ([t, data, type]) => { const pairs = String(data || '').split(/[,;]\s*/).map(x => x.split(':')).filter(p => p.length === 2 && isFinite(+p[1])).map(([k, v]) => [k.trim(), +v]); if (pairs.length < 2) throw Error('En az 2 “etiket:değer” gerekli'); drawChart(t || 'Grafik', pairs.slice(0, 24), /cizgi|çizgi|line/i.test(type || '') ? 'line' : 'bar'); return 'Grafik sohbette çizildi.'; } },
     eposta: { d: 'eposta|alıcı@adres|konu|metin — e-posta taslağı hazırlar (Beyhan gönder’e basar)', pending: true, run: ([to, sub, body]) => { pendingLinks.push({ url: `mailto:${encodeURIComponent(to || '')}?subject=${encodeURIComponent(sub || '')}&body=${encodeURIComponent(body || '')}`, title: '✉ E-posta taslağını aç' }, { url: `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(to || '')}&su=${encodeURIComponent(sub || '')}&body=${encodeURIComponent(body || '')}`, title: '✉ Gmail’de aç' }); return 'Taslak hazır; Beyhan bağlantıya dokunup gönderecek.'; } },
-    yedek_al: { d: 'yedek_al — tüm JARVIS verisinin (anahtarlar hariç) yedek dosyasını indirir', run: () => `${backup(false)} kayıt yedeklendi (indirilenler klasörü).` },
-    mini: { d: 'mini — her zaman üstte duran küçük JARVIS penceresini açar (bilgisayarda)', run: async () => { await miniJarvis(); return 'Mini JARVIS açıldı.'; } }
+    yedek_al: { d: 'yedek_al — tüm SATÜRN verisinin (anahtarlar hariç) yedek dosyasını indirir', run: () => `${backup(false)} kayıt yedeklendi (indirilenler klasörü).` },
+    mini: { d: 'mini — her zaman üstte duran küçük SATÜRN penceresini açar (bilgisayarda)', run: async () => { await miniJarvis(); return 'Mini SATÜRN açıldı.'; } }
   });
   PC_READONLY.add('web_al');
   const _tp = toolsPrompt;
-  toolsPrompt = () => _tp() + `\nJARVIS 9: Takvim ${opt('icsUrl') ? 'bağlı (iCal) — brifinglerde ve “bugün ne var” sorularında takvim_oku kullan' : 'iCal bağlı değil; iPhone takvimi için yukarıdaki iPHONE TAKVİMİ bölümünü kullan, eskiyse iphone|takvim öner'}. Sağlık günlüğü için saglik, karşılaştırma/trend için grafik, e-posta için eposta (taslak), sistem durumu için teshis aracını kullan. Hafıza sorularında hafiza_ara anlamca da arar.`;
+  toolsPrompt = () => _tp() + `\nSATÜRN 9: Takvim ${opt('icsUrl') ? 'bağlı (iCal) — brifinglerde ve “bugün ne var” sorularında takvim_oku kullan' : 'iCal bağlı değil; iPhone takvimi için yukarıdaki iPHONE TAKVİMİ bölümünü kullan, eskiyse iphone|takvim öner'}. Sağlık günlüğü için saglik, karşılaştırma/trend için grafik, e-posta için eposta (taslak), sistem durumu için teshis aracını kullan. Hafıza sorularında hafiza_ara anlamca da arar.`;
 
   /* ================= yerel komutlar ================= */
   const _lc = localCommand;
@@ -337,7 +337,7 @@
     if (!opt('icsUrl') || guest()) return;
     try {
       const ev = await loadCal(); const now = Date.now();
-      for (const e of ev) { const k = e.s + e.t; if (!e.a && e.s > now && e.s - now <= 15 * MIN && !seen[k]) { seen[k] = now; const msg = `Beyhan, ${Math.max(1, Math.round((e.s - now) / MIN))} dakika sonra: ${e.t}${e.l ? ', ' + e.l : ''}.`; bubble('note', '📅 ' + msg); if (setting('speakOn') === '1' && phase === 'idle' && !document.hidden) voiceSession.read(msg); else if (opt('ntfyOn') === '1') window.jarvisPushPhone?.(msg, { title: 'JARVIS takvim', tags: 'calendar' }).catch(() => {}); } }
+      for (const e of ev) { const k = e.s + e.t; if (!e.a && e.s > now && e.s - now <= 15 * MIN && !seen[k]) { seen[k] = now; const msg = `Beyhan, ${Math.max(1, Math.round((e.s - now) / MIN))} dakika sonra: ${e.t}${e.l ? ', ' + e.l : ''}.`; bubble('note', '📅 ' + msg); if (setting('speakOn') === '1' && phase === 'idle' && !document.hidden) voiceSession.read(msg); else if (opt('ntfyOn') === '1') window.jarvisPushPhone?.(msg, { title: 'SATÜRN takvim', tags: 'calendar' }).catch(() => {}); } }
       for (const k of Object.keys(seen)) if (seen[k] < now - 2 * DAY) delete seen[k];
       store.set('calSeen', seen);
     } catch {}
@@ -352,7 +352,7 @@
     el('h3', {}, 'SİSTEM'),
     el('div', { class: 'row' },
       el('button', { type: 'button', class: 'btn', onclick: () => { $('drawer').classList.remove('open'); showDoctor().catch(e => note(e.message)); } }, 'Sistem teşhisi'),
-      el('button', { type: 'button', class: 'btn', id: 'miniBtn', hidden: !window.documentPictureInPicture, onclick: () => miniJarvis().catch(e => note(e.message)) }, 'Mini JARVIS (yüzen pencere)'),
+      el('button', { type: 'button', class: 'btn', id: 'miniBtn', hidden: !window.documentPictureInPicture, onclick: () => miniJarvis().catch(e => note(e.message)) }, 'Mini SATÜRN (yüzen pencere)'),
       el('button', { type: 'button', class: 'btn', id: 'guestBtn', onclick: async () => { if (guest()) bubble('ai', await guestOff()); else { setGuest(true); note('Misafir modu açık: kişisel bilgiler, hastalar, kasa ve bilgisayar kapalı.'); } } }, guest() ? 'Misafir modunu kapat' : 'Misafir modunu aç')),
     el('h3', {}, 'YEDEK'),
     el('div', { class: 'row' },

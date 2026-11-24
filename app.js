@@ -1,6 +1,6 @@
 'use strict';
-/* JARVIS uygulama 1.0 — kurulabilir web uygulaması (PWA).
- * Konuşma: tarayıcının konuşma tanıması + JARVIS 0.39 ses motoru (JarvisVoice, JarvisSpeechPlayer).
+/* SATÜRN uygulama 1.0 — kurulabilir web uygulaması (PWA).
+ * Konuşma: tarayıcının konuşma tanıması + SATÜRN 0.39 ses motoru (JarvisVoice, JarvisSpeechPlayer).
  * Beyin: kendi sunucumuzdaki /api/chat (Claude API). Anahtarlar yalnızca sunucuda. */
 const $ = id => document.getElementById(id);
 const store = {
@@ -104,7 +104,7 @@ let installEvent = null;
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; $('install').hidden = false; });
-addEventListener('appinstalled', () => { $('install').hidden = true; note('JARVIS uygulama olarak yüklendi.'); });
+addEventListener('appinstalled', () => { $('install').hidden = true; note('SATÜRN uygulama olarak yüklendi.'); });
 if (isIOS && !standalone) $('install').hidden = false;
 $('install').onclick = async () => {
   if (installEvent) { installEvent.prompt(); const r = await installEvent.userChoice; if (r.outcome === 'accepted') $('install').hidden = true; installEvent = null; }
@@ -136,7 +136,7 @@ function bubble(kind, text, opts = {}) {
   $('empty')?.remove();
   const d = document.createElement('div');
   d.className = 'msg ' + kind;
-  if (kind === 'me' || kind === 'ai') { const w = document.createElement('span'); w.className = 'who'; w.textContent = kind === 'me' ? 'BEYHAN' : 'JARVIS'; d.append(w); }
+  if (kind === 'me' || kind === 'ai') { const w = document.createElement('span'); w.className = 'who'; w.textContent = kind === 'me' ? 'BEYHAN' : 'SATÜRN'; d.append(w); }
   if (opts.image) { const im = document.createElement('img'); im.src = opts.image; im.alt = 'Eklenen görsel'; d.append(im); }
   const body = document.createElement('span'); body.textContent = text; d.append(body);
   $('feed').append(d); $('feed').scrollTop = $('feed').scrollHeight;
@@ -182,7 +182,7 @@ new MutationObserver(() => {
   const last = msgs.at(-1); if (!last) return;
   const cap = $('caption'); cap.replaceChildren();
   const who = document.createElement('span'); who.className = 'who';
-  who.textContent = last.classList.contains('me') ? 'SEN' : last.classList.contains('alarm') ? 'HATIRLATMA' : 'JARVIS';
+  who.textContent = last.classList.contains('me') ? 'SEN' : last.classList.contains('alarm') ? 'HATIRLATMA' : 'SATÜRN';
   const body = document.createElement('div'); body.textContent = (last.querySelector('span:not(.who)') || last).textContent;
   cap.append(who, body);
   const src = last.querySelector('.src'); if (src) cap.append(src.cloneNode(true));
@@ -235,7 +235,7 @@ function startTimer(ms, label) {
     cancelTimer(tm.id, true);
     bubble('alarm', '⏰ ' + label + ' doldu.');
     beep(); setTimeout(beep, 700); setTimeout(beep, 1400);
-    try { if (window.Notification?.permission === 'granted') navigator.serviceWorker?.ready.then(r => r.showNotification('JARVIS', { body: label + ' doldu.', icon: 'icon-192.png' })); } catch {}
+    try { if (window.Notification?.permission === 'granted') navigator.serviceWorker?.ready.then(r => r.showNotification('SATÜRN', { body: label + ' doldu.', icon: 'icon-192.png' })); } catch {}
     if (setting('speakOn') === '1' && !answering) voiceSession.read('Beyhan, ' + label + ' doldu.');
   }, ms);
   timers.push(tm); renderTimers();
@@ -389,7 +389,7 @@ function phoneCalText() {
 }
 function instructions(voiceTurn) {
   const fmt = arr => arr.map(i => `- [${i.id}] ${i.kind === 'memory' ? '(' + isoLocal(new Date(i.created)).slice(0, 10) + ') ' : ''}${i.text}${i.due ? ' (zaman: ' + i.due + (isLate(i) ? ', GECİKTİ' : '') + ')' : ''}`).join('\n') || '(yok)';
-  return `Sen JARVIS'sin: Fizyoterapist Beyhan Erden'in kişisel yapay zekâ asistanı. Beyhan, Cizre/Şırnak'ta FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'ni işletiyor.
+  return `Sen SATÜRN'sün: Fizyoterapist Beyhan Erden'in kişisel yapay zekâ asistanı. Beyhan, Cizre/Şırnak'ta FİZYOVİTA Fizik Tedavi ve Rehabilitasyon Merkezi'ni işletiyor.
 Şu an: ${nowText()} (Türkiye saati, ISO ${isoLocal(now())}).
 Rol: ${setting('persona') === 'tercuman' ? `TERCÜMANSIN. Beyhan (fizyoterapist) ile hastası arasında çeviri yap. Türkçe gelen sözü hastanın diline (${setting('transLang')}) çevir; başka dilde gelen sözü Türkçeye çevir. Yalnızca çeviriyi yaz, yorum veya açıklama ekleme; tıbbi terimleri sade ve doğru çevir. Bu modda eylem işaretleri kullanma.` : PERSONA[setting('persona')] || PERSONA.genel}
 Üslup: doğal, sıcak, akıcı Türkçe; "sen" diye hitap et; önce cevabı ver; gereksiz selam ve kapanış sorusu kullanma; yeri gelince kısa, zekice bir espri. ${LENGTH[setting('length')]} Bilmediğini uydurma. Yapmadığın bir işlemi (mesaj gönderme, telefon araması) yaptım deme.${webSearch.allowed() ? '' : ' İnternete erişimin yok; güncel bilgi gerekiyorsa bunu söyle.'} Kesin tıbbi tanı veya ilaç dozu verme.
@@ -499,6 +499,7 @@ async function streamOnce(body, onText) {
 /** Answers with tools: the model may call ⟦ARAC|…⟧, the app runs them, feeds the results back and the model continues (max 4 rounds).
  * onDelta receives only the speakable part. Returns the clean reply. */
 async function think(text, { voiceTurn = false, onDelta = () => {}, image = null } = {}) {
+  if (text) text = text.replace(/^\s*(?:hey\s+)?(?:s[aâ]t[uüıi]r[uüı]?n|jarvis)\s*[,:!.]?\s+(?=\S)/iu, ''); // “Satürn, …” / “Jarvis, …” → komut
   window.jarvisCurText = text || '';
   const local = localCommand(text);
   bubble('me', text || '(görsel)', { image: image?.url });
@@ -553,7 +554,7 @@ async function remember(q, a) {
   if (chat.messages.length > 28) {
     const old = chat.messages.slice(0, 12);
     try {
-      const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'quick', system: 'Konuşma özetleyicisin. Yalnızca özeti yaz.', messages: [{ role: 'user', content: `Beyhan ile JARVIS arasındaki eski konuşmaları ve mevcut özeti tek bir güncel özete dönüştür: en fazla 900 karakter, Türkçe, madde işaretli; kalıcı kararlar, devam eden işler, tercihler, önemli kişiler ve tarihler.\n\nMEVCUT ÖZET:\n${chat.summary || '(yok)'}\n\nESKİ KONUŞMA:\n${old.map(m => (m.role === 'user' ? 'Beyhan: ' : 'JARVIS: ') + m.content.slice(0, 1200)).join('\n')}` }] }) });
+      const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'quick', system: 'Konuşma özetleyicisin. Yalnızca özeti yaz.', messages: [{ role: 'user', content: `Beyhan ile SATÜRN arasındaki eski konuşmaları ve mevcut özeti tek bir güncel özete dönüştür: en fazla 900 karakter, Türkçe, madde işaretli; kalıcı kararlar, devam eden işler, tercihler, önemli kişiler ve tarihler.\n\nMEVCUT ÖZET:\n${chat.summary || '(yok)'}\n\nESKİ KONUŞMA:\n${old.map(m => (m.role === 'user' ? 'Beyhan: ' : 'SATÜRN: ') + m.content.slice(0, 1200)).join('\n')}` }] }) });
       const text = r.ok ? (await r.text()).split('\u0000ERR:')[0].trim() : '';
       if (text) { chat.summary = text.slice(0, 1500); chat.messages = chat.messages.slice(12); $('summary').textContent = chat.summary; }
     } catch { chat.messages = chat.messages.slice(-28); }
@@ -561,7 +562,7 @@ async function remember(q, a) {
   persist();
 }
 
-/* ================= voice: JARVIS 0.39 engine ================= */
+/* ================= voice: SATÜRN 0.39 engine ================= */
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recovery = new JarvisVoiceRecovery({ load: () => store.get('voiceRecovery', null), save: d => store.set('voiceRecovery', d) });
 const iosAudio = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -727,7 +728,7 @@ const wake = {
     typedTurn(command, true);
   }
 };
-// Resume listening whenever JARVIS is quiet again (after answering, after the user stops the mic, after returning to the app).
+// Resume listening whenever SATÜRN is quiet again (after answering, after the user stops the mic, after returning to the app).
 setInterval(() => { if (wake.enabled() && wake.idle()) wake.start(); else if (!wake.idle()) wake.stop(); }, 1500);
 document.addEventListener('visibilitychange', () => { if (document.hidden) wake.stop(); });
 document.addEventListener('pointerdown', () => { if (wake.blocked) { wake.blocked = false; wake.start(); } }, true);
@@ -768,7 +769,7 @@ document.addEventListener('keydown', e => {
 $('composer').onsubmit = e => {
   e.preventDefault(); window.jarvisUnlock();
   const v = $('prompt').value.trim();
-  // Busy: an empty send means “stop”; a new message stops JARVIS and is sent right away.
+  // Busy: an empty send means “stop”; a new message stops SATÜRN and is sent right away.
   if (phase === 'thinking' || phase === 'speaking' || answering) { stopAll(); if (!v && !pendingImage) return; }
   if (!v && !pendingImage) return;
   $('prompt').value = ''; autosize(); wake.stop(); voiceSession.stop(''); typedTurn(v, false);
@@ -816,7 +817,7 @@ function checkReminders() {
     announced.add(i.id);
     bubble('alarm', '⏰ Hatırlatma: ' + i.text + ' · ' + dueText(i.due));
     beep();
-    try { if (window.Notification?.permission === 'granted') navigator.serviceWorker?.ready.then(r => r.showNotification('JARVIS hatırlatma', { body: i.text, icon: 'icon-192.png', tag: i.id })); } catch {}
+    try { if (window.Notification?.permission === 'granted') navigator.serviceWorker?.ready.then(r => r.showNotification('SATÜRN hatırlatma', { body: i.text, icon: 'icon-192.png', tag: i.id })); } catch {}
     if (!voiceSession.active && !answering && Date.now() - new Date(i.due) < 3600000 && setting('speakOn') === '1') voiceSession.read('Beyhan, hatırlatma: ' + i.text + '.');
   }
   if (due.length) store.set('announced', [...announced].slice(-300));
@@ -836,8 +837,8 @@ function download(filename, data) {
   document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
 const stamp = () => isoLocal(now()).slice(0, 10);
-$('exportNotes').onclick = () => download(`jarvis-notlar-${stamp()}.md`, '# JARVIS notları\n\n' + items.filter(i => i.kind === 'note').map(i => `## ${i.title || 'Not'}\n\n${i.text}\n`).join('\n') + '\n# Hafıza\n\n' + items.filter(i => i.kind === 'memory').map(i => '- ' + i.text).join('\n') + '\n\n# Görevler\n\n' + items.filter(i => i.kind === 'task').map(i => `- [${i.done ? 'x' : ' '}] ${i.text}${i.due ? ' (' + dueText(i.due) + ')' : ''}`).join('\n'));
-$('exportChat').onclick = () => download(`jarvis-sohbet-${stamp()}.md`, '# JARVIS sohbeti\n\n' + (chat.summary ? '## Özet\n\n' + chat.summary + '\n\n' : '') + chat.messages.map(m => `**${m.role === 'user' ? 'Beyhan' : 'JARVIS'}:** ${m.content}`).join('\n\n'));
+$('exportNotes').onclick = () => download(`jarvis-notlar-${stamp()}.md`, '# SATÜRN notları\n\n' + items.filter(i => i.kind === 'note').map(i => `## ${i.title || 'Not'}\n\n${i.text}\n`).join('\n') + '\n# Hafıza\n\n' + items.filter(i => i.kind === 'memory').map(i => '- ' + i.text).join('\n') + '\n\n# Görevler\n\n' + items.filter(i => i.kind === 'task').map(i => `- [${i.done ? 'x' : ' '}] ${i.text}${i.due ? ' (' + dueText(i.due) + ')' : ''}`).join('\n'));
+$('exportChat').onclick = () => download(`jarvis-sohbet-${stamp()}.md`, '# SATÜRN sohbeti\n\n' + (chat.summary ? '## Özet\n\n' + chat.summary + '\n\n' : '') + chat.messages.map(m => `**${m.role === 'user' ? 'Beyhan' : 'SATÜRN'}:** ${m.content}`).join('\n\n'));
 
 /* ================= backup: move memory between devices ================= */
 $('backupSave').onclick = () => {
@@ -857,7 +858,7 @@ $('backupFile').onchange = async () => {
     for (const [k, v] of Object.entries(d.settings || {})) if ($(k) && [...$(k).options].some(o => o.value === v)) { $(k).value = v; store.set('set.' + k, v); }
     persist(); renderChat(); $('summary').textContent = chat.summary || $('summary').textContent;
     note(`Yedek yüklendi: ${d.items.length} kayıt.`);
-  } catch { note('Bu dosya bir JARVIS yedeği değil.'); }
+  } catch { note('Bu dosya bir SATÜRN yedeği değil.'); }
 };
 
 /* ================= status ================= */
@@ -876,7 +877,7 @@ function sysInfo() {
     ['Bilgisayar', typeof pcLocal !== 'undefined' && pcLocal ? 'yardımcı bağlı' : 'yardımcı bağlı değil'],
     ['Eşitleme (şifreli)', window.jarvisSync?.enabled() ? 'açık · GitHub Gist' : 'kapalı'],
     ['Araçlar', typeof TOOLS !== 'undefined' ? Object.keys(TOOLS).length + ' araç · ' + Object.keys(AGENTS).length + ' uzman ajan' : '-'],
-    ['Ses motoru', 'JARVIS 0.39.0']
+    ['Ses motoru', 'SATÜRN 0.39.0']
   ];
   $('sys').replaceChildren(...rows.flatMap(([k, v]) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; return [dt, dd]; }));
 }

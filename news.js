@@ -1,6 +1,6 @@
 'use strict';
-/* JARVIS 14 — GÜNDEM MERKEZİ: anlık haber akışı ve dünya gündemi (tarafsız, kaynaklı).
- *  Kaynak: GDELT (dünyadaki binlerce haber sitesini 15 dakikada bir tarar; ücretsiz, anahtarsız) + USGS/EMSC deprem verisi
+/* SATÜRN 14 — GÜNDEM MERKEZİ: anlık haber akışı ve dünya gündemi (tarafsız, kaynaklı).
+ *  Kaynak: haber sitelerinin RSS akışları (AA, TRT, BBC Türkçe, DW, BBC, Al Jazeera, Guardian, NYT, Fed, ECB, DSÖ, GDACS…) + GDELT + USGS/EMSC deprem verisi
  *          + DSÖ salgın bildirimleri; hiçbiri ulaşılamazsa Gemini web araması (gecikmeli olabilir, belirtilir).
  *  Başlıklar: SON DAKİKA · Ekonomi · Para & finans · Merkez bankaları · Sağlık · Siyaset & dünya · Hükümet kararları · Doğal afetler
  *             · Bölgeler: ABD, Avrupa, Çin, Rusya, Türkiye
@@ -52,11 +52,9 @@
     if (!force && feed[key] && Date.now() - feed[key].t < 10 * 60000) return feed[key].items;
     let items;
     try {
-      const d = await gdelt(C.q + (C.extra || ''), key === 'afet' ? '24h' : '12h');
-      const arts = (d.articles || []).filter(a => /^(turkish|english)$/i.test(a.language || '') || a.sourcecountry === 'Turkey').map(a => ({ title: String(a.title || '').trim(), url: a.url, domain: a.domain, lang: /turk/i.test(a.language) ? 'tr' : 'en', t: pdate(a.seendate) }));
-      items = cluster(arts).slice(0, 15);
+      items = cluster(await collect(key, C.q + (C.extra || ''), key === 'afet' ? '24h' : '12h')).slice(0, 15);
       if (!items.length) throw Error('boş');
-    } catch (e) { items = await viaSearch(key).catch(() => feed[key]?.items || []); }
+    } catch (e) { items = await viaSearch(key).catch(() => []); if (!items.length) items = feed[key]?.items || []; }
     feed[key] = { t: Date.now(), items }; saveFeed();
     return items;
   }
@@ -64,6 +62,75 @@
     const t = await window.jarvisResearch.ask('Sen bir haber ajansı editörüsün. Google aramasıyla SON 12 SAATİN en önemli haberlerini bul. Tarafsız ol. YALNIZ JSON dizi: [{"baslik":"Türkçe başlık","kaynak":"site adı","url":"https://…","saat":"ISO zaman veya boş"}] en çok 8 öğe. Uydurma; bulamazsan boş dizi.', 'Konu: ' + CATS[key].ad + ' — ' + CATS[key].q.replace(/[()"]/g, ''), 'quick', true);
     let arr = []; try { arr = JSON.parse((t.match(/\[[\s\S]*\]/) || ['[]'])[0]); } catch {}
     return arr.filter(x => x?.baslik && /^https?:\/\//.test(x.url || '')).map(x => ({ title: x.baslik, tr: x.baslik, url: x.url, domain: x.kaynak || new URL(x.url).hostname, domains: [x.kaynak || ''], src: 1, t: Date.parse(x.saat) || Date.now(), lang: 'tr', web: true, breaking: false }));
+  }
+  /* ---------- RSS katmanı: haber sitelerinin kendi akışları (GDELT'e ulaşılamasa da çalışır) ----------
+   * Tarayıcı doğrudan izin vermezse ücretsiz RSS okuyucu/geçit servisleri denenir; çalışan yol hatırlanır. */
+  const G = 1; // genel akış → başlığa göre süz
+  const FEEDS = {
+    son: [['https://feeds.bbci.co.uk/turkce/rss.xml', 'BBC Türkçe'], ['https://rss.dw.com/rdf/rss-tur-all', 'DW Türkçe'], ['https://www.aa.com.tr/tr/rss/default?cat=guncel', 'AA'], ['https://www.trthaber.com/sondakika.rss', 'TRT Haber'], ['https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'], ['https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'], ['https://www.theguardian.com/world/rss', 'The Guardian']],
+    ekonomi: [['https://www.aa.com.tr/tr/rss/default?cat=ekonomi', 'AA Ekonomi'], ['https://feeds.bbci.co.uk/news/business/rss.xml', 'BBC Business'], ['https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml', 'NYT Economy'], ['https://www.theguardian.com/business/economics/rss', 'Guardian Economics']],
+    finans: [['https://www.aa.com.tr/tr/rss/default?cat=ekonomi', 'AA Ekonomi'], ['https://feeds.bbci.co.uk/news/business/rss.xml', 'BBC Business'], ['https://www.cnbc.com/id/10000664/device/rss/rss.html', 'CNBC'], ['https://rss.nytimes.com/services/xml/rss/nyt/Business.xml', 'NYT Business']],
+    merkez: [['https://www.federalreserve.gov/feeds/press_all.xml', 'Fed'], ['https://www.ecb.europa.eu/rss/press.html', 'Avrupa Merkez Bankası'], ['https://www.bankofengland.co.uk/rss/news', 'İngiltere Merkez Bankası'], ['https://feeds.bbci.co.uk/news/business/rss.xml', 'BBC Business', G], ['https://www.aa.com.tr/tr/rss/default?cat=ekonomi', 'AA Ekonomi', G]],
+    saglik: [['https://www.who.int/rss-feeds/news-english.xml', 'DSÖ'], ['https://feeds.bbci.co.uk/news/health/rss.xml', 'BBC Health'], ['https://www.aa.com.tr/tr/rss/default?cat=saglik', 'AA Sağlık'], ['https://rss.nytimes.com/services/xml/rss/nyt/Health.xml', 'NYT Health']],
+    siyaset: [['https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World'], ['https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera'], ['https://www.aa.com.tr/tr/rss/default?cat=dunya', 'AA Dünya'], ['https://feeds.bbci.co.uk/turkce/rss.xml', 'BBC Türkçe'], ['https://www.theguardian.com/world/rss', 'The Guardian']],
+    karar: [['https://www.aa.com.tr/tr/rss/default?cat=politika', 'AA Politika'], ['https://feeds.bbci.co.uk/news/politics/rss.xml', 'BBC Politics'], ['https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World', G], ['https://feeds.bbci.co.uk/turkce/rss.xml', 'BBC Türkçe', G]],
+    afet: [['https://www.gdacs.org/xml/rss.xml', 'GDACS (BM afet uyarı)'], ['https://feeds.bbci.co.uk/news/world/rss.xml', 'BBC World', G], ['https://www.aa.com.tr/tr/rss/default?cat=guncel', 'AA', G], ['https://www.aljazeera.com/xml/rss/all.xml', 'Al Jazeera', G]],
+    abd: [['https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml', 'BBC ABD'], ['https://feeds.npr.org/1001/rss.xml', 'NPR'], ['https://rss.nytimes.com/services/xml/rss/nyt/US.xml', 'NYT']],
+    avrupa: [['https://feeds.bbci.co.uk/news/world/europe/rss.xml', 'BBC Avrupa'], ['https://www.euronews.com/rss?level=theme&name=news', 'Euronews'], ['https://www.theguardian.com/world/europe-news/rss', 'Guardian Avrupa']],
+    cin: [['https://feeds.bbci.co.uk/news/world/asia/rss.xml', 'BBC Asya', G], ['https://www.scmp.com/rss/91/feed', 'SCMP'], ['https://www.theguardian.com/world/china/rss', 'Guardian Çin']],
+    rusya: [['https://www.themoscowtimes.com/rss/news', 'Moscow Times'], ['https://www.theguardian.com/world/russia/rss', 'Guardian Rusya'], ['https://feeds.bbci.co.uk/news/world/europe/rss.xml', 'BBC Avrupa', G]],
+    turkiye: [['https://www.aa.com.tr/tr/rss/default?cat=guncel', 'AA'], ['https://feeds.bbci.co.uk/turkce/rss.xml', 'BBC Türkçe'], ['https://rss.dw.com/rdf/rss-tur-all', 'DW Türkçe'], ['https://www.trthaber.com/sondakika.rss', 'TRT Haber']]
+  };
+  const GATES = [
+    ['doğrudan', u => u],
+    ['rss2json', u => 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u)],
+    ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)],
+    ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)]
+  ];
+  const gateRank = () => { const ok = store.get('newsGate', {}); return [...GATES.keys()].sort((a, b) => (ok[GATES[b][0]] || 0) - (ok[GATES[a][0]] || 0)); };
+  const markGate = (i, good) => { const ok = store.get('newsGate', {}); const k = GATES[i][0]; ok[k] = Math.max(-5, Math.min(20, (ok[k] || 0) + (good ? 1 : -1))); store.set('newsGate', ok); };
+  function parseFeed(body, name) {
+    let items = [];
+    try { const j = JSON.parse(body); if (Array.isArray(j.items)) items = j.items.map(x => ({ title: x.title, url: x.link, t: Date.parse(String(x.pubDate || '').replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(x.pubDate || '') ? '' : 'Z')) })); } catch {
+      const d = new DOMParser().parseFromString(body, 'text/xml');
+      if (d.querySelector('parsererror')) return [];
+      items = [...d.querySelectorAll('item, entry')].map(n => {
+        const q = s => n.getElementsByTagName(s)[0]?.textContent?.trim() || '';
+        const link = q('link') || n.querySelector('link[href]')?.getAttribute('href') || q('guid');
+        return { title: q('title'), url: link, t: Date.parse(q('pubDate') || q('updated') || q('published') || q('dc:date')) };
+      });
+    }
+    return items.filter(x => x.title && /^https?:\/\//.test(x.url || '')).map(x => ({ title: x.title.replace(/\s+/g, ' ').replace(/<[^>]+>/g, '').trim(), url: x.url, domain: name, t: Number.isFinite(x.t) ? Math.min(x.t, Date.now()) : Date.now() - 3600000 }));
+  }
+  async function rawFeed(url, name) {
+    if (typeof pcLocal !== 'undefined' && pcLocal) { try { const it = parseFeed((await pcCall('web_al', [url], false)).text, name); if (it.length) return it; } catch {} }
+    const failed = [];
+    for (const i of gateRank()) {
+      try {
+        const r = await withTimeout(fetch(GATES[i][1](url)), i === 0 ? 5000 : 9000, 'zaman aşımı');
+        if (!r.ok) throw Error('HTTP ' + r.status);
+        const it = parseFeed(await r.text(), name);
+        if (!it.length) throw Error('boş');
+        markGate(i, true); for (const f of failed) markGate(f, false); // yalnız başka geçit çalıştıysa önceki geçitler puan kaybeder
+        return it;
+      } catch { failed.push(i); }
+    }
+    throw Error(name + ' okunamadı');
+  }
+  const trish = s => /[çğışöüÇĞİŞÖÜ]/.test(s) || /\b(ve|bir|için|ile|bu|da|de)\b/i.test(s);
+  async function rssCat(key) {
+    const list = FEEDS[key] || [];
+    const res = await Promise.allSettled(list.map(([u, n, g]) => rawFeed(u, n).then(it => g && TERMS[key] ? it.filter(x => TERMS[key].some(w => fold(x.title).includes(w))) : it)));
+    return res.flatMap(r => r.status === 'fulfilled' ? r.value : []).filter(x => Date.now() - x.t < 2 * DAY).map(x => ({ ...x, lang: trish(x.title) ? 'tr' : 'en' }));
+  }
+  async function gdeltArts(q, span) {
+    const d = await Promise.race([gdelt(q, span), new Promise((_, j) => setTimeout(() => j(Error('GDELT yavaş')), 10000))]);
+    return (d.articles || []).filter(a => /^(turkish|english)$/i.test(a.language || '')).map(a => ({ title: String(a.title || '').trim(), url: a.url, domain: a.domain, lang: /turk/i.test(a.language) ? 'tr' : 'en', t: pdate(a.seendate) }));
+  }
+  async function collect(key, q, span) { // RSS + GDELT birlikte; hangisi gelirse
+    const [a, b] = await Promise.allSettled([rssCat(key), gdeltArts(q, span)]);
+    const arts = [...(a.status === 'fulfilled' ? a.value : []), ...(b.status === 'fulfilled' ? b.value : [])];
+    return arts.sort((x, y) => y.t - x.t);
   }
   // İngilizce başlıkları Türkçeye çevir (önbellekli, tek çağrı)
   const trCache = store.get('newsTr', {});
@@ -109,11 +176,7 @@
     try {
       status('Dünya gündemi taranıyor…');
       let all = [];
-      try {
-        const d = await gdelt(SON_Q, '6h');
-        const arts = (d.articles || []).filter(a => /^(turkish|english)$/i.test(a.language || '')).map(a => ({ title: String(a.title || '').trim(), url: a.url, domain: a.domain, lang: /turk/i.test(a.language) ? 'tr' : 'en', t: pdate(a.seendate) }));
-        all = cluster(arts).map(i => ({ ...i, cats: catOf(i.title) }));
-      } catch {}
+      try { all = cluster(await collect('son', SON_Q, '6h')).map(i => ({ ...i, cats: catOf(i.title) })); } catch {}
       // önceden açılmış başlık akışlarını da kat (taze olanlar)
       for (const [k, f] of Object.entries(feed)) if (Date.now() - f.t < 30 * 60000) for (const i of f.items) all.push({ ...i, cats: [k] });
       if (!all.length) all = (await viaSearch('siyaset').catch(() => [])).map(i => ({ ...i, cats: ['siyaset'] }));
@@ -171,7 +234,7 @@
     if (!hits.length || opt('newsLive') === '0') return;
     hits = await translate(hits.slice(0, 5)).catch(() => hits);
     const n = bubble('ai', '🔴 ANLIK HABER\n' + fmt(hits, 5)); addLinks(n.el, hits.slice(0, 5).map(i => ({ url: i.url, title: short(i.tr || i.title, 60) })));
-    if (opt('ntfyOn') === '1' && document.hidden) window.jarvisPushPhone?.(hits.slice(0, 3).map(i => i.tr || i.title).join(' · '), { title: 'JARVIS son dakika', tags: 'newspaper' }).catch(() => {});
+    if (opt('ntfyOn') === '1' && document.hidden) window.jarvisPushPhone?.(hits.slice(0, 3).map(i => i.tr || i.title).join(' · '), { title: 'SATÜRN son dakika', tags: 'newspaper' }).catch(() => {});
   }
   let first = true;
   async function liveTick() {

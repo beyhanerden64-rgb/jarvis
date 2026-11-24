@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 4.1 — listedeki ücretsiz kalan özellikler: 26 uzman ajan, belge bilgi tabanı (PDF/metin), geri bildirimden öğrenme,
+/* SATÜRN 4.1 — listedeki ücretsiz kalan özellikler: 26 uzman ajan, belge bilgi tabanı (PDF/metin), geri bildirimden öğrenme,
  * ZOİ zaman-olasılık motoru, klinik randevu/program/kasa/envanter, kripto backtest/portföy/emir defteri, site izleme,
  * ağ teşhisi, bağlantı güvenlik kontrolü, kamera, panel özelleştirme, otonomi/deneme modu, bütçe ve performans metrikleri,
  * yarım kalan görevi sürdürme, veri saklama süresi, düşük güç modu. hud.js'ten sonra yüklenir. */
@@ -64,8 +64,8 @@
       el('div', { class: 'tool' }, el('button', { type: 'button', onclick: () => { $('drawer').classList.remove('open'); typedTurn(`“${d.title}” belgesine göre şunu yanıtla: `, false); } }, 'Soru sor'), el('button', { type: 'button', onclick: () => { removeItem(d.id); renderDocs(); } }, 'Sil'))))));
     $('docEmpty').hidden = docs.length > 0;
   }
-  $('p-memory').append(el('h3', {}, 'BELGELER · BİLGİ TABANI'), el('p', { class: 'muted' }, 'Ataç düğmesiyle PDF, metin veya CSV ekle; JARVIS sorularını bu belgelere göre yanıtlar (hafiza_ara).'), el('ul', { class: 'list', id: 'docList' }), el('p', { class: 'muted', id: 'docEmpty' }, 'Belge yok.'),
-    el('h3', {}, 'GERİ BİLDİRİMLERİM'), el('p', { class: 'muted' }, 'Bir yanıtı 👎 ile işaretleyip neyin yanlış olduğunu yazarsan JARVIS bundan sonra buna uyar.'), el('ul', { class: 'list', id: 'lessonList' }));
+  $('p-memory').append(el('h3', {}, 'BELGELER · BİLGİ TABANI'), el('p', { class: 'muted' }, 'Ataç düğmesiyle PDF, metin veya CSV ekle; SATÜRN sorularını bu belgelere göre yanıtlar (hafiza_ara).'), el('ul', { class: 'list', id: 'docList' }), el('p', { class: 'muted', id: 'docEmpty' }, 'Belge yok.'),
+    el('h3', {}, 'GERİ BİLDİRİMLERİM'), el('p', { class: 'muted' }, 'Bir yanıtı 👎 ile işaretleyip neyin yanlış olduğunu yazarsan SATÜRN bundan sonra buna uyar.'), el('ul', { class: 'list', id: 'lessonList' }));
   // a doc's full text is searchable by hafiza_ara through searchItems (items list)
   const _search = TOOLS.hafiza_ara.run;
   TOOLS.hafiza_ara.run = ([q]) => {
@@ -272,7 +272,7 @@
     const f = el('form', { class: 'add pat-add' }, el('input', { id: 'zText', placeholder: 'Olay (ör. Aralıkta yeni hasta sayısı 40’ı geçer)', 'aria-label': 'Olay' }), el('input', { id: 'zP', placeholder: 'Olasılık %', inputmode: 'numeric', 'aria-label': 'Olasılık' }), el('input', { id: 'zDue', type: 'date', 'aria-label': 'Hedef tarih' }), el('button', {}, 'Tahmin ekle'));
     f.onsubmit = e => { e.preventDefault(); try { TOOLS.tahmin.run([$('zText').value, $('zP').value, $('zDue').value]); f.reset(); } catch (er) { note(er.message); } };
     const p = el('div', { class: 'pane', id: 'p-zoi', role: 'tabpanel' }, el('h3', {}, 'ZOİ · ZAMAN-OLASILIK MOTORU'),
-      el('p', { class: 'muted' }, 'Ölçülebilir tahminler: olay, olasılık ve tarih yaz; zamanı gelince sonucu işaretle. Motor isabetini Brier skoru ve kalibrasyonla ölçer; JARVIS de “tahmin” aracıyla kayıt açabilir. Ana beyinden bağımsız, deneysel bir modüldür.'),
+      el('p', { class: 'muted' }, 'Ölçülebilir tahminler: olay, olasılık ve tarih yaz; zamanı gelince sonucu işaretle. Motor isabetini Brier skoru ve kalibrasyonla ölçer; SATÜRN de “tahmin” aracıyla kayıt açabilir. Ana beyinden bağımsız, deneysel bir modüldür.'),
       el('div', { class: 'summary', id: 'zoiStats' }), f, el('ul', { class: 'list', id: 'zoiList' }),
       el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => { $('drawer').classList.remove('open'); typedTurn('ZOİ: açık tahminlerimi incele; her biri için güncel bilgiye göre olasılığın değişmesi gerekip gerekmediğini, olası senaryoları ve en uygun eylem zamanını söyle. tahmin_durum aracını kullan.', false); } }, 'Tahminleri yeniden değerlendir')));
     p.hidden = true; $('p-settings').before(p);

@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 7 — NÖBET: kendi kendini onaran ajanlar.
+/* SATÜRN 7 — NÖBET: kendi kendini onaran ajanlar.
  * 1) Uygulama içi nöbetçiler (uygulama açıkken 20 sn'de bir): hata yakalama, takılan düşünme/konuşma/dinleme,
  *    bozuk kayıt, depolama doluluğu, servis çalışanı, ağ, yardımcı bağlantısı, ekran şişmesi — güvenli olanı kendisi onarır.
  * 2) Bilgisayar nöbetçileri (yardımcıda 7/24, uygulama kapalıyken de): NÖBET sekmesinde durum, olaylar, onay/ret.
@@ -156,7 +156,7 @@
       $('nbAgents').replaceChildren(...pc.ajanlar.map(a => el('li', { class: 'item' }, el('span', { class: 'nbd ' + (DUR[a.durum] || DUR.bekliyor)[1] }, (DUR[a.durum] || DUR.bekliyor)[0]), el('div', {}, el('p', {}, a.ad), el('small', {}, `${a.grup} · ${a.mesaj || a.durum}${a.son ? ' · ' + ago(a.son) : ''}`)), el('span'))));
     } else {
       $('nbStats').replaceChildren(el('span', {}, 'Durum'), el('b', {}, pcErr ? 'yardımcıya ulaşılamadı' : 'yükleniyor…'));
-      $('nbGroups').replaceChildren(el('p', { class: 'muted' }, pcErr ? 'Bilgisayar nöbetçileri için JARVIS-PC yardımcısını (v7) kur ya da güncelle: BAĞLANTI → Bilgisayar yardımcısını indir. Telefondan bakmak için eşitleme açık olmalı. (' + short(pcErr, 100) + ')' : ''));
+      $('nbGroups').replaceChildren(el('p', { class: 'muted' }, pcErr ? 'Bilgisayar nöbetçileri için SATÜRN-PC yardımcısını (v7) kur ya da güncelle: BAĞLANTI → Bilgisayar yardımcısını indir. Telefondan bakmak için eşitleme açık olmalı. (' + short(pcErr, 100) + ')' : ''));
       $('nbInc').replaceChildren(); $('nbAgents').replaceChildren();
     }
     $('nbApp').replaceChildren(...AGENTS.map(a => { const s = state[a.id]; const [ic, cl] = DUR[s.durum] || DUR.bekliyor; return el('li', { class: 'item' }, el('span', { class: 'nbd ' + cl }, ic), el('div', {}, el('p', {}, a.ad), el('small', {}, s.son ? s.durum + ' · ' + ago(s.son) : 'bekliyor')), el('span')); }));

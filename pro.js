@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 8 — dünyadaki en iyi JARVIS/asistan projelerinden (OpenClaw, Leon, Home Assistant Assist, vierisid/jarvis,
+/* SATÜRN 8 — dünyadaki en iyi SATÜRN/asistan projelerinden (OpenClaw, Leon, Home Assistant Assist, vierisid/jarvis,
  * OpenJarvis, isair/jarvis) alınan ücretsiz özellikler:
  *  1) Zamanlanmış ve tekrarlayan komutlar (cron/heartbeat görevleri): "10 dakika sonra …", "her gün 9'da …", "her pazartesi …", "her 2 saatte bir …"
  *  2) Adlandırılmış sayaçlar: duraklat, sürdür, süre ekle, kalan süreyi sor
@@ -9,7 +9,7 @@
  *  6) Proaktif nabız: yaklaşan görev, geciken iş, bilgisayar sorunu kendiliğinden söylenir (sessiz saatlere uyar)
  *  7) Günlük not + gece hafıza birleştirme ("rüya"): günde 1 kısa çağrı, dünün konuşmalarından kalıcı bilgiler
  *  8) Dikte modu: konuştuğun her şey bilgisayarda açık pencereye yazılır (yapay zekâ kullanmaz)
- *  9) Telegram kanalı: JARVIS'e her yerden Telegram'dan yaz (bilgisayar yardımcısı üzerinden, ücretsiz)
+ *  9) Telegram kanalı: SATÜRN'e her yerden Telegram'dan yaz (bilgisayar yardımcısı üzerinden, ücretsiz)
  * Diğer dosyalarla aynı genel kapsamı paylaşır. */
 (() => {
   const field = (id, label, input) => el('div', { class: 'field' }, el('label', { for: id }, label), input);
@@ -50,7 +50,7 @@
     j.id = uid('j'); j.created = Date.now(); j.tur = isReminder(j.cmd) ? 'hatirlat' : 'komut'; j.next = nextRun(j);
     jobs.push(j); saveJobs(); logOp('otomasyon', [describe(j)], 'başarılı', 'zamanlandı');
     // uygulama kapalıyken de telefona ulaşsın (ntfy en fazla 3 gün ileri)
-    if (j.next - Date.now() < 3 * DAY - MIN && opt('ntfyOn') === '1') window.jarvisPushPhone?.((j.tur === 'hatirlat' ? '⏰ ' : '▶ Zamanlanmış görev: ') + j.cmd, { title: 'JARVIS', at: new Date(j.next).toISOString(), tags: 'alarm_clock' }).then(() => { j.pushed = j.next; saveJobs(); }).catch(() => {});
+    if (j.next - Date.now() < 3 * DAY - MIN && opt('ntfyOn') === '1') window.jarvisPushPhone?.((j.tur === 'hatirlat' ? '⏰ ' : '▶ Zamanlanmış görev: ') + j.cmd, { title: 'SATÜRN', at: new Date(j.next).toISOString(), tags: 'alarm_clock' }).then(() => { j.pushed = j.next; saveJobs(); }).catch(() => {});
     return j;
   }
   function parseJob(text) {
@@ -225,7 +225,7 @@
     const text = 'Beyhan, ' + msgs.join('; ') + '.';
     bubble('note', '◉ Nabız: ' + text);
     if (setting('speakOn') === '1' && !answering && phase === 'idle' && !quiet() && !document.hidden) voiceSession.read(text);
-    else if (document.hidden && opt('ntfyOn') === '1' && !quiet()) window.jarvisPushPhone?.(text, { title: 'JARVIS', tags: 'bell' }).catch(() => {});
+    else if (document.hidden && opt('ntfyOn') === '1' && !quiet()) window.jarvisPushPhone?.(text, { title: 'SATÜRN', tags: 'bell' }).catch(() => {});
   }
   setInterval(pulse, 5 * MIN); setTimeout(pulse, 20000);
 
@@ -239,7 +239,7 @@
     if (turns.length < 2) return;
     const convo = turns.map(x => `B: ${short(x.q, 300)}\nJ: ${short(x.a, 400)}`).join('\n').slice(-12000);
     const known = items.filter(i => i.kind === 'memory').map(i => '- ' + short(i.text, 120)).join('\n').slice(0, 4000);
-    const sys = 'Sen JARVIS’in gece hafıza birleştirme ajanısın. Konuşmalardan günlük bir not çıkar ve yalnızca Beyhan’ın açıkça söylediği, kalıcı ve yeni bilgileri seç (tercihler, kişiler, işler, kararlar). Sağlık, kimlik, şifre ve para hesap bilgisi yazma. Zaten bilinenleri tekrar etme. YALNIZCA JSON: {"gunluk":"3-5 kısa madde, \\n ile","kalici":["en fazla 3 kısa bilgi"]}';
+    const sys = 'Sen SATÜRN’ün gece hafıza birleştirme ajanısın. Konuşmalardan günlük bir not çıkar ve yalnızca Beyhan’ın açıkça söylediği, kalıcı ve yeni bilgileri seç (tercihler, kişiler, işler, kararlar). Sağlık, kimlik, şifre ve para hesap bilgisi yazma. Zaten bilinenleri tekrar etme. YALNIZCA JSON: {"gunluk":"3-5 kısa madde, \\n ile","kalici":["en fazla 3 kısa bilgi"]}';
     const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'quick', system: sys, messages: [{ role: 'user', content: `BİLİNENLER:\n${known || '-'}\n\nKONUŞMALAR (${today} öncesi gün):\n${convo}` }] }) });
     if (!r.ok) throw Error('rüya ajanı yanıt alamadı');
     const j = JSON.parse(((await r.text()).match(/\{[\s\S]*\}/) || ['{}'])[0]);
@@ -299,7 +299,7 @@
     el('h3', {}, 'ZAMANLANMIŞ GÖREVLER'),
     el('form', { class: 'row', onsubmit: e => { e.preventDefault(); const j = parseJob(jobIn.value); if (!j) return note('Anlayamadım. Örnek: “her gün 09:00 hava durumunu söyle”, “yarın 14:30 ilacı hatırlat”, “30 dakika sonra kasa raporunu ver”, “her 2 saatte bir su içmeyi hatırlat”.'); addJob(j); jobIn.value = ''; } }, jobIn, el('button', { type: 'submit', class: 'btn' }, 'Ekle')),
     el('ul', { class: 'list', id: 'jobList' }),
-    el('p', { class: 'muted' }, 'Sesle de olur: “Jarvis, her pazartesi 8’de haftalık klinik raporunu ver”. Hatırlatmalar yapay zekâ kullanmaz; komutlar zamanı gelince JARVIS’e sorulur. Uygulama kapalıysa telefona bildirim gider.'),
+    el('p', { class: 'muted' }, 'Sesle de olur: “Jarvis, her pazartesi 8’de haftalık klinik raporunu ver”. Hatırlatmalar yapay zekâ kullanmaz; komutlar zamanı gelince SATÜRN’e sorulur. Uygulama kapalıysa telefona bildirim gider.'),
     el('h3', {}, 'BECERİLER'), el('ul', { class: 'list', id: 'macroList' }),
     el('p', { class: 'muted' }, 'Öğretmek için: “Jarvis, yeni beceri kapanış: ışıkları kapat; yarınki randevuları oku; kasa raporunu ver”. Sonra “kapanış” demen yeter.'),
     el('h3', {}, 'DİKTE'), el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', id: 'dictBtn', onclick: () => { setDictation(!dict); note(dict ? 'Dikte modu açık: konuştuğun her şey bilgisayarda açık pencereye yazılır. “virgül”, “nokta”, “yeni satır” diyebilirsin.' : 'Dikte modu kapandı.'); } }, 'Dikte modunu aç')),
@@ -311,7 +311,7 @@
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => dream(true).catch(e => note(e.message)) }, 'Son 24 saatin günlüğünü şimdi yaz')),
     el('h3', {}, 'YETKİ KURALLARI'), el('p', { class: 'muted' }, 'Her araç için: Varsayılan (otonomi ayarına göre), Her zaman sor, Engelle.'), polBox,
     el('h3', {}, 'TELEGRAM KANALI'),
-    el('p', { class: 'muted' }, 'Telegram’dan JARVIS’e yaz: bilgisayar açıksa yardımcı cevap verir; durum, nöbet raporu, ekran görüntüsü ister, program açtırırsın. Ücretsiz. 1) Telegram’da @BotFather → /newbot ile bot oluştur. 2) Verdiği anahtarı aşağı yapıştır. 3) Bota “/start ERİŞİM-KODU” yaz.'),
+    el('p', { class: 'muted' }, 'Telegram’dan SATÜRN’e yaz: bilgisayar açıksa yardımcı cevap verir; durum, nöbet raporu, ekran görüntüsü ister, program açtırırsın. Ücretsiz. 1) Telegram’da @BotFather → /newbot ile bot oluştur. 2) Verdiği anahtarı aşağı yapıştır. 3) Bota “/start ERİŞİM-KODU” yaz.'),
     field('tgToken', 'Telegram bot anahtarı', el('input', { id: 'tgToken', type: 'password', placeholder: '123456:ABC…', autocomplete: 'off' })),
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', id: 'tgBtn', onclick: async () => {
       const tok = $('tgToken').value.trim(); if (tok && !/^\d{5,}:[\w-]{20,}$/.test(tok)) return note('Bu bir Telegram bot anahtarına benzemiyor.');

@@ -1,8 +1,8 @@
 'use strict';
-/* JARVIS 9.4 — ARAŞTIRMA MERKEZİ (klinik karar desteği)
+/* SATÜRN 9.4 — ARAŞTIRMA MERKEZİ (klinik karar desteği)
  * Ücretsiz, anahtarsız bilimsel kaynaklar: PubMed (NCBI), Europe PMC, ClinicalTrials.gov, openFDA (ilaç etiketi),
  * NCBI Gene + ClinVar (genetik), Vikipedi (TR/EN). Derin araştırma ajanı: soruyu İngilizce arama planına çevirir,
- * kaynakları paralel tarar, özetleri okur, kanıt düzeyiyle Türkçe rapor + JARVIS'in kendi değerlendirmesini yazar.
+ * kaynakları paralel tarar, özetleri okur, kanıt düzeyiyle Türkçe rapor + SATÜRN'ün kendi değerlendirmesini yazar.
  * Görüntü yorumlama: röntgen / MR / BT / USG fotoğrafı veya ekran görüntüsü → yapılandırılmış ön değerlendirme.
  * Gizlilik: dış kaynaklara yalnız konu/terim gider; hasta adı ve kişisel bilgi gönderilmez. */
 (() => {
@@ -116,13 +116,13 @@
       status(`${src.length} kaynak bulundu, kanıtı değerlendiriyorum…`);
       const corpus = src.map((x, i) => `[${i + 1}] ${x.title} — ${x.journal || x.src}${x.year ? ' ' + x.year : ''} · ${x.level}${x.cited ? ' · ' + x.cited + ' atıf' : ''} · ${x.id || ''}\n${x.abstract || '(özet yok)'}`).join('\n\n');
       const report = await ask(
-        `Sen JARVIS'in tıbbi araştırma ajanısın; kullanıcı deneyimli bir fizyoterapist (Fzt. Beyhan Erden, FİZYOVİTA). Aşağıdaki bilimsel kaynakları oku, gerekirse güncel web aramasıyla tamamla ve TÜRKÇE, kanıta dayalı bir rapor yaz. Kaynakları köşeli parantezle numarasıyla göster [1]. Uydurma kaynak, uydurma sayı yazma; kanıt zayıfsa açıkça söyle.
+        `Sen SATÜRN'ün tıbbi araştırma ajanısın; kullanıcı deneyimli bir fizyoterapist (Fzt. Beyhan Erden, FİZYOVİTA). Aşağıdaki bilimsel kaynakları oku, gerekirse güncel web aramasıyla tamamla ve TÜRKÇE, kanıta dayalı bir rapor yaz. Kaynakları köşeli parantezle numarasıyla göster [1]. Uydurma kaynak, uydurma sayı yazma; kanıt zayıfsa açıkça söyle.
 Biçim (düz metin, başlıklar BÜYÜK HARF):
 KISA CEVAP: 2-3 cümle.
 KANIT ÖZETİ: maddeler; her maddede kanıt düzeyi (meta-analiz / sistematik derleme / RKÇ / kılavuz / gözlemsel / uzman görüşü) ve kaynak numarası.
 KLİNİK UYGULAMA: fizyoterapist için somut öneriler (doz, süre, sıklık, ilerleme, ölçüm araçları) — kanıt neyi destekliyorsa.
 KIRMIZI BAYRAKLAR VE SINIRLAR: sevk gerektiren durumlar, kontrendikasyonlar, kanıttaki boşluklar.
-JARVIS'İN DEĞERLENDİRMESİ: tüm kanıtı tartarak kendi net sonucun ve güven düzeyin (yüksek/orta/düşük) — gerekçesiyle.
+SATÜRN'İN DEĞERLENDİRMESİ: tüm kanıtı tartarak kendi net sonucun ve güven düzeyin (yüksek/orta/düşük) — gerekçesiyle.
 Uzunluk en fazla 650 kelime. Son satır: "${DISCLAIMER}"`,
         `SORU: ${question}\nALAN: ${plan.alan || '-'}\n\nKAYNAKLAR:\n${corpus || '(veritabanlarından sonuç gelmedi; yalnız güncel web aramasına ve genel bilgine dayan ve bunu belirt)'}`, 'complex', true);
       const pico = plan.pico && plan.pico.P ? `PICO · P: ${plan.pico.P} · I: ${plan.pico.I || '-'} · C: ${plan.pico.C || '-'} · O: ${plan.pico.O || '-'}` : '';
@@ -164,7 +164,7 @@ Uzunluk en fazla 650 kelime. Son satır: "${DISCLAIMER}"`,
   async function imageRead(file, kind = 'otomatik', context = '') {
     const data = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(file); });
     const mediaType = file.type || 'image/jpeg';
-    const sys = `Sen JARVIS'in tıbbi görüntü ön-değerlendirme modülüsün; kullanıcı deneyimli bir fizyoterapist. Görüntü bir ${kind === 'otomatik' ? 'tıbbi görüntü (röntgen/MR/BT/USG ya da rapor fotoğrafı — önce türünü belirle)' : kind} olabilir; bazen ekran/kâğıt fotoğrafıdır ve kalite sınırlıdır.
+    const sys = `Sen SATÜRN'ün tıbbi görüntü ön-değerlendirme modülüsün; kullanıcı deneyimli bir fizyoterapist. Görüntü bir ${kind === 'otomatik' ? 'tıbbi görüntü (röntgen/MR/BT/USG ya da rapor fotoğrafı — önce türünü belirle)' : kind} olabilir; bazen ekran/kâğıt fotoğrafıdır ve kalite sınırlıdır.
 TÜRKÇE, düz metin, şu başlıklarla yaz:
 GÖRÜNTÜ: tür, bölge, kesit/sekans veya projeksiyon, kalite ve sınırlılıklar.
 GÖZLENENLER: gördüğün bulgular, tarafsız ve tanımlayıcı (yer, boyut tahmini, sinyal/dansite, hizalanma, eklem aralığı, dejenerasyon, kırık hattı, ödem vb.). Emin olmadığın şeyi "olası" diye işaretle; görmediğini uydurma.
@@ -185,7 +185,7 @@ Son satır: "Bu bir ön değerlendirmedir; kesin yorum radyolog raporuna aittir.
     ilac_bilgi: { d: 'ilac_bilgi|İngilizce jenerik ad — FDA ilaç etiketi: endikasyon, uyarılar, etkileşim, yan etki', run: async ([q]) => { const r = await drug(q); return r ? fmt([r]) : 'FDA etiketinde bulunamadı.'; } },
     gen: { d: 'gen|gen sembolü (ör. COL1A1) — NCBI Gene özeti ve ClinVar patojenik varyant sayısı', run: async ([q]) => { const r = await gene(q); return r ? fmt([r]) : 'Gen bulunamadı.'; } },
     ansiklopedi: { d: 'ansiklopedi|konu|tr/en — Vikipedi özeti', run: async ([q, l]) => { const r = await wiki(q, /en/i.test(l || '') ? 'en' : 'tr'); return r ? fmt([r]) : 'Bulunamadı.'; } },
-    derin_arastirma: { d: 'derin_arastirma|soru — PubMed+Europe PMC+klinik çalışma+ilaç+gen+ansiklopedi+web taraması, kanıt düzeyli Türkçe rapor ve JARVIS’in değerlendirmesi (30-60 sn). Tıbbi/bilimsel her derin soruda kullan.', run: async ([q]) => { const r = await deep(q); setTimeout(() => showReport(r, false), 50); return 'Rapor hazırlandı ve ekrana kondu (' + r.sources.length + ' kaynak). Kısa cevabı söyle: ' + short((r.report.match(/KISA CEVAP:?\s*([\s\S]*?)\n/) || [])[1] || '', 400); } }
+    derin_arastirma: { d: 'derin_arastirma|soru — PubMed+Europe PMC+klinik çalışma+ilaç+gen+ansiklopedi+web taraması, kanıt düzeyli Türkçe rapor ve SATÜRN’ün değerlendirmesi (30-60 sn). Tıbbi/bilimsel her derin soruda kullan.', run: async ([q]) => { const r = await deep(q); setTimeout(() => showReport(r, false), 50); return 'Rapor hazırlandı ve ekrana kondu (' + r.sources.length + ' kaynak). Kısa cevabı söyle: ' + short((r.report.match(/KISA CEVAP:?\s*([\s\S]*?)\n/) || [])[1] || '', 400); } }
   });
   const _tp = toolsPrompt;
   toolsPrompt = () => _tp() + '\nARAŞTIRMA MERKEZİ: Tıbbi, fizyoterapi, ortopedi, nöroloji, farmakoloji, genetik veya bilimsel bir konuda derinlemesine/kanıta dayalı soru gelirse derin_arastirma kullan; hızlı makale bakışı için pubmed (sorgu İngilizce). İlaç için ilac_bilgi, gen için gen. Dış kaynaklara hasta adı veya kişisel bilgi gönderme. Tıbbi görüntü (röntgen/MR) eklenirse yapılandırılmış ön değerlendirme yap ve radyolog raporunun esas olduğunu belirt.';
@@ -217,7 +217,7 @@ Son satır: "Bu bir ön değerlendirmedir; kesin yorum radyolog raporuna aittir.
   };
   const p = el('div', { class: 'pane', id: 'p-research', role: 'tabpanel' },
     el('h3', {}, 'DERİN ARAŞTIRMA'),
-    el('p', { class: 'muted' }, 'PubMed · Europe PMC · ClinicalTrials.gov · FDA ilaç etiketi · NCBI Gene/ClinVar · Vikipedi · güncel web. Kanıt düzeyiyle Türkçe rapor ve JARVIS’in kendi değerlendirmesi. Sesle: “Jarvis, araştır: …”'),
+    el('p', { class: 'muted' }, 'PubMed · Europe PMC · ClinicalTrials.gov · FDA ilaç etiketi · NCBI Gene/ClinVar · Vikipedi · güncel web. Kanıt düzeyiyle Türkçe rapor ve SATÜRN’ün kendi değerlendirmesi. Sesle: “Jarvis, araştır: …”'),
     qIn,
     el('div', { class: 'row resfilters' },
       (() => { const s = el('select', { id: 'resYears', 'aria-label': 'Yayın yılı aralığı' }); for (const [v, t] of [['5', 'Son 5 yıl'], ['12', 'Son 12 yıl'], ['30', 'Son 30 yıl']]) s.append(new Option(t, v)); s.value = store.get('set.resYears', '12') || '12'; s.onchange = () => store.set('set.resYears', s.value); return s; })(),

@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 10.1 — ARAŞTIRMA MERKEZİ II
+/* SATÜRN 10.1 — ARAŞTIRMA MERKEZİ II
  *  1) Makale analizi: PMID / DOI / PMC no → özet + (açık erişimse) tam metin → yapılandırılmış Türkçe eleştirel değerlendirme
  *  2) Literatür alarmı: takibe alınan konularda her hafta yeni yayınlar (PubMed, yapay zekâ kotası harcamaz) → bildirim
  *  3) Klinik ölçek hesaplayıcı: Oswestry, NDI, DASH, QuickDASH, LEFS, WOMAC, Berg, TUG, 6 dk yürüme, VKİ, nabız bölgeleri, 1TM */
@@ -44,7 +44,7 @@
     let full = '';
     if (id.pmcid) { setPhase('thinking', 'Açık erişimli tam metni okuyorum…'); full = await fullText(id.pmcid).catch(() => ''); }
     setPhase('thinking', 'Makaleyi değerlendiriyorum…');
-    const t = await R().ask(`Sen deneyimli bir fizyoterapiste (Fzt. Beyhan Erden) bilimsel makale okuyan JARVIS'sin. Aşağıdaki makaleyi TÜRKÇE, düz metin, şu başlıklarla değerlendir (uydurma bilgi yazma; metinde yoksa "belirtilmemiş" de):
+    const t = await R().ask(`Sen deneyimli bir fizyoterapiste (Fzt. Beyhan Erden) bilimsel makale okuyan SATÜRN'sün. Aşağıdaki makaleyi TÜRKÇE, düz metin, şu başlıklarla değerlendir (uydurma bilgi yazma; metinde yoksa "belirtilmemiş" de):
 KÜNYE: yazar(lar), yıl, dergi, çalışma tipi.
 AMAÇ:
 YÖNTEM: tasarım, örneklem (sayı, yaş, tanı), müdahale ve kontrol, süre, sonuç ölçütleri.
@@ -101,7 +101,7 @@ ${full ? '(Tam metin verildi.)' : '(Yalnız özet var; tam metin açık erişimd
       const text = '📚 Literatür alarmı — yeni yayınlar:\n' + Object.entries(by).map(([t, xs]) => `• ${t} (${xs.length}):\n` + xs.map(x => `   – ${x.title} (${x.journal} ${x.year}) PMID ${x.id}`).join('\n')).join('\n');
       const n = bubble('ai', text);
       addLinks(n.el, found.slice(0, 8).map(x => ({ url: `https://pubmed.ncbi.nlm.nih.gov/${x.id}/`, title: short(x.title, 60) })));
-      if (document.hidden && opt('ntfyOn') === '1') window.jarvisPushPhone?.(`${found.length} yeni yayın: ${Object.keys(by).join(', ')}`, { title: 'JARVIS literatür alarmı', tags: 'books' }).catch(() => {});
+      if (document.hidden && opt('ntfyOn') === '1') window.jarvisPushPhone?.(`${found.length} yeni yayın: ${Object.keys(by).join(', ')}`, { title: 'SATÜRN literatür alarmı', tags: 'books' }).catch(() => {});
       logOp('literatür alarmı', [], 'başarılı', found.length + ' yeni yayın');
     } else if (force) note('Takip edilen konularda yeni yayın yok.');
     return found;

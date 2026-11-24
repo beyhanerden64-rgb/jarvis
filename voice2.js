@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 15 — AKICI SES
+/* SATÜRN 15 — AKICI SES
  *  1) Ana konuşma modu = CANLI: mikrofon düğmesi doğrudan Gemini Live açar (tek akış: dinler + düşünür + doğal sesle konuşur,
  *     sözünü kesebilirsin). Klasik yol 3 ayrı kotalı istek harcıyordu (yazıya çevirme + cevap + seslendirme); CANLI tek oturum.
  *     CANLI açılamazsa o oturum için kendiliğinden klasik moda döner ve nedenini söyler.
@@ -95,7 +95,7 @@
   function paintTip() {
     const v = goodDeviceVoice();
     tip.textContent = v ? `Kotasız cihaz sesi: ${v.name} (kaliteli).` : isApple
-      ? 'Kotasız ve daha doğal cihaz sesi için: iPhone Ayarlar → Erişilebilirlik → Okunan İçerik → Sesler → Türkçe → Yelda → “Gelişmiş” sürümü indir. JARVIS onu kendiliğinden kullanır.'
+      ? 'Kotasız ve daha doğal cihaz sesi için: iPhone Ayarlar → Erişilebilirlik → Okunan İçerik → Sesler → Türkçe → Yelda → “Gelişmiş” sürümü indir. SATÜRN onu kendiliğinden kullanır.'
       : 'Kotasız daha doğal ses için Chrome’da “Google Türkçe” sesi kullanılır; cihazın metin okuma ayarından Türkçe yüksek kaliteli sesi indirebilirsin.';
   }
   paintTip(); try { speechSynthesis.addEventListener?.('voiceschanged', paintTip); } catch {}

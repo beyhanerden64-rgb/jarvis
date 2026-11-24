@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 12 — ULTRON CANLI AJAN
+/* SATÜRN 12 — ULTRON CANLI AJAN
  *  A) YAŞAM NABZI (3 dk'da bir, kotasız): takılan durumları çözer, art arda bozulan araçları "arızalı" işaretleyip
  *     yapay zekâya alternatif yol kullanmasını söyler (araç düzelince kendiliğinden kaldırır), depolamayı ve ses sistemini toparlar.
  *  B) EVRİM: günde bir kez (boştayken, en çok 2 yapay zekâ çağrısı) internetten yenilikleri araştırır, Beyhan'ın son isteklerine ve

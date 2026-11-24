@@ -1,7 +1,7 @@
 'use strict';
-/* JARVIS 5 — bilgisayara ve telefona hâkimiyet:
+/* SATÜRN 5 — bilgisayara ve telefona hâkimiyet:
  * • ekranda görerek tıklama (ekran görüntüsü → yapay zekâ hedefi bulur → onaylı tıklama)
- * • telefona anlık bildirim (ntfy, ücretsiz; JARVIS kapalıyken bile) + zamanlanmış hatırlatmalar
+ * • telefona anlık bildirim (ntfy, ücretsiz; SATÜRN kapalıyken bile) + zamanlanmış hatırlatmalar
  * • Siri / Google Asistan / ana ekran bağlantısı: ?q=komut
  * • iPhone kontrol paketi (Kestirmeler): fener, ses, parlaklık, odak, alarm, mesaj, arama, müzik, Wi-Fi, konum
  * • telefonun web yetenekleri: konum, konum hatırlatma, ekranı açık tut, titreşim, paylaş
@@ -34,7 +34,7 @@
   /* ================= 2) telefona anlık bildirim (ntfy.sh) ================= */
   if (!store.get('set.ntfyTopic', '')) store.set('set.ntfyTopic', 'jarvis-' + Array.from(crypto.getRandomValues(new Uint8Array(9)), b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join(''));
   const topic = () => opt('ntfyTopic');
-  async function pushPhone(msg, { title = 'JARVIS', at = null, tags = 'robot', click = location.origin + location.pathname } = {}) {
+  async function pushPhone(msg, { title = 'SATÜRN', at = null, tags = 'robot', click = location.origin + location.pathname } = {}) {
     if (!topic()) throw Error('Bildirim kanalı yok');
     // JSON publishing (UTF-8 safe titles; HTTP headers cannot carry Turkish characters)
     const body = { topic: topic(), message: String(msg).slice(0, 3800), title, tags: [tags], click };
@@ -43,7 +43,7 @@
     if (!r.ok) throw Error('Bildirim gönderilemedi (' + r.status + ')');
     return (await r.json()).id;
   }
-  // reminders reach the phone even when JARVIS is closed (ntfy delays up to 3 days)
+  // reminders reach the phone even when SATÜRN is closed (ntfy delays up to 3 days)
   let scheduled = store.get('ntfySched', {});
   async function scheduleReminders() {
     if (opt('ntfyOn') !== '1') return;
@@ -51,7 +51,7 @@
     for (const i of items.filter(x => x.kind === 'task' && !x.done && x.due && x.due.includes('T'))) {
       const t = new Date(i.due).getTime(), key = i.id + '@' + i.due;
       if (scheduled[key] || t <= Date.now() + 60000 || t > lim) continue;
-      try { await pushPhone('⏰ ' + i.text, { title: 'JARVIS hatırlatma', at: i.due, tags: 'alarm_clock' }); scheduled[key] = Date.now(); } catch { break; }
+      try { await pushPhone('⏰ ' + i.text, { title: 'SATÜRN hatırlatma', at: i.due, tags: 'alarm_clock' }); scheduled[key] = Date.now(); } catch { break; }
     }
     for (const k of Object.keys(scheduled)) if (scheduled[k] < Date.now() - 5 * 86400000) delete scheduled[k];
     store.set('ntfySched', scheduled);
@@ -70,19 +70,19 @@
     ['JARVIS Ara', 'Ara (Call) → Kişi: Kestirme Girdisi', 'ara|Ahmet'],
     ['JARVIS Müzik', 'Müzik Çal (Play Music) ya da Oynat/Duraklat (Play/Pause)', 'muzik|oynat'],
     ['JARVIS WiFi', 'Wi-Fi’yi Ayarla (Set Wi-Fi) → Aç/Kapat', 'wifi|aç'],
-    ['JARVIS Hatırlatıcı', 'Hatırlatıcı Ekle (Add New Reminder) → Kestirme Girdisi', 'hatirlatici|Süt al'],
+    ['SATÜRN Hatırlatıcı', 'Hatırlatıcı Ekle (Add New Reminder) → Kestirme Girdisi', 'hatirlatici|Süt al'],
     ['JARVIS Not', 'Not Oluştur (Create Note) → Kestirme Girdisi', 'not|Toplantı notu'],
     ['JARVIS Takvim Oku', 'Takvim Etkinliklerini Bul (Find Calendar Events: Başlangıç Tarihi önümüzdeki 7 gün içinde, sırala: Başlangıç Tarihi) → Hatırlatıcıları Bul (Find Reminders: Tamamlanmamış) → Metin: “TAKVİM:” + Takvim Etkinlikleri + “ANIMSATICILAR:” + Hatırlatıcılar → URL Kodla (URL Encode) → URL’yi Aç: bu site adresi + ?takvim= + Kodlanmış Metin. Her sabah otomatik okusun istersen Otomasyon → Günün Saati → bu kestirmeyi çalıştır', 'takvim'],
     ['JARVIS Pil', 'Pil Düzeyini Al (Get Battery Level) → URL’yi Aç: bu site adresi + ?q=pil%20durumum%20 + Pil Düzeyi', 'pil']
   ];
-  const IPH = { fener: 'JARVIS Fener', ses: 'JARVIS Ses', parlaklik: 'JARVIS Parlaklık', odak: 'JARVIS Odak', alarm: 'JARVIS Alarm', mesaj: 'JARVIS Mesaj', ara: 'JARVIS Ara', muzik: 'JARVIS Müzik', wifi: 'JARVIS WiFi', hatirlatici: 'JARVIS Hatırlatıcı', not: 'JARVIS Not', pil: 'JARVIS Pil', takvim: 'JARVIS Takvim Oku' };
+  const IPH = { fener: 'JARVIS Fener', ses: 'JARVIS Ses', parlaklik: 'JARVIS Parlaklık', odak: 'JARVIS Odak', alarm: 'JARVIS Alarm', mesaj: 'JARVIS Mesaj', ara: 'JARVIS Ara', muzik: 'JARVIS Müzik', wifi: 'JARVIS WiFi', hatirlatici: 'SATÜRN Hatırlatıcı', not: 'JARVIS Not', pil: 'JARVIS Pil', takvim: 'JARVIS Takvim Oku' };
   function iphone([cmd, ...rest]) {
     const name = IPH[fold(cmd)];
     if (!name) throw Error('Bilinmeyen telefon komutu. Olanlar: ' + Object.keys(IPH).join(', '));
     const input = rest.join('|');
     const back = encodeURIComponent(location.origin + location.pathname);
     pendingLinks.push({ url: `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(name)}${input ? '&input=text&text=' + encodeURIComponent(input) : ''}&x-success=${back}&x-error=${back}`, title: '▶ ' + name + (input ? ': ' + input : '') });
-    return `“${name}” kestirmesi hazır; Beyhan dokununca iPhone çalıştırır ve JARVIS’e döner. (Kestirme kurulu değilse Bağlantı → iPhone kontrol paketi.)`;
+    return `“${name}” kestirmesi hazır; Beyhan dokununca iPhone çalıştırır ve SATÜRN’e döner. (Kestirme kurulu değilse Bağlantı → iPhone kontrol paketi.)`;
   }
 
   /* ================= 4) telefonun kendi yetenekleri ================= */
@@ -97,7 +97,7 @@
         pl.done = true; store.set('placeRem', places);
         bubble('alarm', '📍 ' + pl.name + ': ' + pl.text); beep(); navigator.vibrate?.([200, 100, 200]);
         if (opt('speakOn') === '1' && !answering) voiceSession.read('Konum hatırlatması: ' + pl.text);
-        pushPhone('📍 ' + pl.text, { title: 'JARVIS · ' + pl.name, tags: 'round_pushpin' }).catch(() => {});
+        pushPhone('📍 ' + pl.text, { title: 'SATÜRN · ' + pl.name, tags: 'round_pushpin' }).catch(() => {});
       }
       if (!places.some(x => !x.done)) { navigator.geolocation.clearWatch(watchId); watchId = null; }
     }, () => {}, { enableHighAccuracy: false, maximumAge: 120000 });
@@ -107,8 +107,8 @@
   /* ================= 5) araçlar ================= */
   Object.assign(TOOLS, {
     ekran_tikla: { d: 'ekran_tikla|tıklanacak öğenin tarifi|tek veya cift — bilgisayar ekranına bakar, öğeyi bulur, onayla tıklar ve sonucu yeni ekran görüntüsüyle doğrular', risky: false, run: async (args, ctx) => { const out = await screenClick(args, ctx); if (typeof out === 'string') return out; ctx.lastImage = out.image; return out.text; } },
-    telefona_bildir: { d: 'telefona_bildir|mesaj|zaman (isteğe bağlı YYYY-MM-DDTHH:MM, en fazla 3 gün sonrası) — Beyhan’ın telefonuna anlık bildirim (JARVIS kapalıyken de gelir)', run: async ([m, at]) => { if (!m) throw Error('Mesaj boş'); await pushPhone(m, { at: at || null }); return at ? `Bildirim ${at} için zamanlandı.` : 'Bildirim telefona gönderildi.'; } },
-    iphone: { d: 'iphone|komut|değer — iPhone’u kontrol eder (Kestirmeler): fener, ses, parlaklik, odak, alarm, mesaj (kişi|mesaj), ara, muzik, wifi, hatirlatici, not, pil, takvim (iPhone takvimini ve anımsatıcıları JARVIS’e okutur; bilgi eskiyse ya da hiç yoksa öner)', pending: true, run: iphone },
+    telefona_bildir: { d: 'telefona_bildir|mesaj|zaman (isteğe bağlı YYYY-MM-DDTHH:MM, en fazla 3 gün sonrası) — Beyhan’ın telefonuna anlık bildirim (SATÜRN kapalıyken de gelir)', run: async ([m, at]) => { if (!m) throw Error('Mesaj boş'); await pushPhone(m, { at: at || null }); return at ? `Bildirim ${at} için zamanlandı.` : 'Bildirim telefona gönderildi.'; } },
+    iphone: { d: 'iphone|komut|değer — iPhone’u kontrol eder (Kestirmeler): fener, ses, parlaklik, odak, alarm, mesaj (kişi|mesaj), ara, muzik, wifi, hatirlatici, not, pil, takvim (iPhone takvimini ve anımsatıcıları SATÜRN’e okutur; bilgi eskiyse ya da hiç yoksa öner)', pending: true, run: iphone },
     konum: { d: 'konum — bu cihazın şu anki konumu ve adresi', run: async () => { const c = await geo(); let addr = ''; try { const d = await (await withTimeout(fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=tr&lat=${c.latitude}&lon=${c.longitude}`), 8000)).json(); addr = d.display_name || ''; } catch {} pendingLinks.push({ url: (isApple ? 'https://maps.apple.com/?ll=' : 'https://www.google.com/maps?q=') + c.latitude + ',' + c.longitude, title: 'Haritada aç' }); return `${addr || 'adres bulunamadı'} (${c.latitude.toFixed(5)}, ${c.longitude.toFixed(5)}, ±${Math.round(c.accuracy)} m)`; } },
     konum_hatirlat: { d: 'konum_hatirlat|yer (adres veya “burası”)|hatırlatma metni|yarıçap metre — o yere varınca hatırlatır (uygulama açıkken)', run: async ([place, text, r]) => {
       if (!text) throw Error('Hatırlatma metni gerekli');
@@ -116,7 +116,7 @@
       if (!place || /^(burası|burasi|bura|şu an|su an)$/i.test(place.trim())) { const c = await geo(); lat = c.latitude; lon = c.longitude; name = 'Buraya'; }
       else { const d = await (await withTimeout(fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=tr&countrycodes=tr&q=' + encodeURIComponent(place)), 8000)).json(); if (!d[0]) throw Error('Yer bulunamadı: ' + place); lat = +d[0].lat; lon = +d[0].lon; name = d[0].display_name.split(',').slice(0, 2).join(','); }
       places.push({ id: uid('l'), name, lat, lon, r: Number(r) || 250, text, done: false }); store.set('placeRem', places); watchPlaces();
-      return `${name} için konum hatırlatması kuruldu (${Number(r) || 250} m). JARVIS açıkken çalışır.`;
+      return `${name} için konum hatırlatması kuruldu (${Number(r) || 250} m). SATÜRN açıkken çalışır.`;
     } },
     ekran_acik: { d: 'ekran_acik|aç veya kapat — telefon/bilgisayar ekranının kararmasını engeller', run: async ([a]) => { if (/kapat/i.test(a || '')) { await wakeLock?.release(); wakeLock = null; return 'Ekran normal kararabilir.'; } if (!navigator.wakeLock) throw Error('Bu cihaz desteklemiyor'); try { wakeLock = await navigator.wakeLock.request('screen'); } catch { throw Error('Tarayıcı ekranı açık tutma iznini vermedi (pil tasarrufu açık olabilir)'); } return 'Ekran açık tutuluyor (uygulama önde olduğu sürece).'; } },
     titresim: { d: 'titresim — telefonu titreştirir (Android)', run: () => { if (!navigator.vibrate) throw Error('Bu cihaz titreşimi desteklemiyor (iPhone izin vermiyor)'); navigator.vibrate([300, 150, 300]); return 'Titreşti.'; } },
@@ -131,7 +131,7 @@ CİHAZ HÂKİMİYETİ: Bilgisayarda bir şeyi göremediğin bir yerde yapmak ger
 
   /* ================= 6) telefondan bilgisayara dosya ================= */
   async function sendFileToPC(f) {
-    if (f.size > (pcLocal ? 8e6 : 4.5e5)) return note(pcLocal ? 'Dosya 8 MB’tan büyük.' : 'Telefon köprüsüyle en fazla 450 KB gönderilebilir. Büyük dosyalar için bilgisayardaki JARVIS’i kullan.');
+    if (f.size > (pcLocal ? 8e6 : 4.5e5)) return note(pcLocal ? 'Dosya 8 MB’tan büyük.' : 'Telefon köprüsüyle en fazla 450 KB gönderilebilir. Büyük dosyalar için bilgisayardaki SATÜRN’ü kullan.');
     const op = logOp('pc · dosya_kaydet', [f.name], 'beklemede');
     try {
       if (!(await confirmAction(`“${f.name}” (${Math.round(f.size / 1024)} KB) bilgisayara gönderilsin mi?`))) return updateOp(op, 'iptal', 'onaylanmadı');
@@ -147,16 +147,16 @@ CİHAZ HÂKİMİYETİ: Bilgisayarda bir şeyi göremediğin bir yerde yapmak ger
   const pageUrl = location.origin + location.pathname;
   $('p-link').append(
     el('h3', {}, 'TELEFONA ANLIK BİLDİRİM (ÜCRETSİZ)'),
-    el('p', { class: 'muted' }, 'JARVIS kapalıyken bile hatırlatmalar, bilgisayar uyarıları ve JARVIS’in haberleri telefonuna gelsin: App Store / Google Play’den ücretsiz “ntfy” uygulamasını kur → + → aşağıdaki kanal adını yaz → Abone ol. Kanal adı gizli bir paroladır; kimseyle paylaşma.'),
+    el('p', { class: 'muted' }, 'SATÜRN kapalıyken bile hatırlatmalar, bilgisayar uyarıları ve SATÜRN’ün haberleri telefonuna gelsin: App Store / Google Play’den ücretsiz “ntfy” uygulamasını kur → + → aşağıdaki kanal adını yaz → Abone ol. Kanal adı gizli bir paroladır; kimseyle paylaşma.'),
     field('ntfyTopic', 'Bildirim kanalı', txt('ntfyTopic', 'jarvis-…')),
     field('ntfyOn', 'Zamanı gelen görevleri telefona da gönder', (() => { const s = el('select', { id: 'ntfyOn' }); s.append(new Option('Açık', '1'), new Option('Kapalı', '0')); return s; })()),
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: async () => { try { await pushPhone('Merhaba Beyhan, bildirimler çalışıyor. 🤖'); note('Deneme bildirimi gönderildi; telefonuna bakabilirsin.'); } catch (e) { note('Gönderilemedi: ' + e.message); } } }, 'Deneme bildirimi gönder'),
       el('button', { type: 'button', class: 'btn', onclick: () => { navigator.clipboard?.writeText(topic()).then(() => note('Kanal adı kopyalandı.'), () => note('Kopyalanamadı; kanal adı: ' + topic())); } }, 'Kanal adını kopyala')),
-    el('h3', {}, '“HEY SİRİ, JARVIS”'),
-    el('p', { class: 'muted' }, 'iPhone: Kestirmeler → + → “Metni Dikte Et” (Dictate Text) ekle → “URL’yi Aç” (Open URLs) ekle ve adrese şunu yaz: ' + pageUrl + '?q= ardından “Dikte Edilen Metin” değişkeni → kestirmenin adını “Jarvis” koy. Artık “Hey Siri, Jarvis” deyip komutunu söyle; JARVIS açılır ve komutu hemen çalıştırır. Kestirmeyi Apple Watch’ta da gösterirsen saatten de çalışır. Android: Google Asistan → Rutinler → “Jarvis” → Web sitesi aç ile aynı adres.'),
+    el('h3', {}, '“HEY SİRİ, SATÜRN”'),
+    el('p', { class: 'muted' }, 'iPhone: Kestirmeler → + → “Metni Dikte Et” (Dictate Text) ekle → “URL’yi Aç” (Open URLs) ekle ve adrese şunu yaz: ' + pageUrl + '?q= ardından “Dikte Edilen Metin” değişkeni → kestirmenin adını “Jarvis” koy. Artık “Hey Siri, Jarvis” deyip komutunu söyle; SATÜRN açılır ve komutu hemen çalıştırır. Kestirmeyi Apple Watch’ta da gösterirsen saatten de çalışır. Android: Google Asistan → Rutinler → “Jarvis” → Web sitesi aç ile aynı adres.'),
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => navigator.clipboard?.writeText(pageUrl + '?q=').then(() => note('Adres kopyalandı; kestirmeye yapıştır.'), () => note('Kopyalanamadı; adres: ' + pageUrl + '?q=')) }, 'Kestirme adresini kopyala')),
     el('h3', {}, 'İPHONE KONTROL PAKETİ'),
-    el('p', { class: 'muted' }, 'Kestirmeler uygulamasında aşağıdaki adlarla birer kestirme oluştur (her birinde girdi olarak “Metin” kabul et). Sonra “Jarvis, feneri aç”, “sesi 60 yap”, “yarın 7:30’a alarm kur”, “Ahmet’e geliyorum yaz” diyebilirsin; JARVIS doğru kestirmeyi hazırlar, dokununca iPhone yapar.'),
+    el('p', { class: 'muted' }, 'Kestirmeler uygulamasında aşağıdaki adlarla birer kestirme oluştur (her birinde girdi olarak “Metin” kabul et). Sonra “Jarvis, feneri aç”, “sesi 60 yap”, “yarın 7:30’a alarm kur”, “Ahmet’e geliyorum yaz” diyebilirsin; SATÜRN doğru kestirmeyi hazırlar, dokununca iPhone yapar.'),
     el('ul', { class: 'list' }, ...PACK.map(([n, how, ex]) => el('li', { class: 'item' }, el('span', {}, '▸'), el('div', {}, el('p', {}, el('b', {}, n)), el('small', {}, how + ' · örnek: ' + ex))))),
     el('h3', {}, 'DOSYA AKTARIMI'),
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => upl.click() }, 'Bilgisayara dosya gönder'),

@@ -2,16 +2,16 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; media-src 'self' blob: data:; connect-src 'self' https: wss://generativelanguage.googleapis.com http://127.0.0.1:8765">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://image.pollinations.ai; media-src 'self' blob: data:; connect-src 'self' https: wss://generativelanguage.googleapis.com http://127.0.0.1:8765">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>JARVIS</title>
+<title>SATÜRN</title>
 <meta name="description" content="Beyhan'ın sesli kişisel asistanı">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#03080d">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="JARVIS">
+<meta name="apple-mobile-web-app-title" content="SATÜRN">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -195,7 +195,7 @@ textarea#prompt::placeholder { color: var(--muted); }
 }
 .mobile-strip { display: none; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .mobile-strip .seg { background: rgb(3 12 20 / .55); }
-/* JARVIS 4.1 */
+/* SATÜRN 4.1 */
 .msg img.shot { display: block; max-width: 100%; margin-top: 6px; border: 1px solid var(--line-2); border-radius: 6px; }
 .ytchart { width: 100%; height: 110px; display: block; }
 #ytList a, #igList a { color: var(--ink); text-decoration: none; } #ytList a:hover { color: var(--holo-2); }
@@ -209,7 +209,7 @@ body.eco canvas#hud2d { filter: none !important; }
 .camera { position: fixed; inset: 0; z-index: 45; background: rgb(0 0 0 / .92); display: grid; place-content: center; gap: 12px; padding: 16px; }
 .camera video { max-width: min(92vw, 900px); max-height: 75vh; border: 1px solid var(--line-2); }
 .camera .row { justify-content: center; }
-/* JARVIS 4 · holografik alan */
+/* SATÜRN 4 · holografik alan */
 @media (min-width: 901px) {
   .middle { perspective: 1100px; }
   .left { transform: rotateY(10deg); transform-origin: left center; }
@@ -226,7 +226,7 @@ body.eco canvas#hud2d { filter: none !important; }
 body::after { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(120% 90% at 50% 42%, transparent 55%, rgb(0 0 0 / .55)); }
 .brand { text-shadow: 0 0 18px rgb(87 211 255 / .7), 0 0 2px #fff; }
 .readout .time { font-family: var(--f-display); font-weight: 700; }
-/* JARVIS 3.1 · FUI katmanı */
+/* SATÜRN 3.1 · FUI katmanı */
 .grid-bg { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 0 56 16v32L28 64 0 48V16zM28 64v33' fill='none' stroke='%2357d3ff' stroke-opacity='.09'/%3E%3C/svg%3E"); background-size: 56px 97px; }
 .brand { font-weight: 900; }
 .card { border-radius: 0; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); box-shadow: inset 2px 0 0 rgb(87 211 255 / .35); }
@@ -280,7 +280,7 @@ body::after { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events
 .pal-box li.on, .pal-box li:hover { background: rgb(87 211 255 / .12); box-shadow: inset 2px 0 0 var(--holo); }
 @media (max-width: 900px) { .edge, .fps { display: none; } #clock, #wx { display: none; } .wave { height: 26px; } .ticker { font-size: 10px; } #palBtn { display: none; } }
 :root[data-theme="light"] .boot { background: #eaf3f8; }
-/* JARVIS 3 */
+/* SATÜRN 3 */
 @media (max-width: 700px) { #fullBtn { display: none; } .estop { padding: 2px 8px; font-size: 10px; } }
 .confirmbar { width: min(560px, 100%); display: grid; gap: 8px; border: 1px solid var(--amber); background: rgb(30 18 2 / .82); color: var(--ink); border-radius: var(--r); padding: 10px 14px; box-shadow: 0 0 24px rgb(255 181 71 / .25); }
 :root[data-theme="light"] .confirmbar { background: rgb(255 246 230 / .95); }
@@ -337,6 +337,13 @@ body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
 @keyframes ushine { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { #ultronPulse i, .uprog.live i { animation: none; } }
 @media (max-width: 700px) { #ultronPulse { top: calc(58px + env(safe-area-inset-top)); left: 16px; transform: none; font-size: 9px; max-width: calc(100vw - 150px); } }
+/* GÖRSEL */
+.msg img.genimg { display: block; width: 100%; max-width: 420px; border-radius: 10px; margin: 8px 0; background: var(--glass); min-height: 120px; }
+.imggrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.imgthumb { padding: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: none; cursor: pointer; aspect-ratio: 1; }
+.imgthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#p-img textarea { width: 100%; box-sizing: border-box; }
+#p-img .row select { flex: 1; min-width: 0; }
 /* GÜNDEM */
 .newschips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .newschips .chip { font-size: 12px; padding: 6px 10px; cursor: pointer; }
@@ -364,7 +371,7 @@ body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
 /* KLİNİK */
 .klinikbar { flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .pkt.bad { color: var(--bad); font-weight: 600; }
-/* JARVIS 9 */
+/* SATÜRN 9 */
 .ultrabox { display: grid; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .chatchart { display: block; width: 100%; max-width: 520px; height: auto; margin-top: 8px; background: rgb(87 211 255 / .04); border: 1px solid var(--line); border-radius: 8px; }
 .kvs.doctor { margin-top: 8px; } .kvs.doctor b.bad { color: var(--bad); }
@@ -397,7 +404,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 <div class="scan" aria-hidden="true"></div>
 <div class="gate" id="gate" hidden>
   <form id="gateForm">
-    <h1>JARVIS</h1>
+    <h1>SATÜRN</h1>
     <p class="muted">Kişisel asistanına giriş. Şifre yalnızca bu cihazda saklanır.</p>
     <input id="gateKey" type="password" autocomplete="current-password" placeholder="Uygulama şifresi" aria-label="Uygulama şifresi" required>
     <button>Giriş</button>
@@ -411,7 +418,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">JARVIS<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 14.1.0</small></div>
+    <div class="brand">SATÜRN<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 14.1.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -582,7 +589,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <h3>UYGULAMA</h3>
         <p class="muted">Telefonda ve bilgisayarda “Uygulamayı yükle” ile kurulur. Sesli konuşma için Android ve bilgisayarda Chrome/Edge, iPhone’da Safari kullan.</p>
         <div class="row"><button type="button" class="btn" id="logout">Bu cihazda çıkış yap</button></div>
-        <h3>ESKİ JARVIS</h3>
+        <h3>ESKİ SATÜRN</h3>
         <p class="muted">ChatGPT'deki 0.38 sitesi bu sayfadan bağımsız; oradaki kayıtlar buraya taşınmadı.</p>
         <span class="link">jarvis-beyhan-asistan.beyhan-erden-9256.chatgpt.site</span>
         <h3>KLİNİK MESAJLARI</h3>
@@ -590,6 +597,6 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
       </div>
     </aside>
 <script src="voice-engine.js?v=14.1.0"></script><script src="audiohub.js?v=14.1.0"></script>
-<script src="direct.js?v=14.1.0"></script><script src="app.js?v=14.1.0"></script><script src="plus.js?v=14.1.0"></script><script src="hud.js?v=14.1.0"></script><script src="features.js?v=14.1.0"></script><script src="control.js?v=14.1.0"></script><script src="voices.js?v=14.1.0"></script><script src="social.js?v=14.1.0"></script><script src="agent.js?v=14.1.0"></script><script src="figure.js?v=14.1.0"></script><script src="sentinel.js?v=14.1.0"></script><script src="brain.js?v=14.1.0"></script><script src="pro.js?v=14.1.0"></script><script src="ultra.js?v=14.1.0"></script><script src="klinik.js?v=14.1.0"></script><script src="live.js?v=14.1.0"></script><script src="research.js?v=14.1.0"></script><script src="research2.js?v=14.1.0"></script><script src="markets.js?v=14.1.0"></script><script src="news.js?v=14.1.0"></script><script src="voice2.js?v=14.1.0"></script><script src="ultron.js?v=14.1.0"></script><script src="ultron-life.js?v=14.1.0"></script>
+<script src="direct.js?v=14.1.0"></script><script src="app.js?v=14.1.0"></script><script src="plus.js?v=14.1.0"></script><script src="hud.js?v=14.1.0"></script><script src="features.js?v=14.1.0"></script><script src="control.js?v=14.1.0"></script><script src="voices.js?v=14.1.0"></script><script src="social.js?v=14.1.0"></script><script src="agent.js?v=14.1.0"></script><script src="figure.js?v=14.1.0"></script><script src="sentinel.js?v=14.1.0"></script><script src="brain.js?v=14.1.0"></script><script src="pro.js?v=14.1.0"></script><script src="ultra.js?v=14.1.0"></script><script src="klinik.js?v=14.1.0"></script><script src="live.js?v=14.1.0"></script><script src="research.js?v=14.1.0"></script><script src="research2.js?v=14.1.0"></script><script src="markets.js?v=14.1.0"></script><script src="news.js?v=14.1.0"></script><script src="imagegen.js?v=14.1.0"></script><script src="voice2.js?v=14.1.0"></script><script src="ultron.js?v=14.1.0"></script><script src="ultron-life.js?v=14.1.0"></script>
 </body>
 </html>

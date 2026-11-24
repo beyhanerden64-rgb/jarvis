@@ -1,5 +1,5 @@
 'use strict';
-/* SES MERKEZİ (AudioHub) — JARVIS'in tek ses motoru.
+/* SES MERKEZİ (AudioHub) — SATÜRN'ün tek ses motoru.
  * iPhone/Safari kuralı: ses sistemi (AudioContext) yalnız dokunuş ANINDA başlatılabilir; bir "await"ten sonra
  * oluşturulursa askıda kalır ve mikrofon açık görünse de hiç ses gelmez. Bu yüzden:
  *  - her dokunuşta (yakalama aşamasında, her şeyden önce) tek bir AudioContext oluşturulur/uyandırılır,

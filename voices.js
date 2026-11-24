@@ -1,15 +1,15 @@
 'use strict';
-/* JARVIS 5.1 — kaliteli ses: Gemini doğal sesleri (ücretsiz, 30 ses, Türkçe), ses tonu/üslup, sesli komutlarla ses değiştirme. */
+/* SATÜRN 5.1 — kaliteli ses: Gemini doğal sesleri (ücretsiz, 30 ses, Türkçe), ses tonu/üslup, sesli komutlarla ses değiştirme. */
 (() => {
   const VOICES = [
-    ['Charon', 'erkek', 'bilgilendirici · JARVIS'], ['Orus', 'erkek', 'kararlı'], ['Iapetus', 'erkek', 'net'], ['Rasalgethi', 'erkek', 'bilgilendirici'], ['Sadaltager', 'erkek', 'bilgili'],
+    ['Charon', 'erkek', 'bilgilendirici · SATÜRN'], ['Orus', 'erkek', 'kararlı'], ['Iapetus', 'erkek', 'net'], ['Rasalgethi', 'erkek', 'bilgilendirici'], ['Sadaltager', 'erkek', 'bilgili'],
     ['Alnilam', 'erkek', 'kararlı'], ['Algieba', 'erkek', 'pürüzsüz'], ['Schedar', 'erkek', 'dengeli'], ['Achird', 'erkek', 'samimi'], ['Algenib', 'erkek', 'kalın, pürüzlü'],
     ['Fenrir', 'erkek', 'heyecanlı'], ['Puck', 'erkek', 'neşeli'], ['Umbriel', 'erkek', 'rahat'], ['Zubenelgenubi', 'erkek', 'gündelik'], ['Enceladus', 'erkek', 'nefesli'], ['Sadachbia', 'erkek', 'canlı'],
     ['Kore', 'kadın', 'kararlı'], ['Sulafat', 'kadın', 'sıcak'], ['Despina', 'kadın', 'yumuşak'], ['Erinome', 'kadın', 'net'], ['Vindemiatrix', 'kadın', 'nazik'], ['Achernar', 'kadın', 'yumuşak'],
     ['Aoede', 'kadın', 'ferah'], ['Zephyr', 'kadın', 'parlak'], ['Autonoe', 'kadın', 'parlak'], ['Leda', 'kadın', 'genç'], ['Callirrhoe', 'kadın', 'rahat'], ['Laomedeia', 'kadın', 'neşeli'],
     ['Pulcherrima', 'kadın', 'atılgan'], ['Gacrux', 'kadın', 'olgun']
   ];
-  const STYLES = [['jarvis', 'JARVIS · sakin, net, kendinden emin'], ['sakin', 'Sakin ve yumuşak'], ['sicak', 'Sıcak ve şefkatli'], ['resmi', 'Resmî ve kesin'], ['enerjik', 'Enerjik ve neşeli']];
+  const STYLES = [['jarvis', 'SATÜRN · sakin, net, kendinden emin'], ['sakin', 'Sakin ve yumuşak'], ['sicak', 'Sıcak ve şefkatli'], ['resmi', 'Resmî ve kesin'], ['enerjik', 'Enerjik ve neşeli']];
   const field = (id, label, input) => el('div', { class: 'field' }, el('label', { for: id }, label), input);
   const sel = (id, opts) => { const s = el('select', { id }); for (const [v, t] of opts) s.append(new Option(t, v)); return s; };
   const vSel = sel('ttsVoice', VOICES.map(([n, g, d]) => [n, `${n} · ${g} · ${d}`]));
@@ -34,7 +34,7 @@
 
   function sample() {
     const v = VOICES.find(x => x[0] === setting('ttsVoice'));
-    return `Merhaba Beyhan, ben JARVIS. Bu ${v ? v[0] : 'yeni'} sesim; ${v ? v[2].split(' · ')[0] : ''} bir tonla konuşuyorum. Nasıl yardımcı olabilirim?`;
+    return `Merhaba Beyhan, ben SATÜRN. Bu ${v ? v[0] : 'yeni'} sesim; ${v ? v[2].split(' · ')[0] : ''} bir tonla konuşuyorum. Nasıl yardımcı olabilirim?`;
   }
   $('testVoice').onclick = () => { window.jarvisUnlock(); stopAll(); voiceSession.read(sample()); };
   const testRow = $('testVoice').closest('.row');
@@ -58,7 +58,7 @@
     if (/^(daha )?(enerjik|neseli|canli) konus$/.test(t)) { set('ttsStyle', 'enerjik'); return 'Tamam, daha enerjik!'; }
     if (/^(daha )?(resmi|ciddi) konus$/.test(t)) { set('ttsStyle', 'resmi'); return 'Bundan sonra daha resmî konuşacağım.'; }
     if (/^(daha )?(sicak|samimi) konus$/.test(t)) { set('ttsStyle', 'sicak'); return 'Daha sıcak bir tonla konuşacağım.'; }
-    if (/^(normal|jarvis) (ton|uslup)(la konus|a don)?$/.test(t)) { set('ttsStyle', 'jarvis'); return 'Normal JARVIS üslubuma döndüm.'; }
+    if (/^(normal|jarvis) (ton|uslup)(la konus|a don)?$/.test(t)) { set('ttsStyle', 'jarvis'); return 'Normal SATÜRN üslubuma döndüm.'; }
     return _local(text);
   };
 

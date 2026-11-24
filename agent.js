@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 6 — bilgisayara tam hâkimiyet:
+/* SATÜRN 6 — bilgisayara tam hâkimiyet:
  * • pc_ajan: ekrana bakıp tıklayan, yazan, tuşlayan çok adımlı bilgisayar ajanı (her adımı kayıtlı, ACİL DUR ile anında durur)
  * • “Tam yetki” otonomi seviyesi: yalnız geri alınamayan işlerde onay
  * • tüm disklere erişim anahtarı, ekran görüntülerinin akışta gösterilmesi. social.js'ten sonra yüklenir. */
@@ -26,7 +26,7 @@
   /* ---------- bilgisayar ajanı ---------- */
   let stopAgent = false;
   $('estop').addEventListener('click', () => { stopAgent = true; });
-  const SYS = `Sen JARVIS'in bilgisayar kontrol ajanısın. Windows ekran görüntüsüne bakıp görevi adım adım yaparsın. Her yanıtında YALNIZCA tek bir JSON nesnesi yaz:
+  const SYS = `Sen SATÜRN'ün bilgisayar kontrol ajanısın. Windows ekran görüntüsüne bakıp görevi adım adım yaparsın. Her yanıtında YALNIZCA tek bir JSON nesnesi yaz:
 {"eylem":"tikla|cift_tikla|sag_tikla|yaz|tus|kaydir|ac|bekle|onay_iste|bitti|basarisiz","x":0-1000,"y":0-1000,"metin":"","tuslar":"","neden":"kısa açıklama"}
 - x,y: hedefin MERKEZİ; görüntü genişliğine/yüksekliğine göre binde biri cinsinden.
 - yaz: önce gerekiyorsa alana tıkla, sonra yaz. tus: ör. "enter", "ctrl+s", "alt+tab", "win+d". kaydir: metin = adım (negatif aşağı). ac: metin = program adı veya https adresi.
@@ -37,7 +37,7 @@
   async function pcAgent([goal, maxS], ctx) {
     if (!goal) throw Error('Görev tarifi gerekli');
     const max = Math.min(25, Number(maxS) || 15);
-    if (!fullAuto() && !(await _confirm(`JARVIS bilgisayarında şu görevi kendi başına yapacak (en fazla ${max} adım, ACİL DUR ile durdurabilirsin): “${short(goal, 140)}”`, ctx?.say))) return 'İPTAL — Beyhan onaylamadı.';
+    if (!fullAuto() && !(await _confirm(`SATÜRN bilgisayarında şu görevi kendi başına yapacak (en fazla ${max} adım, ACİL DUR ile durdurabilirsin): “${short(goal, 140)}”`, ctx?.say))) return 'İPTAL — Beyhan onaylamadı.';
     if (opt('dryRun') === '1') return 'DENEME MODU — ajan çalıştırılmadı.';
     stopAgent = false;
     const steps = [], live = bubble('note', '🖥 Bilgisayar ajanı başladı: ' + goal);
@@ -89,7 +89,7 @@ BİLGİSAYARA TAM HÂKİMİYET: Kurulu her programı pc|ac ile adından açabili
   const v = store.get('set.fullDisk', null); if (v !== null) full.value = v;
   full.onchange = async () => { store.set('set.fullDisk', full.value); try { await fetch(PC + '/eslestir', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ tam_erisim: full.value === '1' }) }); note('Bilgisayar erişimi güncellendi: ' + full.selectedOptions[0].text); } catch { note('Yardımcıya ulaşılamadı; bilgisayarda çalıştığından emin ol.'); } };
   $('autonomy').closest('.field').after(el('div', { class: 'field' }, el('label', { for: 'fullDisk' }, 'Bilgisayar dosya erişimi'), full),
-    el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => { auto.value = '2'; store.set('set.autonomy', '2'); full.value = '1'; full.onchange(); note('TAM YETKİ açıldı: JARVIS bilgisayarında yalnız geri alınamayan işler için (silme, kapatma, kurulum, süreç/servis durdurma, tehlikeli PowerShell) onay ister. ACİL DUR her zaman çalışır.'); } }, 'Tam yetkiyi aç')));
+    el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => { auto.value = '2'; store.set('set.autonomy', '2'); full.value = '1'; full.onchange(); note('TAM YETKİ açıldı: SATÜRN bilgisayarında yalnız geri alınamayan işler için (silme, kapatma, kurulum, süreç/servis durdurma, tehlikeli PowerShell) onay ister. ACİL DUR her zaman çalışır.'); } }, 'Tam yetkiyi aç')));
 
   // skills
   SKILLS.pcagent = { label: 'Bilgisayarda yap…', run: () => { $('prompt').value = 'Bilgisayarımda şunu yap: '; autosize(); $('prompt').focus(); } };

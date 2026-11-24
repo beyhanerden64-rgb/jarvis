@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 11 — ULTRON ÇEKİRDEĞİ
+/* SATÜRN 11 — ULTRON ÇEKİRDEĞİ
  *  1) Otonom görev motoru: tek bir hedef ver → ULTRON planlar, araçları kendisi zincirler (en çok 20 adım), her sonucu gözler,
  *     planı günceller, sonunda kendi işini DOĞRULAR; eksikse devam eder. Yarım kalırsa sayfa yenilense de sürdürülebilir.
  *     Güvenlik: geri alınamaz/riskli işler her zamanki gibi Beyhan'ın onayını ister (aynı araç kapısı), ACİL DUR her an durdurur.
@@ -19,7 +19,7 @@
   const save = () => { if (M) M.upd = Date.now(); store.set('ultronM', M); renderPanel(); };
 
   /* ---------- 1) otonom görev motoru ---------- */
-  const SYS = () => `Sen ULTRON'sun: JARVIS'in otonom görev çekirdeği. Fizyoterapist Beyhan Erden (FİZYOVİTA, Cizre) için verilen HEDEFE kendi başına ulaşırsın.
+  const SYS = () => `Sen ULTRON'sun: SATÜRN'ün otonom görev çekirdeği. Fizyoterapist Beyhan Erden (FİZYOVİTA, Cizre) için verilen HEDEFE kendi başına ulaşırsın.
 Şu an: ${nowText()}.
 Her turda YALNIZCA şu JSON'u yaz (başka metin yok):
 {"plan":["kalan adımlar, kısa"],"dusunce":"bu turda neden bunu yapıyorum (1 cümle)","araclar":["ad|arg1|arg2"],"bitti":false,"sonuc":""}
@@ -213,7 +213,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     if (/^ultron[,:\s]+(durum|ne yapıyorsun)\??$/i.test(t)) return M ? view() : 'Şu an görev yok.';
     if (/^ultron[,:\s]+(öneri|inisiyatif|ne yapalım)\??$/i.test(t)) return initiatives().map((x, i) => `${i + 1}. ${x.t}`).join('\n') + '\n(ULTRON sekmesinden tek dokunuşla başlatabilirsin.)';
     if (/^ultron( mod(u)?)? (aç|açık)$/i.test(t)) { setTheme('1'); return 'ULTRON çekirdeği görünür.'; }
-    if (/^ultron( mod(u)?)? (kapat|kapalı)$/i.test(t)) { setTheme('0'); return 'JARVIS görünümüne döndüm.'; }
+    if (/^ultron( mod(u)?)? (kapat|kapalı)$/i.test(t)) { setTheme('0'); return 'SATÜRN görünümüne döndüm.'; }
     if ((m = t.match(/^(?:ultron[,:\s]+)?(?:konsey\s*:|konseye\s+sor[,:]?|konseyi\s+topla[,:]?)\s*(.{4,})$/i))) { setTimeout(() => showCouncil(m[1]), 30); return 'Konseyi topluyorum: üç uzman ajan düşünüyor…'; }
     if ((m = t.match(/^ultron(?:[,:\s]+(?:görev[,:\s]+)?)(.{4,})$/i)) || (m = t.match(/^(?:otonom|ultron)\s+görev[,:]\s*(.{4,})$/i))) { const vv = !!(typeof voiceSession !== 'undefined' && voiceSession.active); setTimeout(() => mission(m[1], { voice: vv }).catch(e => note(e.message)), 30); return 'ULTRON devrede. Hedefi planlıyorum ve kendim yürüteceğim; ilerlemeyi burada göreceksin.'; }
     return _lc(text);
@@ -224,12 +224,12 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
     store.set('set.ultronTheme', v);
     const on = v !== '0';
     document.body.classList.toggle('ultron', on);
-    const b = document.querySelector('.brand'); if (b?.firstChild?.nodeType === 3) b.firstChild.textContent = on ? 'ULTRON' : 'JARVIS';
+    const b = document.querySelector('.brand'); if (b?.firstChild?.nodeType === 3) b.firstChild.textContent = 'SATÜRN';
     const s = $('ultronTheme'); if (s) s.value = on ? '1' : '0';
   }
   setTheme(store.get('set.ultronTheme', '1'));
-  const _insU = instructions; instructions = v => _insU(v) + (document.body.classList.contains('ultron') ? '\nKİMLİK: Şu an ULTRON modundasın — adın ULTRON (JARVIS\'in gelişmiş otonom çekirdeği). Kendinden emin, enerjik, proaktif ve net konuş; uzun işleri sahiplen ve sonuca götür. Beyhan\'a sadık bir yardımcısın: tehditkâr ya da kötü karakter rolü yapma.' : '');
-  const _bubble = bubble; bubble = (kind, text, o) => { const n = _bubble(kind, text, o); if (kind === 'ai' && document.body.classList.contains('ultron')) { const w = n.el.querySelector('.who'); if (w) w.textContent = 'ULTRON'; } return n; };
+  const _insU = instructions; instructions = v => _insU(v) + (document.body.classList.contains('ultron') ? '\nKİMLİK: Adın SATÜRN (eski adın JARVIS); Beyhan sana “Satürn” diye seslenir. Otonom görev çekirdeğinin adı ULTRON; şu an güçlü çekirdek modundasın. Kendinden emin, enerjik, proaktif ve net konuş; uzun işleri sahiplen ve sonuca götür. Beyhan\'a sadık bir yardımcısın: tehditkâr ya da kötü karakter rolü yapma.' : '');
+  
 
   /* ---------- panel ---------- */
   const tabs = document.querySelector('.tabs'), tb = el('button', { role: 'tab', id: 't-ultron', 'aria-selected': 'false', 'data-p': 'ultron' }, 'ULTRON');
@@ -240,7 +240,7 @@ ${lessons() ? 'ÖNCEKİ DERSLER (bunlara uy):\n' + lessons() : ''}`;
   const selOf = (id, opts, def) => { const s = el('select', { id }); for (const [v, t] of opts) s.append(new Option(t, v)); s.value = store.get('set.' + id, def); s.onchange = () => store.set('set.' + id, s.value); return s; };
   const maxSel = selOf('ultronMax', [['6', '6 adım (hızlı)'], ['12', '12 adım'], ['20', '20 adım (derin)']], '12');
   const proSel = selOf('ultronProactive', [['1', 'Açık — günde bir kez öneri getir'], ['0', 'Kapalı']], '1');
-  const thSel = selOf('ultronTheme', [['1', 'ULTRON (kırmızı çekirdek)'], ['0', 'Klasik JARVIS']], '1'); thSel.onchange = () => setTheme(thSel.value);
+  const thSel = selOf('ultronTheme', [['1', 'ULTRON (kırmızı çekirdek)'], ['0', 'Klasik SATÜRN']], '1'); thSel.onchange = () => setTheme(thSel.value);
   const iniList = el('ul', { class: 'list', id: 'ultronIni' }), hList = el('ul', { class: 'list', id: 'ultronHist' }), cur = el('pre', { id: 'ultronCur', class: 'muted' });
   const p = el('div', { class: 'pane', id: 'p-ultron', role: 'tabpanel' },
     el('h3', {}, 'OTONOM GÖREV'),

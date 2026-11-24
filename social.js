@@ -1,5 +1,5 @@
 'use strict';
-/* JARVIS 5.2 — sosyal medya: YouTube kanalı (anahtarsız: herkese açık akış + kanal sayfası) ve Instagram (resmî API, erişim anahtarıyla).
+/* SATÜRN 5.2 — sosyal medya: YouTube kanalı (anahtarsız: herkese açık akış + kanal sayfası) ve Instagram (resmî API, erişim anahtarıyla).
  * Günlük anlık görüntü ile büyüme takibi, SOSYAL paneli, araçlar: youtube, instagram, sosyal_rapor. */
 (() => {
   const field = (id, label, input) => el('div', { class: 'field' }, el('label', { for: id }, label), input);

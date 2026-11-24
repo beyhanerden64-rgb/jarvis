@@ -1,7 +1,7 @@
 'use strict';
-/* JARVIS 9.3 — CANLI MOD (Gemini Live, yerel ses modeli)
+/* SATÜRN 9.3 — CANLI MOD (Gemini Live, yerel ses modeli)
  * Metni sese çevirmek yerine Gemini doğrudan konuşur: akıcı, canlı, insan gibi tonlama; sözünü kesebilirsin,
- * neredeyse beklemeden cevap verir. Ücretsiz Gemini anahtarıyla çalışır. JARVIS araçlarını (hatırlatma, takvim,
+ * neredeyse beklemeden cevap verir. Ücretsiz Gemini anahtarıyla çalışır. SATÜRN araçlarını (hatırlatma, takvim,
  * bilgisayar, hasta…) konuşurken kullanabilir. iPhone'da da çalışır (mikrofon + Web Audio, sessiz anahtara rağmen). */
 (() => {
   const WS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
@@ -23,7 +23,7 @@
   const setupMsg = (model, shape) => {
     const voice = opt('liveVoice') || 'Puck';
     const speech = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
-    const tools = [{ functionDeclarations: [{ name: 'jarvis_arac', description: 'JARVIS aracını çalıştırır ve sonucu döndürür (hatırlatma, takvim, hava, hesap, hasta kayıtları, kasa, bilgisayar kontrolü vb.).', parameters: { type: 'OBJECT', properties: { komut: { type: 'STRING', description: 'Araç adı ve argümanlar | ile ayrılmış, ör. "hava|Cizre"' } }, required: ['komut'] } }] }];
+    const tools = [{ functionDeclarations: [{ name: 'jarvis_arac', description: 'SATÜRN aracını çalıştırır ve sonucu döndürür (hatırlatma, takvim, hava, hesap, hasta kayıtları, kasa, bilgisayar kontrolü vb.).', parameters: { type: 'OBJECT', properties: { komut: { type: 'STRING', description: 'Araç adı ve argümanlar | ile ayrılmış, ör. "hava|Cizre"' } }, required: ['komut'] } }] }];
     const sys = { parts: [{ text: liveInstructions() }] };
     if (shape === 0) return { setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech }, systemInstruction: sys, tools, inputAudioTranscription: {}, outputAudioTranscription: {} } };
     if (shape === 1) return { setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech }, systemInstruction: sys } };
