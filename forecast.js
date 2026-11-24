@@ -16,6 +16,7 @@
     const f = fold(text);
     const m = f.match(/(\d+)\s*(gun|hafta|ay|yil)/);
     if (m) return Math.min(730, +m[1] * { gun: 1, hafta: 7, ay: 30, yil: 365 }[m[2]]);
+    const y = f.match(/(?:^|\D)(20\d\d)(?!\d)/); if (y && +y[1] >= new Date().getUTCFullYear()) return Math.max(7, Math.min(1500, Math.round((Date.UTC(+y[1], 11, 31) - Date.now()) / DAY)));
     return /yarin/.test(f) ? 1 : /bu hafta|haftaya|onumuzdeki hafta|haftalik/.test(f) ? 7 : /yil sonu|yilsonu/.test(f) ? Math.max(7, Math.round((Date.UTC(new Date().getUTCFullYear(), 11, 31) - Date.now()) / DAY)) : /yil|sene/.test(f) ? 365 : /3 ay|ceyrek/.test(f) ? 90 : 30;
   }
   // piyasa istatistiği (Binance günlük mumları)
@@ -142,19 +143,39 @@ YALNIZ JSON:
   toolsPrompt = () => _tp() + '\nTAHMİN: Beyhan “ne olur, yükselir mi, düşer mi, tahmin et, kim kazanır” gibi bir gelecek sorusu sorarsa reddetme; senaryo_tahmin ile olasılıklı, gerekçeli tahmin ver. Garanti verme, “kesin al/sat” deme; olasılık ve belirsizliği açıkça söyle.';
   TOOL_GROUPS.push([/hava|yağmur|kar yağ|sıcaklık|derece|rüzgar|rüzgâr|şemsiye|güneşli/i, /^hava_tahmini$/]);
   TOOL_GROUPS.push([/tahmin|ne olur|ne olacak|nasıl olacak|kaç olacak|olur mu|olacak mı|yükselir mi|yükselecek|düşer mi|düşecek|artar mı|artacak|azalacak|nereye gider|kim kazanır|kazanır mı|kazanacak|olasılık|ihtimal|şans|senaryo|beklenti|öngörü|gelecek|ileride/i, /^(senaryo_tahmin|tahmin|tahmin_durum)$/]);
+  /* ---------- tahmin niyeti: yapay zekânın kararına bırakmadan, cümlenin herhangi bir yerinde yakala ---------- */
+  const FUT = /(ne olacak|ne olur\b(?!\s+(?:yardım|lütfen|bana|bi|bir))|nasıl olacak|kaç olacak|ne kadar olacak|ne kadar olur|kaç olur|olacak mı|olacak mi|yükselecek|yükselir mi|çıkacak mı|çıkar mı|düşecek|düşer mi|artacak|artar mı|azalacak|azalır mı|geriler mi|gerileyecek|kazanacak|kazanır mı|kim kazanır|nereye gider|nereye gidecek|tahmin|öngörü|beklenti|senaryo|ihtimal|olasılı[ğk]|şansı)/i;
+  const NOT_FC = /(hava|yağmur|kar yağ|hasta|seans|randevu|görev|hatırlat|isabet|zoi|tahmin isabet|tahminlerim|kaydet|beni|bana ne olur|sana|kendin)/i;
+  const subjectOf = t => String(t)
+    .replace(/^\s*(?:hey\s+)?(?:jarvis|s[aâ]t[uüıi]r[uüı]?n)[,\s]+/i, '').replace(/^(peki|acaba|sence|bence|söyle|bir de|ya)\s+/i, '')
+    .replace(/[?.!,]/g, ' ')
+    .replace(/(önümüzdeki|gelecek|bu|önümüzde)\s+(gün|hafta|ay|yıl|sene|çeyrek)(ler)?|yıl sonu(na kadar)?|ay sonu(na kadar)?|\d+\s*(gün|hafta|ay|yıl)(\s+(içinde|sonra|boyunca))?|yarın|bugün|haftaya|seneye|ileride|kısa vadede|uzun vadede/gi, ' ')
+    .replace(/\b(ne olacak|ne olur|nasıl olacak|kaç olacak|ne kadar olacak|ne kadar olur|kaç olur|olacak mı|olacak mi|yükselecek mi|yükselecek|yükselir mi|çıkacak mı|çıkar mı|düşecek mi|düşecek|düşer mi|artacak mı|artacak|artar mı|azalacak mı|azalacak|azalır mı|geriler mi|gerileyecek mi|kazanacak mı|kazanacak|kazanır mı|kim kazanır|nereye gider|nereye gidecek|tahmin(i|in|ini)?|tahmin et|tahmin ver|öngörün?|beklentin?|senaryo(ları|lar)?|ihtimali?|olasılığı?|şansı|nedir|ne|ver|yap|et|için|sence|hakkında|konusunda|bana|söyle|mi|mı|mu|mü)\b/gi, ' ')
+    .replace(/\b20\d\d(['’]?(de|da|te|ta|e|a|ye|ya))?\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+  function isForecast(text) {
+    const t = String(text || ''); if (t.length < 6 || t.length > 160 || !FUT.test(t) || NOT_FC.test(t)) return '';
+    const subj = subjectOf(t); return subj.length >= 2 && subj.split(' ').length <= 8 && !/^(bu|şu|o|bunlar|şunlar|onlar|ne|kim|hangisi)$/i.test(subj) ? subj : '';
+  }
+  const _thinkF = think;
+  think = async (text, o = {}) => {
+    const subj = !o.image && !window.jarvisUltra?.guest?.() && opt('fcAuto') !== '0' ? isForecast(text) : '';
+    if (!subj) return _thinkF(text, o);
+    bubble('me', text);
+    try {
+      const r = await forecast(subj, horizon(text)); show(r);
+      const say = `${r.j.ozet || ''} ${r.j.senaryolar.map(x => `${x.ad} senaryo yüzde ${x.olasilik}${x.aralik ? ', ' + x.aralik : ''}`).join('. ')}.`.trim();
+      if (o.voiceTurn || (setting('speakOn') === '1' && store.get('set.readTyped', true))) { try { voiceSession.read(say); } catch {} }
+      remember?.(text, say);
+      return say;
+    } catch (e) { setPhase('idle', 'Hazır.'); note('Tahmin yapılamadı: ' + e.message); return ''; }
+  };
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '').replace(/[?.!]+$/, '');
     let m;
-    if ((m = t.match(/^(.{2,60}?)\s+(?:için\s+)?(?:tahmin(?:in)?|tahmini|senaryo(?:ları)?)\s*(?:ver|yap|nedir|ne|et)?$/i)) || (m = t.match(/^(?:tahmin et|tahmin ver|tahminin ne)\s*[:,-]?\s*(.{2,60})$/i)) || (m = t.match(/^(.{2,40}?)\s+((?:önümüzdeki\s+\S+\s+|bu hafta\s+|yarın\s+|yıl sonu(?:na kadar)?\s+|\d+\s*(?:gün|hafta|ay|yıl)\s+(?:içinde\s+|sonra\s+)?)?(?:yükselir mi|yükselecek mi|düşer mi|düşecek mi|artar mı|artacak mı|azalır mı|azalacak mı|ne olur|ne olacak|nasıl olacak|nereye gider|ne kadar olur|ne kadar olacak|kaç olur|kaç olacak|kazanır mı|kazanacak mı|kim kazanır|kim kazanacak))$/i))) {
-      const subj = m[1].replace(/\s+(önümüzdeki|bu|gelecek)\s+(hafta|ay|yıl)$/i, '');
-      if (/^(bu|şu|o|ne|yarın|bugün|hava)$/i.test(subj) || /\b(hava|hasta|seans|randevu|görev|ben|sen|biz|bize|bana)\b/i.test(subj)) return _lc(text0);
-      const days = horizon(t); setTimeout(() => run(subj, days), 30);
-      return `🔮 “${subj}” için ${days} günlük senaryoları hesaplıyorum…`;
-    }
     if (/^(tahmin isabetim|tahminlerim ne kadar tuttu|isabet oranı)$/i.test(t)) return TOOLS.tahmin_durum.run([]);
 
     return _lc(text0);
   };
-  window.jarvisForecast = { weather, forecast, run, show, text, horizon, marketStats, band, autoResolve };
+  window.jarvisForecast = { isForecast, subjectOf, weather, forecast, run, show, text, horizon, marketStats, band, autoResolve };
 })();
