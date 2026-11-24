@@ -604,7 +604,7 @@ const player = new JarvisSpeechPlayer({
       setTimeout(() => note('Doğal ses şu an çalışmıyor: ' + t.replace(/ (Cihaz sesine geçildi|Yanıt ekranda \(cihaz sesi kapalı\))\.?$/, '') + ' En akıcı ses için mikrofonun yanındaki CANLI düğmesini kullan. ' + (/kota|429/i.test(t) ? 'Google’ın ücretsiz doğal ses kotası günlük sınırlıdır; gece yarısı (TSİ 11:00) yenilenir.' : '')), 50);
     }
   },
-  deviceFallback: () => { const v = store.get('set.deviceFallback', 'auto') || 'auto'; return v === '1' || (v === 'auto' && !!window.jarvisGoodDeviceVoice?.()); }
+  deviceFallback: () => { const v = store.get('set.deviceFallback', 'auto') || 'auto'; return v === '1' || (v === 'auto' && !!window.speechSynthesis); } // doğal ses düşerse telefonun en iyi Türkçe sesiyle oku — sessiz kalma
 });
 const bestVoice = () => {
   const all = window.speechSynthesis?.getVoices() || [], pick = setting('deviceVoice');

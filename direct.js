@@ -68,11 +68,11 @@
   const provider = () => { const k = getKey(); return /^sk-ant-[\w-]{20,}$/.test(k) ? 'claude' : /^[\w.\-]{30,200}$/.test(k) ? 'gemini' : null; };
   // Gemini free tier. Model names change between releases: try in order, remember the one that answers.
   // Lite first: fastest answers for a voice assistant and the most generous free quota.
-  const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'];
+  const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
   // Automatic model choice: quick/default questions → fastest lite model; complex ones (analysis, planning, maths) → stronger flash model first.
   const geminiOrder = tier => {
-    if (tier === 'complex') return ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
+    if (tier === 'complex') return ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'];
     const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS;
   };
   // Akıllı yönlendirici (brain.js) varsa: soğumadaki modelleri atlar, sağlıklı/hızlı olanı öne alır, sonuçları öğrenir.
@@ -152,7 +152,7 @@
     const lang = ({ 'ar-SA': 'Arapça', 'en-US': 'İngilizce', 'ku': 'Kürtçe' })[setv('listenLang')] || 'Türkçe';
     const req = { contents: [{ role: 'user', parts: [{ inlineData: { mimeType: mime, data } }, { text: `Bu ses kaydındaki konuşmayı ${lang} olarak kelimesi kelimesine yazıya dök. Yalnızca söylenen metni yaz; yorum, açıklama, tırnak ekleme. Konuşma yoksa veya anlaşılmıyorsa tek kelime yaz: BOŞ` }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } };
     let last = null;
-    for (const model of routed(['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash'], 'quick')) {
+    for (const model of routed(['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'], 'quick')) {
       const t0 = performance.now();
       try {
         const r = await fetch(GEMINI + model + ':generateContent', { method: 'POST', signal: options.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(req) });

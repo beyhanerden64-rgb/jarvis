@@ -315,9 +315,10 @@
 
   /* ===== zamanlayıcılar ===== */
   setTimeout(() => { morningAuto(); stockCheck(); eveningRemind(); }, 6000);
-  setTimeout(() => { backupGuard(); lockHint(); }, 20000);
+  const nudge = () => { if (chatting()) return setTimeout(nudge, 120000); backupGuard(); lockHint(); }; // konuşma sürüyorsa 2 dk sonra yeniden dene
+  setTimeout(nudge, 20000);
   setInterval(() => { if (!document.hidden) { eveningRemind(); stockCheck(); backupGuard(); } }, 30 * 60000);
   setTimeout(() => { if (new Date(Date.now() + OFF).getUTCDay() === 1 && stalled().length) once('stalled', () => note(stalledText())); }, 9000);
 
-  window.jarvisKlinik2 = { sessionNote, progress, stalled, stalledText, exerciseCard, surveySend, surveySave, surveySummary, monthReport, stockCheck, socialPlan, showPlan, morning, showMorning, readDoc, interpreter, interpreterOff, backupGuard, yedekDurum, interp: () => interp };
+  window.jarvisKlinik2 = { sessionNote, progress, stalled, stalledText, exerciseCard, surveySend, surveySave, surveySummary, monthReport, stockCheck, socialPlan, showPlan, morning, showMorning, readDoc, interpreter, interpreterOff, backupGuard, lockHint, yedekDurum, interp: () => interp };
 })();

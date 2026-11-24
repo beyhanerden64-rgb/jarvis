@@ -56,7 +56,7 @@
     let doc = '';
     try { const d = await window.jarvisUltra?.doctor?.(); if (d?.text) doc = 'Sistem doktoru: ' + d.text; } catch {}
     let grd = '';
-    try { const G = window.jarvisGuardian; if (G) { const R = await G.scan({ silent: true }); grd = '\n\n' + G.report(R); } } catch {}
+    try { const G = window.jarvisGuardian; if (G) { const R = await G.scan({ silent: true, manual: true }); grd = '\n\n' + G.report(R); } } catch {}
     return (f.length ? 'Onardığım: ' + f.join('; ') + '.' : 'Nabız temiz, onarılacak bir şey yok.') + (Object.keys(faults).length ? ' Şu an arızalı işaretli araçlar: ' + Object.keys(faults).join(', ') + '.' : '') + (doc ? ' ' + doc : '') + grd;
   }
 

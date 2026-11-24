@@ -76,10 +76,27 @@
       ws.onclose = e => end(false, /quota|RESOURCE_EXHAUSTED/i.test(e.reason) ? 'kota dolu' : /not found|NOT_FOUND/i.test(e.reason) ? 'model bu anahtarda yok' : 'kapandı ' + e.code + (e.reason ? ' · ' + String(e.reason).slice(0, 60) : ''));
       setTimeout(() => end(false, '10 sn içinde cevap yok'), 10000);
     }), 1],
+    ['ses', 'Doğal ses (Gemini 3.8 TTS)', async () => {
+      const k = keyOf(); if (!k) throw Error('anahtar girilmemiş');
+      let last = '';
+      for (const m of ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts']) {
+        const r = await tFetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': k }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Tamam.' }] }], generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { voice: 'Charon' } } } }) }, 20000);
+        if (r.ok) { const d = await r.json(); if (d.candidates?.[0]?.content?.parts?.some(p => p.inlineData?.data)) return; last = m + ': ses gelmedi'; continue; }
+        last = m + ': HTTP ' + r.status + (r.status === 429 ? ' (günlük ücretsiz ses kotası doldu — TSİ 11:00 yenilenir; o zamana dek CANLI hat ya da telefon sesi okur)' : '');
+      }
+      throw Error(last);
+    }, 0, undefined, 'manual'],
+    ['ses', 'Telefonun Türkçe sesi', async () => {
+      const ss = window.speechSynthesis; if (!ss) throw Error('bu tarayıcıda yok');
+      let v = ss.getVoices(); if (!v.length) { await new Promise(r => { ss.onvoiceschanged = r; setTimeout(r, 500); }); v = ss.getVoices(); }
+      const tr = v.filter(x => /^tr/i.test(x.lang || '')); if (!tr.length) throw Error('Türkçe ses yüklü değil — iPhone: Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe');
+      deviceVoiceName = tr.map(x => x.name).slice(0, 3).join(', ');
+    }],
     ['yz', 'Gemini anahtarı', async () => { const k = keyOf(); if (!k) throw Error('anahtar girilmemiş'); const r = await tFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': k } }); if (r.status === 400 || r.status === 403) throw Error('anahtar geçersiz/izinsiz (HTTP ' + r.status + ')'); if (r.status === 429) throw Error('kota dolu (TSİ 11:00 yenilenir)'); if (!r.ok) throw Error('HTTP ' + r.status); }, 1]
   ];
   const CAT = { kripto: 'Kripto', doviz: 'Döviz', altin: 'Altın', hisse: 'Hisse', haber: 'Haber', afet: 'Afet', hava: 'Hava', ses: 'Ses', gorsel: 'Görsel', arastirma: 'Araştırma', yz: 'Yapay zekâ' };
 
+  let deviceVoiceName = '';
   /* ---------- iç testler (çevrimdışı, anında) ---------- */
   const MODS = [['jarvisMarkets', 'Piyasa'], ['jarvisNews', 'Haber'], ['jarvisPicks', 'Haftalık seçim'], ['jarvisForecast', 'Tahmin'], ['jarvisResearch', 'Araştırma'], ['jarvisWebResearch', 'Web araştırma'], ['jarvisResearch2', 'Makale/ölçek'], ['jarvisImage', 'Görsel'], ['jarvisStage', 'Sahne/tasarım'], ['jarvisKlinik2', 'Klinik'], ['jarvisExpert', 'Uzman'], ['jarvisUltra', 'Ultra'], ['jarvisLive', 'CANLI ses'], ['jarvisUltron', 'ULTRON görev'], ['jarvisUltronLife', 'ULTRON yaşam']];
   function selfTests() {
@@ -110,14 +127,15 @@
 
   /* ---------- tam tarama ---------- */
   let running = null;
-  async function scan({ silent = false } = {}) {
+  async function scan({ silent = false, manual = false } = {}) {
     if (running) return running;
     running = (async () => {
       const t0 = Date.now(), res = [];
       let i = 0;
       await Promise.all(Array.from({ length: 5 }, async () => {
         while (i < PROBES.length) {
-          const [cat, name, fn, crit, gate] = PROBES[i++]; const s = Date.now();
+          const [cat, name, fn, crit, gate, only] = PROBES[i++]; const s = Date.now();
+          if (only === 'manual' && !manual) continue; // kotalı deneme yalnız elle taramada
           if (gate === 'köprü' && !window.jarvisBridge?.on()) continue; // kurulmamış köprü arıza sayılmaz
           try { await fn(); res.push({ cat, name, ok: true, ms: Date.now() - s, crit, gate }); } catch (e) { res.push({ cat, name, ok: false, ms: Date.now() - s, why: String(e.message || e).slice(0, 90), crit, gate }); }
         }
@@ -162,7 +180,8 @@
     R ||= lastFull; if (!R) { const l = store.get('grdLast', null); if (!l) return 'Henüz tarama yapılmadı. “sistemi tara” de.'; R = { ...l, tests: selfTests(), mods: MODS.map(([g, n]) => [n, !!window[g]]), store: storageCheck(), errs: errs.filter(x => Date.now() - x.last < DAY) }; }
     const ok = R.res.filter(r => r.ok).length, L = [`🛡 SİSTEM TARAMASI — ${new Date(R.t).toLocaleString('tr-TR')} · sürüm ${document.querySelector('script[src*="app.js?v="]')?.src.split('v=')[1] || '?'}`];
     L.push(`\nVERİ KAYNAKLARI: ${ok}/${R.res.length} çalışıyor`);
-    for (const [c, n] of Object.entries(CAT)) { const g = R.res.filter(r => r.cat === c); if (!g.length) continue; L.push(`${n}: ` + g.map(r => `${r.ok ? '✓' : '✗'} ${r.name.replace(/^.*· /, '')}${r.ok ? ` ${r.ms} ms` : ` (${r.why})`}`).join(' · ')); }
+    for (const [c, n] of Object.entries(CAT)) { const g = R.res.filter(r => r.cat === c); if (!g.length) continue; L.push(`${n}: ` + g.map(r => `${r.ok ? '✓' : '✗'} ${r.name.replace(/^.*· /, '')}${r.ok ? (r.name === 'Telefonun Türkçe sesi' && deviceVoiceName ? ` (${deviceVoiceName})` : ` ${r.ms} ms`) : ` (${r.why})`}`).join(' · ')); }
+    try { const sv = k => store.get('set.' + k, ''); L.push(`SES AYARLARI: sesli yanıt ${setting('speakOn') === '1' || sv('speakOn') === '1' ? 'AÇIK' : 'KAPALI'} · doğal ses düşerse ${({ auto: 'telefon sesi (otomatik)', '1': 'telefon sesi', '0': 'YALNIZ EKRAN (sessiz)' })[sv('deviceFallback') || 'auto'] || sv('deviceFallback')} · mikrofon ${sv('talkMode') === 'klasik' ? 'klasik dinleme' : 'CANLI'} · son doğal ses: ${localStorage.getItem('jarvisapp.ttsModel') || '—'} · CANLI model: ${store.get('liveModel', '') || 'henüz bağlanmadı'}`); } catch {}
     const mOk = R.mods.filter(m => m[1]).length; L.push(`\nMODÜLLER: ${mOk}/${R.mods.length} yüklü${mOk < R.mods.length ? ' — eksik: ' + R.mods.filter(m => !m[1]).map(m => m[0]).join(', ') : ''}`);
     const tOk = R.tests.filter(x => x[1]).length; L.push(`İÇ TESTLER: ${tOk}/${R.tests.length} geçti${tOk < R.tests.length ? ' — başarısız: ' + R.tests.filter(x => !x[1]).map(x => x[0] + (x[2] ? ' (' + x[2] + ')' : '')).join('; ') : ''}`);
     L.push(`DEPOLAMA: ${R.store.bad.length ? 'bozuk kayıt: ' + R.store.bad.join(', ') + (R.store.healed.length ? ' (önbellek olanlar karantinaya alındı)' : ' (asıl veri — silinmedi, yedekten geri yüklenebilir)') : 'sağlam'}`);
@@ -183,7 +202,7 @@
     bubble('me', '🛡 Tüm sistemi tara');
     setPhase('thinking', 'Bekçi: veri kaynaklarını, modülleri ve iç testleri tarıyorum…');
     try {
-      lastFull = await scan();
+      lastFull = await scan({ manual: true });
       const t = report(lastFull); const n = bubble('ai', t);
       n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: async e => { try { await navigator.clipboard.writeText(t); e.target.textContent = '✓ Kopyalandı — Claude’a yapıştırabilirsin'; } catch { e.target.textContent = 'Kopyalanamadı; metni seçip kopyala'; } } }, '📋 Raporu kopyala (geliştiriciye gönder)')));
       return t;
@@ -211,7 +230,7 @@
   paint();
 
   /* ---------- komut, araç ---------- */
-  Object.assign(TOOLS, { sistem_tarama: { d: 'sistem_tarama — BEKÇİ: tüm veri kaynaklarını (kripto, altın, döviz, hisse geçitleri, haber, hava, görsel, literatür, Gemini) gerçekten dener, modülleri ve iç testleri denetler, çalışmayanı onarır/yeniden sıralar; rapor verir', run: async () => { const R = await scan(); lastFull = R; return report(R); } } });
+  Object.assign(TOOLS, { sistem_tarama: { d: 'sistem_tarama — BEKÇİ: tüm veri kaynaklarını (kripto, altın, döviz, hisse geçitleri, haber, hava, görsel, literatür, Gemini) gerçekten dener, modülleri ve iç testleri denetler, çalışmayanı onarır/yeniden sıralar; rapor verir', run: async () => { const R = await scan({ manual: true }); lastFull = R; return report(R); } } });
   TOOL_GROUPS.push([/sistem|tara|kontrol|sağlık|çalışmıyor|bozuk|hata|onar/i, /^sistem_tarama$/]);
   const _tp = toolsPrompt;
   toolsPrompt = () => { const l = store.get('grdLast', null); const dead = (l?.res || []).filter(r => !r.ok).map(r => r.name); return _tp() + '\nBEKÇİ: “sistemi tara / çalışıyor mu / neden çalışmıyor” → sistem_tarama.' + (dead.length ? ` Son taramada çalışmayan kaynaklar: ${dead.join(', ')} — bunlara dayanan işlerde Beyhan’a kısaca söyle, alternatif yol kullan.` : ''); };

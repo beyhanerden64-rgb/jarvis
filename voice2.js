@@ -47,10 +47,13 @@
   /* ---------- 3) otomatik cihaz sesi kararı ---------- */
   const fb = $('deviceFallback');
   if (fb && ![...fb.options].some(o => o.value === 'auto')) {
-    fb.prepend(new Option('Otomatik — telefonda kaliteli Türkçe ses varsa onunla oku, yoksa ekranda', 'auto'));
+    fb.prepend(new Option('Otomatik — doğal ses alınamazsa telefonun en iyi Türkçe sesiyle oku (sessiz kalmaz)', 'auto'));
+  }
+  if (fb) {
     const saved = store.get('set.deviceFallback', null);
-    fb.value = saved === null || saved === '0' && !store.get('voice2Migrated', false) ? 'auto' : saved;
-    store.set('set.deviceFallback', fb.value); store.set('voice2Migrated', true);
+    // 22.4: Google eski ses modellerini kapatınca “yalnız ekranda” ayarı Satürn’ü tamamen sessiz bıraktı → bir kez Otomatik’e al
+    fb.value = saved === null || (saved === '0' && !store.get('voice3Migrated', false)) ? 'auto' : saved;
+    store.set('set.deviceFallback', fb.value); store.set('voice2Migrated', true); store.set('voice3Migrated', true);
   }
 
   /* ---------- 1) mikrofon = CANLI ---------- */
