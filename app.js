@@ -499,7 +499,7 @@ async function streamOnce(body, onText) {
 /** Answers with tools: the model may call ⟦ARAC|…⟧, the app runs them, feeds the results back and the model continues (max 4 rounds).
  * onDelta receives only the speakable part. Returns the clean reply. */
 async function think(text, { voiceTurn = false, onDelta = () => {}, image = null } = {}) {
-  if (text) text = text.replace(/^\s*(?:hey\s+)?(?:s[aâ]t[uüıi]r[uüı]?n|jarvis)\s*[,:!.]?\s+(?=\S)/iu, ''); // “Satürn, …” / “Jarvis, …” → komut
+  if (text) text = text.replace(/^\s*(?:hey\s+)?(?:s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen)|jarvis)\s*[,:!.]?\s+(?=\S)/iu, ''); // “Satürn, …” / “Jarvis, …” → komut
   window.jarvisCurText = text || '';
   const local = localCommand(text);
   bubble('me', text || '(görsel)', { image: image?.url });

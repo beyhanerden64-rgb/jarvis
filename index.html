@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https://image.pollinations.ai; media-src 'self' blob: data:; connect-src 'self' https: wss://generativelanguage.googleapis.com http://127.0.0.1:8765">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data: https:; media-src 'self' blob: data:; connect-src 'self' https: wss://generativelanguage.googleapis.com http://127.0.0.1:8765">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SATÜRN</title>
 <meta name="description" content="Beyhan'ın sesli kişisel asistanı">
@@ -337,6 +337,31 @@ body.ultron-busy .brand { animation: upulse 1.2s ease-in-out infinite; }
 @keyframes ushine { to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { #ultronPulse i, .uprog.live i { animation: none; } }
 @media (max-width: 700px) { #ultronPulse { top: calc(58px + env(safe-area-inset-top)); left: 16px; transform: none; font-size: 9px; max-width: calc(100vw - 150px); } }
+/* SAHNE */
+#stage { position: fixed; z-index: 30; left: 50%; top: calc(86px + env(safe-area-inset-top)); transform: translateX(-50%); width: min(92vw, 620px); max-height: calc(100vh - 250px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); display: flex; flex-direction: column; background: rgb(4 14 22 / .88); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 0 40px rgb(87 211 255 / .18), inset 0 0 0 1px rgb(255 255 255 / .03); backdrop-filter: blur(10px); overflow: hidden; animation: stIn .35s ease; }
+body.ultron #stage { box-shadow: 0 0 40px rgb(255 59 59 / .2); }
+#stage[hidden] { display: none; }
+@keyframes stIn { from { opacity: 0; transform: translateX(-50%) scale(.96); } }
+#stage header { display: flex; align-items: center; gap: 8px; padding: 8px 10px 6px 14px; border-bottom: 1px solid var(--line); }
+#stage .st-ttl { flex: 1; min-width: 0; font: 600 12px var(--f-mono, monospace); letter-spacing: .08em; color: var(--holo-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+#stage .st-btns { display: flex; align-items: center; gap: 2px; }
+#stage .st-btns button { min-width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font-size: 18px; cursor: pointer; }
+#stage .st-btns button:hover { background: var(--steel-soft); }
+#stage .st-cnt { font: 11px var(--f-mono, monospace); color: var(--muted); margin-right: 4px; }
+#stage .st-body { flex: 1; min-height: 0; display: grid; place-items: center; padding: 10px; }
+#stage .st-img { max-width: 100%; max-height: calc(100vh - 380px); object-fit: contain; border-radius: 10px; background: rgb(255 255 255 / .02); }
+#stage .st-cap { padding: 6px 14px 12px; font-size: 13px; line-height: 1.45; color: var(--muted); }
+#stage .st-cap a { color: var(--holo-2); }
+#stage.full { top: 0; width: 100vw; max-height: 100vh; height: 100vh; border-radius: 0; z-index: 60; }
+#stage.full .st-img { max-height: calc(100vh - 120px); }
+#stagePip { position: fixed; z-index: 30; right: 14px; top: calc(96px + env(safe-area-inset-top)); width: 74px; height: 74px; padding: 0; border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; background: #04121a; cursor: pointer; }
+#stagePip[hidden] { display: none; }
+#stagePip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#stagePip span { position: absolute; left: 0; right: 0; bottom: 0; font: 600 9px var(--f-mono, monospace); letter-spacing: .1em; background: rgb(0 0 0 / .6); color: #fff; padding: 2px 0; }
+#designBox textarea { width: 100%; box-sizing: border-box; }
+#designBox .row select { flex: 1; min-width: 0; }
+@media (max-width: 700px) { #stage { top: calc(90px + env(safe-area-inset-top)); width: calc(100vw - 24px); max-height: calc(100vh - 230px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); } #stage .st-img { max-height: calc(100vh - 360px); } }
+@media (prefers-reduced-motion: reduce) { #stage { animation: none; } }
 /* GÖRSEL */
 .msg img.genimg { display: block; width: 100%; max-width: 420px; border-radius: 10px; margin: 8px 0; background: var(--glass); min-height: 120px; }
 .imggrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -418,7 +443,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
 </div>
 <div class="hud">
   <header class="top">
-    <div class="brand">SATÜRN<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 14.1.0</small></div>
+    <div class="brand">SATÜRN<small>FİZYOVİTA · KİŞİSEL ASİSTAN · 17.0.0</small></div>
     <div class="chips" aria-label="Bağlantı durumu">
       <span class="chip" id="cBrain">BEYİN</span>
       <span class="chip" id="cMic">MİKROFON</span>
@@ -493,7 +518,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
       </button>
       <div class="inputwrap">
         <div class="pending-img" id="pendingImg" hidden><img id="pendingThumb" alt=""><span id="pendingName"></span><button type="button" class="x" id="dropImg" aria-label="Görseli kaldır">×</button></div>
-        <textarea id="prompt" rows="1" placeholder="Jarvis'e yaz ya da “Jarvis” diye seslen…" aria-label="Mesaj"></textarea>
+        <textarea id="prompt" rows="1" placeholder="Satürn'e yaz ya da “Satürn” diye seslen…" aria-label="Mesaj"></textarea>
       </div>
       <button type="submit" class="send" id="send">Gönder</button>
       <input type="file" id="file" accept="image/*" hidden>
@@ -596,7 +621,7 @@ body.dictating #phase::after { content: ' · DİKTE'; color: var(--amber); }
         <p class="muted">WhatsApp, Instagram ve e-posta yanıtları için Mesaj Merkezi 1.0'ın bir sunucuya kurulması gerekiyor; randevu bildirimleri oradan Telegram'a gelir.</p>
       </div>
     </aside>
-<script src="voice-engine.js?v=14.1.0"></script><script src="audiohub.js?v=14.1.0"></script>
-<script src="direct.js?v=14.1.0"></script><script src="app.js?v=14.1.0"></script><script src="plus.js?v=14.1.0"></script><script src="hud.js?v=14.1.0"></script><script src="features.js?v=14.1.0"></script><script src="control.js?v=14.1.0"></script><script src="voices.js?v=14.1.0"></script><script src="social.js?v=14.1.0"></script><script src="agent.js?v=14.1.0"></script><script src="figure.js?v=14.1.0"></script><script src="sentinel.js?v=14.1.0"></script><script src="brain.js?v=14.1.0"></script><script src="pro.js?v=14.1.0"></script><script src="ultra.js?v=14.1.0"></script><script src="klinik.js?v=14.1.0"></script><script src="live.js?v=14.1.0"></script><script src="research.js?v=14.1.0"></script><script src="research2.js?v=14.1.0"></script><script src="markets.js?v=14.1.0"></script><script src="news.js?v=14.1.0"></script><script src="imagegen.js?v=14.1.0"></script><script src="voice2.js?v=14.1.0"></script><script src="ultron.js?v=14.1.0"></script><script src="ultron-life.js?v=14.1.0"></script>
+<script src="voice-engine.js?v=17.0.0"></script><script src="audiohub.js?v=17.0.0"></script>
+<script src="direct.js?v=17.0.0"></script><script src="app.js?v=17.0.0"></script><script src="plus.js?v=17.0.0"></script><script src="hud.js?v=17.0.0"></script><script src="features.js?v=17.0.0"></script><script src="control.js?v=17.0.0"></script><script src="voices.js?v=17.0.0"></script><script src="social.js?v=17.0.0"></script><script src="agent.js?v=17.0.0"></script><script src="figure.js?v=17.0.0"></script><script src="sentinel.js?v=17.0.0"></script><script src="brain.js?v=17.0.0"></script><script src="pro.js?v=17.0.0"></script><script src="ultra.js?v=17.0.0"></script><script src="klinik.js?v=17.0.0"></script><script src="live.js?v=17.0.0"></script><script src="research.js?v=17.0.0"></script><script src="research2.js?v=17.0.0"></script><script src="markets.js?v=17.0.0"></script><script src="news.js?v=17.0.0"></script><script src="imagegen.js?v=17.0.0"></script><script src="visual.js?v=17.0.0"></script><script src="voice2.js?v=17.0.0"></script><script src="ultron.js?v=17.0.0"></script><script src="ultron-life.js?v=17.0.0"></script>
 </body>
 </html>

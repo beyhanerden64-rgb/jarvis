@@ -41,8 +41,8 @@
     for (const a of arts) {
       const tk = toks(a.title); if (tk.size < 3) continue;
       const c = cl.find(c => sim(c.tk, tk) >= 0.5);
-      if (c) { if (!c.domains.includes(a.domain)) c.domains.push(a.domain); c.t = Math.max(c.t, a.t); c.n++; }
-      else cl.push({ title: a.title, url: a.url, domain: a.domain, domains: [a.domain], lang: a.lang, t: a.t, n: 1, tk });
+      if (c) { if (!c.domains.includes(a.domain)) c.domains.push(a.domain); c.t = Math.max(c.t, a.t); c.n++; c.img ||= a.img; }
+      else cl.push({ title: a.title, url: a.url, img: a.img || '', domain: a.domain, domains: [a.domain], lang: a.lang, t: a.t, n: 1, tk });
     }
     return cl.map(({ tk, ...c }) => ({ ...c, src: c.domains.length, breaking: Date.now() - c.t < 75 * 60000 && c.domains.length >= 3 || /breaking|son dakika|urgent|flaş/i.test(c.title) }))
       .sort((a, b) => (b.breaking - a.breaking) || (b.src - a.src) || (b.t - a.t));
@@ -91,16 +91,18 @@
   const markGate = (i, good) => { const ok = store.get('newsGate', {}); const k = GATES[i][0]; ok[k] = Math.max(-5, Math.min(20, (ok[k] || 0) + (good ? 1 : -1))); store.set('newsGate', ok); };
   function parseFeed(body, name) {
     let items = [];
-    try { const j = JSON.parse(body); if (Array.isArray(j.items)) items = j.items.map(x => ({ title: x.title, url: x.link, t: Date.parse(String(x.pubDate || '').replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(x.pubDate || '') ? '' : 'Z')) })); } catch {
+    try { const j = JSON.parse(body); if (Array.isArray(j.items)) items = j.items.map(x => ({ title: x.title, url: x.link, img: x.thumbnail || (/^image\//.test(x.enclosure?.type || '') || /\.(jpe?g|png|webp)/i.test(x.enclosure?.link || '') ? x.enclosure.link : '') || (String(x.description || '').match(/<img[^>]+src=["']([^"']+)/i) || [])[1] || '', t: Date.parse(String(x.pubDate || '').replace(' ', 'T') + (/Z|[+-]\d\d:?\d\d$/.test(x.pubDate || '') ? '' : 'Z')) })); } catch {
       const d = new DOMParser().parseFromString(body, 'text/xml');
       if (d.querySelector('parsererror')) return [];
       items = [...d.querySelectorAll('item, entry')].map(n => {
         const q = s => n.getElementsByTagName(s)[0]?.textContent?.trim() || '';
         const link = q('link') || n.querySelector('link[href]')?.getAttribute('href') || q('guid');
-        return { title: q('title'), url: link, t: Date.parse(q('pubDate') || q('updated') || q('published') || q('dc:date')) };
+        const media = [...n.getElementsByTagName('*')].find(e => /^(media:thumbnail|media:content|enclosure)$/i.test(e.tagName) && /^https:/.test(e.getAttribute('url') || '') && !/video|audio/.test(e.getAttribute('type') || '') && !/video|audio/.test(e.getAttribute('medium') || ''));
+        const im = media?.getAttribute('url') || (q('description').match(/<img[^>]+src=["'](https:[^"']+)/i) || [])[1] || '';
+        return { title: q('title'), url: link, img: im, t: Date.parse(q('pubDate') || q('updated') || q('published') || q('dc:date')) };
       });
     }
-    return items.filter(x => x.title && /^https?:\/\//.test(x.url || '')).map(x => ({ title: x.title.replace(/\s+/g, ' ').replace(/<[^>]+>/g, '').trim(), url: x.url, domain: name, t: Number.isFinite(x.t) ? Math.min(x.t, Date.now()) : Date.now() - 3600000 }));
+    return items.filter(x => x.title && /^https?:\/\//.test(x.url || '')).map(x => ({ title: x.title.replace(/\s+/g, ' ').replace(/<[^>]+>/g, '').trim(), url: x.url, img: /^https:\/\//.test(x.img || '') ? x.img : '', domain: name, t: Number.isFinite(x.t) ? Math.min(x.t, Date.now()) : Date.now() - 3600000 }));
   }
   async function rawFeed(url, name) {
     if (typeof pcLocal !== 'undefined' && pcLocal) { try { const it = parseFeed((await pcCall('web_al', [url], false)).text, name); if (it.length) return it; } catch {} }
@@ -125,7 +127,7 @@
   }
   async function gdeltArts(q, span) {
     const d = await Promise.race([gdelt(q, span), new Promise((_, j) => setTimeout(() => j(Error('GDELT yavaş')), 10000))]);
-    return (d.articles || []).filter(a => /^(turkish|english)$/i.test(a.language || '')).map(a => ({ title: String(a.title || '').trim(), url: a.url, domain: a.domain, lang: /turk/i.test(a.language) ? 'tr' : 'en', t: pdate(a.seendate) }));
+    return (d.articles || []).filter(a => /^(turkish|english)$/i.test(a.language || '')).map(a => ({ title: String(a.title || '').trim(), url: a.url, img: /^https:\/\//.test(a.socialimage || '') ? a.socialimage : '', domain: a.domain, lang: /turk/i.test(a.language) ? 'tr' : 'en', t: pdate(a.seendate) }));
   }
   async function collect(key, q, span) { // RSS + GDELT birlikte; hangisi gelirse
     const [a, b] = await Promise.allSettled([rssCat(key), gdeltArts(q, span)]);
@@ -207,6 +209,7 @@
       addLinks(n.el, (items || []).slice(0, 8).map(i => ({ url: i.url, title: short(i.tr || i.title, 60) + ' · ' + i.domain })));
       n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: () => brief(key) }, '🧭 Tarafsız brifing'), el('button', { type: 'button', onclick: () => showCat(key, label) }, '↻ Yenile')));
       answerTools(n.el, text); renderPanel();
+      window.jarvisStage?.show((items || []).filter(i => i.img).slice(0, 10).map(i => ({ src: i.img, title: i.tr || i.title, text: `${i.domain}${i.src > 1 ? ' +' + (i.src - 1) + ' kaynak' : ''} · ${ago(i.t)}`, source: i.domain, url: i.url })), { slide: true });
       logOp('gündem', [key], 'başarılı', (items || []).length + ' haber');
       return text;
     } catch (e) { note('Haberler alınamadı: ' + e.message); }

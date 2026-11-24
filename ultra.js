@@ -251,6 +251,7 @@
 
   /* ================= 8) SOHBETTE GRAFİK ================= */
   function drawChart(title, pairs, type = 'bar') {
+    try { window.jarvisStage?.chart(title, pairs, type); } catch {}
     const n = bubble('note', '📊 ' + title);
     const c = el('canvas', { width: 520, height: 220, class: 'chatchart', 'aria-label': title + ': ' + pairs.map(([k, v]) => k + ' ' + v).join(', ') });
     n.el.append(c);

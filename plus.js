@@ -396,9 +396,9 @@ const TOOL_GROUPS = [
   [/tahmin|olasılık|ihtimal|zoi/i, /^tahmin/],
   [/deprem|namaz|ezan|vikipedi|nedir|kimdir|birim|çevir|kaç (kg|lb|cm|inç)|link|bağlantı güvenli|internet(im)? (yavaş|çalışmıyor)|izle|takip et.*sayfa|teşhis|yedek|grafik|istatistik|ortalama/i, /^(deprem|namaz|vikipedi|birim|link_kontrol|ag_testi|izle|teshis|yedek_al|grafik|istatistik|ekran_acik)$/]
 ];
-TOOL_GROUPS.push([/görsel|resim|çiz|afiş|poster|infografik|logo|tasarla|illüstrasyon|fotoğraf oluştur/i, /^gorsel_olustur$/]);
+TOOL_GROUPS.push([/görsel|resim|çiz|afiş|poster|infografik|logo|tasarla|tasarım|şema|diyagram|slayt|sunum|broşür|kart|illüstrasyon|fotoğraf|göster/i, /^(gorsel_olustur|tasarim_yap|tasarim_duzelt|sahne)$/]);
 TOOL_GROUPS.push([/haber|gündem|son dakika|gelişme|merkez bankası|faiz kararı|ekonomi|enflasyon|sağlık bakanlığı|salgın|siyaset|seçim|hükümet|resmi gazete|yaptırım|abd|amerika|avrupa|çin|rusya|kremlin|savaş|afet|deprem|sel|brifing/i, /^(haber|gundem_brifing|deprem)$/]);
-const TOOL_CORE = /^(hesapla|hafiza_ara|sayfa_oku|uzman|ultron_gorev|konsey|proje|karar)$/;
+const TOOL_CORE = /^(goster|hesapla|hafiza_ara|sayfa_oku|uzman|ultron_gorev|konsey|proje|karar)$/;
 function toolList() {
   const q = String(window.jarvisCurText || '');
   const all = Object.entries(TOOLS);

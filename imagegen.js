@@ -59,6 +59,7 @@
     return { ...rec, src: out.src };
   }
   function show(r) {
+    window.jarvisStage?.show({ src: r.src, title: '🎨 ' + short(r.text, 60), text: r.via, source: 'SATÜRN görsel' });
     const n = bubble('ai', `🎨 ${r.text}\n(${r.via})`);
     const im = el('img', { src: r.src, alt: r.text, class: 'genimg', loading: 'lazy' });
     n.el.append(im, el('div', { class: 'tool' },
