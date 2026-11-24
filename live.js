@@ -31,6 +31,7 @@
   };
   const explain = a => {
     const r = String(a?.reason || '');
+    if (/insecure|SecurityError/i.test(r)) return 'tarayıcı güvenlik kuralı bağlantıyı engelledi (uygulamayı güncelle)';
     if (/api key not valid|API_KEY_INVALID|permission|PERMISSION_DENIED|unregistered callers/i.test(r) || a?.code === 1008) return 'anahtar bu özelliğe izin vermiyor';
     if (/quota|exhaust|RESOURCE_EXHAUSTED|429|rate/i.test(r)) return 'ücretsiz canlı ses kotası doldu';
     if (/not found|not supported|NOT_FOUND|is not found/i.test(r)) return 'model bu anahtarda yok';
@@ -155,9 +156,9 @@
           });
           if (res.ok) { okModel = model; store.set('liveModel', model); tried.push(`✓ ${model} (biçim ${shape + 1})`); break; }
           tried.push(`✗ ${model} (biçim ${shape + 1}): ${explain(res)}${res.reason ? ' — ' + short(res.reason, 90) : ''}`);
-          if (/kota|anahtar|model bu anahtarda yok|bağlantı kurulamadı/.test(explain(res))) break;
+          if (/kota|anahtar|model bu anahtarda yok|bağlantı kurulamadı|güvenlik kuralı/.test(explain(res))) break;
         }
-        if (okModel || /kota|anahtar/.test(tried.at(-1) || '')) break;
+        if (okModel || /kota|anahtar|güvenlik kuralı/.test(tried.at(-1) || '')) break;
       }
       lines.push(okModel ? '✓ CANLI mod: çalışıyor · ' + okModel : '✗ CANLI mod: açılamadı', ...tried.map(x => '   ' + x));
     }
