@@ -501,7 +501,7 @@ const sync = {
   async readFile(name) { const r = await fetch(GH + '/gists/' + this.gistId, { headers: this.headers(), cache: 'no-store' }); if (!r.ok) throw Error('Gist okunamadı'); const f = (await r.json()).files[name]; if (!f) return ''; if (f.truncated) return (await fetch(f.raw_url)).text(); return f.content; },
   async writeFile(name, content) { const r = await fetch(GH + '/gists/' + this.gistId, { method: 'PATCH', headers: this.headers(), body: JSON.stringify({ files: { [name]: { content } } }) }); if (!r.ok) throw Error('Gist yazılamadı (' + r.status + ')'); }
 };
-const snapshot = () => ({ items, chat: { messages: chat.messages.slice(-28), summary: chat.summary }, archive: archive.slice(-400), patients, oplog: opLog.slice(-100), activeProject: store.get('activeProject', ''), updated });
+const snapshot = () => ({ items, chat: { messages: chat.messages.slice(-28), summary: chat.summary }, archive: archive.slice(-400), patients, oplog: opLog.slice(-100), activeProject: store.get('activeProject', ''), ledger: store.get('ledger', []), stock: store.get('stock', []), updated }); // kasa ve stok da yedeğe girer
 window.jarvisSync = {
   enabled: () => sync.ready(),
   async push() { await sync.writeFile('jarvis.enc', await sync.encrypt(snapshot())); },
@@ -513,6 +513,8 @@ window.jarvisSync = {
       archive = d.archive || archive; patients = d.patients || patients; opLog = d.oplog || opLog; updated = d.updated;
       store.set('items', items); store.set('history', chat.messages); store.set('summary', chat.summary); store.set('archive', archive); store.set('patients', patients); store.set('oplog', opLog); store.set('updated', updated);
       if (d.activeProject) store.set('activeProject', d.activeProject);
+      if (d.ledger?.length && !store.get('ledger', []).length) store.set('ledger', d.ledger); // yeni/boş cihaza kasa ve stok geri gelir
+      if (d.stock?.length && !store.get('stock', []).length) store.set('stock', d.stock);
       renderItems(); renderChat(); renderProjects(); renderPatients(); renderOps(); $('summary').textContent = chat.summary || $('summary').textContent;
       return 'pulled';
     } else if (d.updated < updated) { await this.push(); return 'pushed'; }

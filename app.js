@@ -525,6 +525,7 @@ async function streamOnce(body, onText) {
 async function think(text, { voiceTurn = false, onDelta = () => {}, image = null } = {}) {
   if (text) text = text.replace(/^\s*(?:hey\s+)?(?:s[aâ]t[uüıi]r[uüı]?n(?![\s,]*gezegen)|jarvis)\s*[,:!.]?\s+(?=\S)/iu, ''); // “Satürn, …” / “Jarvis, …” → komut
   window.jarvisCurText = text || '';
+  window.__lastUserMsg = Date.now();
   const local = localCommand(text);
   bubble('me', text || '(görsel)', { image: image?.url });
   if (local) { const b = bubble('ai', local); if (pendingLinks.length) addLinks(b.el, pendingLinks.splice(0)); answerTools(b.el, local); window.jarvisArchive?.(text, local); return local; }
