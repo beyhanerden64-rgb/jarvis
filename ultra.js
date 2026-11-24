@@ -82,7 +82,7 @@
   };
 
   /* ================= 2) TAM YEDEK / GERİ YÜKLEME ================= */
-  const SECRET = /^jarvisapp\.(?:key|set\.(?:ghToken|syncPass|elevenKey|haToken|pcToken|igToken|tgToken))$/;
+  const SECRET = /^jarvisapp\.(?:key|set\.(?:ghToken|syncPass|elevenKey|haToken|pcToken|igToken|tgToken|tgBot))$/;
   function backup(withSecrets) {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k.startsWith('jarvisapp.') || k.startsWith('jarvisapp.bozuk.') || k === 'jarvisapp.emb' || (!withSecrets && SECRET.test(k))) continue; data[k] = localStorage.getItem(k); }
