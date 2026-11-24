@@ -91,7 +91,7 @@
   // older preview models take prebuiltVoiceConfig.voiceName. The model that works is remembered.
   const TTS_MODELS = ['gemini-3.8-flash-lite-tts', 'gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
   const STYLES = { jarvis: 'lively, fluent, confident and warm male AI assistant; natural conversational Turkish with expressive intonation; brisk, engaging pace, never robotic or monotone', sakin: 'calm, soft and reassuring', enerjik: 'energetic, upbeat and friendly', resmi: 'formal, precise and professional', sicak: 'warm, gentle and caring' };
-  const ttsOrder = () => { const ok = localStorage.getItem('jarvisapp.ttsModel'); return routed(ok ? [ok, ...TTS_MODELS.filter(m => m !== ok)] : TTS_MODELS, 'tts'); };
+  const ttsOrder = () => { const ok0 = localStorage.getItem('jarvisapp.ttsModel'); /* kapatılan eski TTS modelini öne alma */ const ok = TTS_MODELS.slice(0, 2).includes(ok0) ? ok0 : ''; return routed(ok ? [ok, ...TTS_MODELS.filter(m => m !== ok)] : TTS_MODELS, 'tts'); };
   const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   function wav(pcm, rate = 24000) { // 16-bit mono PCM → WAV
     const h = new DataView(new ArrayBuffer(44)), w = (o, s) => [...s].forEach((c, i) => h.setUint8(o + i, c.charCodeAt(0)));

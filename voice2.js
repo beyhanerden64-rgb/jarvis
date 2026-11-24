@@ -70,7 +70,7 @@
     watching = setInterval(() => {
       const st = window.jarvisLive.state?.(), act = window.jarvisLive.active();
       if (act && st?.ready) { clearInterval(watching); return; }
-      if (act && Date.now() - t0 < 12000) return; // hâlâ bağlanıyor
+      if (act && Date.now() - t0 < 20000) return; // hâlâ bağlanıyor
       clearInterval(watching);
       if (!act && userClosing) return; // kullanıcı kendisi kapattı
       liveBroken = 'açılamadı';

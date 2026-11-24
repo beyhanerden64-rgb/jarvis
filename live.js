@@ -5,7 +5,12 @@
  * bilgisayar, hasta…) konuşurken kullanabilir. iPhone'da da çalışır (mikrofon + Web Audio, sessiz anahtara rağmen). */
 (() => {
   const WS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
-  const MODELS = ['gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025', 'gemini-2.5-flash-native-audio-preview-09-2025', 'gemini-live-2.5-flash-preview', 'gemini-2.0-flash-live-001'];
+  // Google 17 Kasım 2026'da 3.1-live-preview ve 2.5-native-audio modellerini kapattı → yeni model gemini-3.8-live (kararlı) ilk sırada.
+  const MODELS = ['gemini-3.8-live', 'gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025'];
+  const DEAD = /^(gemini-2\.0-flash-live-001|gemini-live-2\.5-flash-preview|gemini-2\.5-flash-native-audio-preview-09-2025)$/;
+  // hatırlanan model kapatılmış ya da listede yoksa unut (ölü modeli her seferinde ilk denemek bağlantıyı geciktiriyordu)
+  try { const lm = JSON.parse(localStorage.getItem('jarvisapp.liveModel') || '""'); if (lm && (DEAD.test(lm) || !MODELS.includes(lm))) localStorage.removeItem('jarvisapp.liveModel'); } catch { localStorage.removeItem('jarvisapp.liveModel'); }
+  const liveOrder = () => { const lm = store.get('liveModel', ''); return lm === MODELS[0] || !MODELS.includes(lm) ? MODELS : [...new Set([MODELS[0], lm, ...MODELS])]; };
   const SHAPES = 3; // 0: tam (araç+döküm), 1: sade, 2: üst düzey alanlar
   const VOICES = [['Puck', 'Puck · erkek, neşeli ve canlı (önerilen)'], ['Fenrir', 'Fenrir · erkek, heyecanlı, enerjik'], ['Charon', 'Charon · erkek, net ve bilgilendirici'], ['Orus', 'Orus · erkek, kararlı'], ['Iapetus', 'Iapetus · erkek, berrak'], ['Algenib', 'Algenib · erkek, tok'], ['Sadachbia', 'Sadachbia · erkek, canlı'], ['Kore', 'Kore · kadın, kararlı'], ['Aoede', 'Aoede · kadın, ferah'], ['Leda', 'Leda · kadın, genç'], ['Zephyr', 'Zephyr · kadın, parlak'], ['Laomedeia', 'Laomedeia · kadın, neşeli']];
   const getKey = () => { try { return JSON.parse(localStorage.getItem('jarvisapp.key') || '""'); } catch { return ''; } };
@@ -26,7 +31,7 @@
   const setupMsg = (model, shape) => {
     const voice = opt('liveVoice') || 'Puck';
     const speech = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } };
-    const tools = [{ functionDeclarations: [{ name: 'jarvis_arac', description: 'SATÜRN aracını çalıştırır ve sonucu döndürür (hatırlatma, takvim, hava, hesap, hasta kayıtları, kasa, bilgisayar kontrolü vb.).', parameters: { type: 'OBJECT', properties: { komut: { type: 'STRING', description: 'Araç adı ve argümanlar | ile ayrılmış, ör. "hava|Cizre"' } }, required: ['komut'] } }] }];
+    const tools = [{ functionDeclarations: [{ name: 'jarvis_arac', description: 'SATÜRN aracını çalıştırır ve sonucu döndürür (hatırlatma, takvim, hava, hesap, hasta kayıtları, kasa, bilgisayar kontrolü vb.).', parameters: { type: 'OBJECT', properties: { komut: { type: 'STRING', description: 'Araç adı ve argümanlar | ile ayrılmış, ör. "hava|Cizre"' } }, required: ['komut'] }, ...(/^gemini-3\.8/.test(model) ? { behavior: 'BLOCKING' } : {}) }] }]; /* 3.8: araç sonucu gelmeden konuşmasın */
     const sys = { parts: [{ text: liveInstructions() }] };
     if (shape === 0) return { setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech }, systemInstruction: sys, tools, inputAudioTranscription: {}, outputAudioTranscription: {} } };
     if (shape === 1) return { setup: { model: 'models/' + model, generationConfig: { responseModalities: ['AUDIO'], speechConfig: speech }, systemInstruction: sys } };
@@ -102,7 +107,7 @@
   }
 
   function connect(mi = 0, shape = 0) {
-    const order = [...new Set([store.get('liveModel', ''), ...MODELS].filter(Boolean))];
+    const order = liveOrder();
     if (mi >= order.length) {
       const a = S.attempts, why = [...new Set(a.map(explain))];
       return stop('CANLI mod açılamadı: ' + why.join('; ') + '. ' + (why.some(w => /kota/.test(w)) ? 'Google’ın ücretsiz kotası yenilenince (TSİ 11:00) tekrar dene.' : why.some(w => /anahtar/.test(w)) ? 'Gemini anahtarının Live API iznini aistudio.google.com’da kontrol et.' : 'Ayarlar → “Ses ve CANLI testi” ile ayrıntı alabilirsin.'));
@@ -146,7 +151,7 @@
     // canlı
     if (S) lines.push('• CANLI şu an açık: ' + (S.ready ? 'bağlı (' + S.model + ')' : 'bağlanıyor'));
     else {
-      const order = [...new Set([store.get('liveModel', ''), ...MODELS].filter(Boolean))];
+      const order = liveOrder();
       let okModel = null; const tried = [];
       for (const model of order) {
         for (let shape = 0; shape < SHAPES && !okModel; shape++) {
@@ -202,7 +207,7 @@
   }
 
   /* ---------- arayüz ---------- */
-  const btn = el('button', { type: 'button', class: 'livebtn', id: 'liveBtn', 'aria-pressed': 'false', title: 'Canlı sohbet (Gemini Live): akıcı, doğal ses; sözünü kesebilirsin', onclick: () => { window.jarvisUnlock?.(); AudioHub.prime(); if (S && !S.ready) return stop('Canlı mod iptal edildi.'); if (S && S.ready && !S.lastFrame) { AudioHub.ctx?.resume?.().catch(() => {}); return; } S ? stop('Canlı mod kapandı.') : start(); } }, el('span', { class: 'dot' }), 'CANLI');
+  const btn = el('button', { type: 'button', class: 'livebtn', id: 'liveBtn', 'aria-pressed': 'false', title: 'Canlı sohbet (Gemini Live): akıcı, doğal ses; sözünü kesebilirsin', onclick: () => { window.jarvisUnlock?.(); AudioHub.prime(); if (S && !S.ready) return stop('Canlı mod iptal edildi.'); if (S && S.ready && !S.lastFrame && !S.woke) { S.woke = 1; AudioHub.ctx?.resume?.().catch(() => {}); note('Mikrofon sesi uyandırıldı — konuşabilirsin. Kapatmak için bir kez daha dokun.'); return; } S ? stop('Canlı mod kapandı.') : start(); } }, el('span', { class: 'dot' }), 'CANLI');
   $('mic')?.after(btn);
   const vs = el('select', { id: 'liveVoice' }); for (const [v, t] of VOICES) vs.append(new Option(t, v));
   vs.value = store.get('set.liveVoice', 'Puck') || 'Puck'; vs.onchange = () => store.set('set.liveVoice', vs.value);
@@ -230,7 +235,7 @@
   const tClose = () => { try { T?.ws.close(); } catch {} T = null; };
   function tOpen() {
     return new Promise((res, rej) => {
-      const model = store.get('liveModel', '') || MODELS[0];
+      const model = MODELS.includes(store.get('liveModel', '')) ? store.get('liveModel', '') : MODELS[0];
       let ws; try { ws = new WebSocket(WS + encodeURIComponent(getKey())); } catch (e) { return rej(e); }
       const o = { ws, model, turns: 0, cur: null, idle: 0 };
       const dog = setTimeout(() => { try { ws.close(); } catch {} rej(Error('canlı ses hattı cevap vermedi')); }, 8000);

@@ -67,9 +67,18 @@
     ['gorsel', 'Görsel üretimi (Pollinations)', imgOk('https://image.pollinations.ai/prompt/blue%20circle?width=64&height=64&nologo=true&seed=7')],
     ['arastirma', 'Tıbbi literatür (Europe PMC)', jOk('https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=physiotherapy&format=json&pageSize=1', j => j.hitCount >= 0, undefined, 20000)],
     ['arastirma', 'PubMed (NCBI)', jOk('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=physiotherapy&retmax=1&retmode=json', j => !!j.esearchresult, undefined, 15000)],
+    ['ses', 'CANLI ses modeli (gemini-3.8-live)', () => new Promise((res, rej) => {
+      const k = keyOf(); if (!k) return rej(Error('anahtar girilmemiş'));
+      let ws, done = false; const end = (ok, why) => { if (done) return; done = true; try { ws?.close(); } catch {} ok ? res() : rej(Error(why)); };
+      try { ws = new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=' + encodeURIComponent(k)); } catch (e) { return rej(e); }
+      ws.onopen = () => { try { ws.send(JSON.stringify({ setup: { model: 'models/gemini-3.8-live', generationConfig: { responseModalities: ['AUDIO'] } } })); } catch {} };
+      ws.onmessage = async ev => { let m = {}; try { m = JSON.parse(typeof ev.data === 'string' ? ev.data : await ev.data.text()); } catch {} if (m.setupComplete) end(true); };
+      ws.onclose = e => end(false, /quota|RESOURCE_EXHAUSTED/i.test(e.reason) ? 'kota dolu' : /not found|NOT_FOUND/i.test(e.reason) ? 'model bu anahtarda yok' : 'kapandı ' + e.code + (e.reason ? ' · ' + String(e.reason).slice(0, 60) : ''));
+      setTimeout(() => end(false, '10 sn içinde cevap yok'), 10000);
+    }), 1],
     ['yz', 'Gemini anahtarı', async () => { const k = keyOf(); if (!k) throw Error('anahtar girilmemiş'); const r = await tFetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': k } }); if (r.status === 400 || r.status === 403) throw Error('anahtar geçersiz/izinsiz (HTTP ' + r.status + ')'); if (r.status === 429) throw Error('kota dolu (TSİ 11:00 yenilenir)'); if (!r.ok) throw Error('HTTP ' + r.status); }, 1]
   ];
-  const CAT = { kripto: 'Kripto', doviz: 'Döviz', altin: 'Altın', hisse: 'Hisse', haber: 'Haber', afet: 'Afet', hava: 'Hava', gorsel: 'Görsel', arastirma: 'Araştırma', yz: 'Yapay zekâ' };
+  const CAT = { kripto: 'Kripto', doviz: 'Döviz', altin: 'Altın', hisse: 'Hisse', haber: 'Haber', afet: 'Afet', hava: 'Hava', ses: 'Ses', gorsel: 'Görsel', arastirma: 'Araştırma', yz: 'Yapay zekâ' };
 
   /* ---------- iç testler (çevrimdışı, anında) ---------- */
   const MODS = [['jarvisMarkets', 'Piyasa'], ['jarvisNews', 'Haber'], ['jarvisPicks', 'Haftalık seçim'], ['jarvisForecast', 'Tahmin'], ['jarvisResearch', 'Araştırma'], ['jarvisWebResearch', 'Web araştırma'], ['jarvisResearch2', 'Makale/ölçek'], ['jarvisImage', 'Görsel'], ['jarvisStage', 'Sahne/tasarım'], ['jarvisKlinik2', 'Klinik'], ['jarvisExpert', 'Uzman'], ['jarvisUltra', 'Ultra'], ['jarvisLive', 'CANLI ses'], ['jarvisUltron', 'ULTRON görev'], ['jarvisUltronLife', 'ULTRON yaşam']];
