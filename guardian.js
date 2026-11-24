@@ -35,7 +35,7 @@
   const tOk = (url, test, ms) => async () => { const r = await tFetch(url, {}, ms); if (!r.ok) throw Error('HTTP ' + r.status); const t = await r.text(); if (!test(t)) throw Error('beklenmeyen yanıt'); };
   const YURL = 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d';
   const RSS = 'https://feeds.bbci.co.uk/turkce/rss.xml';
-  const YGATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)], ['corsproxy', u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)]];
+  const YGATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)]];
   const yOk = j => j?.chart?.result?.[0]?.meta?.regularMarketPrice > 0;
   function wsProbe() {
     return new Promise((res, rej) => {
@@ -200,6 +200,7 @@
   let lastFull = null;
   async function runAndShow() {
     bubble('me', '🛡 Tüm sistemi tara');
+    try { await window.jarvisUltra?.showDoctor?.(); } catch {} // iç teşhis (ayarlar, ses, depolama, bağlantı) + bekçi (dış kaynaklar)
     setPhase('thinking', 'Bekçi: veri kaynaklarını, modülleri ve iç testleri tarıyorum…');
     try {
       lastFull = await scan({ manual: true });
@@ -233,11 +234,16 @@
   Object.assign(TOOLS, { sistem_tarama: { d: 'sistem_tarama — BEKÇİ: tüm veri kaynaklarını (kripto, altın, döviz, hisse geçitleri, haber, hava, görsel, literatür, Gemini) gerçekten dener, modülleri ve iç testleri denetler, çalışmayanı onarır/yeniden sıralar; rapor verir', run: async () => { const R = await scan({ manual: true }); lastFull = R; return report(R); } } });
   TOOL_GROUPS.push([/sistem|tara|kontrol|sağlık|çalışmıyor|bozuk|hata|onar/i, /^sistem_tarama$/]);
   const _tp = toolsPrompt;
-  toolsPrompt = () => { const l = store.get('grdLast', null); const dead = (l?.res || []).filter(r => !r.ok).map(r => r.name); return _tp() + '\nBEKÇİ: “sistemi tara / çalışıyor mu / neden çalışmıyor” → sistem_tarama.' + (dead.length ? ` Son taramada çalışmayan kaynaklar: ${dead.join(', ')} — bunlara dayanan işlerde Beyhan’a kısaca söyle, alternatif yol kullan.` : ''); };
+  toolsPrompt = () => { const l = store.get('grdLast', null); const dead = (l?.res || []).filter(r => !r.ok).map(r => r.name); return _tp() + '\nSİSTEM TARAMASI TELEFONDA yapılır, bilgisayar GEREKMEZ: “tam sistem taraması / sistemi tara / kendini kontrol et” → hemen sistem_tarama aracını çalıştır; ASLA “bilgisayarda yapılmalı” deme, bilgisayar aracına yönlendirme.\nBEKÇİ: “sistemi tara / çalışıyor mu / neden çalışmıyor” → sistem_tarama.' + (dead.length ? ` Son taramada çalışmayan kaynaklar: ${dead.join(', ')} — bunlara dayanan işlerde Beyhan’a kısaca söyle, alternatif yol kullan.` : ''); };
+  // “tam sistem taraması yap”, “sistemini tara”, “kendini kontrol et”, “bütün sistemleri test et”… — bilgisayar GEREKMEZ, telefonda çalışır
+  const isScan = t => t.length <= 80 && !/(bilgisayar|pc|laptop|virüs|antivir|disk|windows|mac)/i.test(t) && (
+    /^(sağlık raporu|bekçi raporu|sistem raporu)$/i.test(t) ||
+    /\b(sistem|sistemi|sistemini|sistemleri|sistemlerini|kendini|kendi kendini|tüm sistem|bütün sistem|veri kaynaklarını|kaynakları)\b[^.?!]{0,30}\b(tara|taraması|taramasını|taramayı|kontrol et|kontrol|test et|denetle|denetimi|incele)/i.test(t) ||
+    /\b(tam|full|genel|komple|detaylı)\s+(sistem\s+)?(tarama|taraması|kontrol|kontrolü|denetim|denetimi)\b/i.test(t));
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn|ultron)[,\s]+/i, '').replace(/[?.!]+$/, '');
-    if (!guest() && /^(tüm |bütün )?(sistemi?|sistemleri) (tara|kontrol et|test et)|^sistem taraması$|^veri kaynaklarını (tara|test et|kontrol et)$|^(sağlık raporu|bekçi raporu)$/i.test(t)) { setTimeout(() => runAndShow().catch(e => note(e.message)), 30); return 'Bekçi taramayı başlattı: veri kaynakları, modüller, iç testler (10-30 sn)…'; }
+    if (!guest() && isScan(t)) { setTimeout(() => runAndShow().catch(e => note(e.message)), 30); return 'Bekçi taramayı başlattı: veri kaynakları, modüller, iç testler (10-30 sn)…'; }
     return _lc(text0);
   };
   window.jarvisGuardian = { scan, report, selfTests, storageCheck, errors: () => errs, runAndShow, PROBES, catchErr };

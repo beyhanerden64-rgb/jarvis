@@ -9,7 +9,8 @@
 (() => {
   const getKey = () => { try { return JSON.parse(localStorage.getItem('jarvisapp.key') || '""'); } catch { return ''; } };
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
-  const IMG_MODELS = ['gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview', 'gemini-2.0-flash-preview-image-generation'];
+  // 22.5: kapanan önizleme modelleri çıkarıldı (2.5-preview Ocak 2026, 2.0 Kasım 2025); Google'ın önerdiği yeniler eklendi
+  const IMG_MODELS = ['gemini-3.1-flash-lite-image', 'gemini-nano-banana-2.1', 'gemini-2.5-flash-image'];
   const SIZES = { kare: [1024, 1024], dikey: [896, 1120], hikaye: [768, 1344], yatay: [1344, 768], afis: [896, 1280] };
   const STYLES = {
     gercekci: 'professional photograph, shot on full-frame camera, 50mm lens, natural soft light, shallow depth of field, true-to-life colors, high detail',
@@ -50,7 +51,7 @@ YALNIZ JSON: {"prompt":"…","title":"kısa Türkçe başlık (en çok 6 kelime)
     for (const m of IMG_MODELS) {
       try {
         const r = await withTimeout(fetch(GEMINI + m + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }) }), 40000, 'zaman aşımı');
-        if (!r.ok) { last = 'HTTP ' + r.status; if (r.status === 429 || r.status === 403 || r.status === 400) break; continue; } // kota/izin yok → bekleme
+        if (!r.ok) { last = m + ': HTTP ' + r.status; continue; } // her modelin kotası/izni ayrı → sıradakini dene (hepsi düşerse Pollinations)
         const ps = (await r.json()).candidates?.[0]?.content?.parts || [];
         const im = ps.find(p => p.inlineData?.data);
         if (im) return { src: `data:${im.inlineData.mimeType || 'image/png'};base64,${im.inlineData.data}`, via: 'Gemini' };

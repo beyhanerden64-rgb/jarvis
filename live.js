@@ -6,8 +6,8 @@
 (() => {
   const WS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
   // Google 17 Kasım 2026'da 3.1-live-preview ve 2.5-native-audio modellerini kapattı → yeni model gemini-3.8-live (kararlı) ilk sırada.
-  const MODELS = ['gemini-3.8-live', 'gemini-3.1-flash-live-preview', 'gemini-2.5-flash-native-audio-preview-12-2025'];
-  const DEAD = /^(gemini-2\.0-flash-live-001|gemini-live-2\.5-flash-preview|gemini-2\.5-flash-native-audio-preview-09-2025)$/;
+  const MODELS = ['gemini-3.8-live'];
+  const DEAD = /^(gemini-2\.0-flash-live-001|gemini-live-2\.5-flash-preview|gemini-2\.5-flash-native-audio-preview-(09|12)-2025|gemini-3\.1-flash-live-preview)$/;
   // hatırlanan model kapatılmış ya da listede yoksa unut (ölü modeli her seferinde ilk denemek bağlantıyı geciktiriyordu)
   try { const lm = JSON.parse(localStorage.getItem('jarvisapp.liveModel') || '""'); if (lm && (DEAD.test(lm) || !MODELS.includes(lm))) localStorage.removeItem('jarvisapp.liveModel'); } catch { localStorage.removeItem('jarvisapp.liveModel'); }
   const liveOrder = () => { const lm = store.get('liveModel', ''); return lm === MODELS[0] || !MODELS.includes(lm) ? MODELS : [...new Set([MODELS[0], lm, ...MODELS])]; };
@@ -26,7 +26,7 @@
     try { base = instructions(true); } catch {}
     window.jarvisCurText = prevQ;
     if (window.jarvisKlinik2?.interp?.()) return base; // canlı tercüman: yalnız çeviri talimatı
-    return (base.slice(0, 38000) + `\n\nTAHMİN KURALI: Beyhan geleceğe dair bir şey sorarsa (fiyat, kur, maç, ekonomi, “ne olacak / yükselir mi”) ASLA “tahmin yapamam” deme; jarvis_arac ile senaryo_tahmin aracını çalıştır ve senaryoları olasılıklarıyla kısaca söyle.` + `\n\nCANLI SESLİ SOHBET: Şu an Beyhan'la gerçek zamanlı sesli konuşuyorsun. Doğal, akıcı, canlı ve sıcak bir Türkçe ile konuş; kısa cümleler kur, gereksiz uzatma, liste okuma. Sözün kesilirse hemen dur ve dinle. Bir iş yapman gerekiyorsa jarvis_arac fonksiyonunu kullan (komut = araç biçimi, ör. "hatirlat|yarın 10:00|ilaç", "takvim_oku|bugün", "hava|Cizre"); sonucu kısaca söyle. Silme, kapatma gibi işler için Beyhan'a ekranda onay sorulur.`).trim();
+    return (base.slice(0, 38000) + `\n\nSİSTEM TARAMASI KURALI: “sistemi tara / tam sistem taraması / kendini kontrol et” denirse bilgisayar GEREKMEZ — jarvis_arac ile sistem_tarama aracını çalıştır ve sonucu kısaca söyle (kaç kaynak çalışıyor, ne bozuk, ne onarıldı).\n\nTAHMİN KURALI: Beyhan geleceğe dair bir şey sorarsa (fiyat, kur, maç, ekonomi, “ne olacak / yükselir mi”) ASLA “tahmin yapamam” deme; jarvis_arac ile senaryo_tahmin aracını çalıştır ve senaryoları olasılıklarıyla kısaca söyle.` + `\n\nCANLI SESLİ SOHBET: Şu an Beyhan'la gerçek zamanlı sesli konuşuyorsun. Doğal, akıcı, canlı ve sıcak bir Türkçe ile konuş; kısa cümleler kur, gereksiz uzatma, liste okuma. Sözün kesilirse hemen dur ve dinle. Bir iş yapman gerekiyorsa jarvis_arac fonksiyonunu kullan (komut = araç biçimi, ör. "hatirlat|yarın 10:00|ilaç", "takvim_oku|bugün", "hava|Cizre"); sonucu kısaca söyle. Silme, kapatma gibi işler için Beyhan'a ekranda onay sorulur.`).trim();
   }
   const setupMsg = (model, shape) => {
     const voice = opt('liveVoice') || 'Puck';

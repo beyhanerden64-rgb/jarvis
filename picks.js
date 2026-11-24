@@ -134,7 +134,7 @@
     return { sym: 'GRAM ALTIN', c: G(g.c).map((v, i) => v / 31.1034768 * T[i]), h: G(g.h).map((v, i) => v / 31.1034768 * T[i]), l: G(g.l).map((v, i) => v / 31.1034768 * T[i]), v: null };
   }
   // Yahoo (her borsa): bilgisayar yardımcısı → doğrudan → açık vekil geçitler (en başarılı olan öne alınır)
-  const GATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)], ['corsproxy', u => 'https://corsproxy.io/?url=' + encodeURIComponent(u)]];
+  const GATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)]];
   const bump = (i, d) => { const r = store.get('pkGate', {}); const k = GATES[i][0]; r[k] = Math.max(-5, Math.min(20, (r[k] || 0) + d)); store.set('pkGate', r); };
   // devre kesici: bir taramada Yahoo'ya hiçbir yoldan ulaşılamıyorsa kalan sembolleri dakikalarca bekletme
   const yh = { ok: 0, dead: 0 };
