@@ -7,6 +7,12 @@ on:
     - cron: '30 6 * * *'     # 09:30 TSİ sabah özeti
     - cron: '30 15 * * *'    # 18:30 TSİ akşam özeti
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'watch (hareket taraması) ya da brief (özet gönder)'
+        default: watch
+        type: choice
+        options: [watch, brief]
 permissions:
   contents: read
 concurrency:
@@ -22,5 +28,5 @@ jobs:
           sparse-checkout: bg
       - name: Piyasa bekçisi
         env:
-          MODE: ${{ (github.event.schedule == '30 6 * * *' || github.event.schedule == '30 15 * * *') && 'brief' || 'watch' }}
+          MODE: ${{ inputs.mode || ((github.event.schedule == '30 6 * * *' || github.event.schedule == '30 15 * * *') && 'brief' || 'watch') }}
         run: node bg/watch.mjs
