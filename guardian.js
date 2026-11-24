@@ -164,7 +164,7 @@
       const R = store.get(key, {}), before = JSON.stringify(R);
       for (const r of g) R[r.gate] = r.ok ? Math.max(R[r.gate] || 0, 8) + Math.max(0, 5 - Math.round(r.ms / 1000)) : -5;
       store.set(key, R);
-      if (JSON.stringify(R) !== before) { const best = g.filter(r => r.ok).sort((a, b) => a.ms - b.ms)[0]; fixes.push(best ? `${CAT[cat]} geçitleri yeniden sıralandı: en hızlı çalışan “${best.gate}” öne alındı` : `${CAT[cat]} için hiçbir geçit çalışmıyor — bilgisayar yardımcısı ya da sonraki taramayı bekle`); }
+      if (JSON.stringify(R) !== before) { const best = g.filter(r => r.ok).sort((a, b) => a.ms - b.ms)[0]; fixes.push(best ? `${CAT[cat]} geçitleri yeniden sıralandı: en hızlı çalışan “${best.gate}” öne alındı` : `${CAT[cat]} için hiçbir geçit çalışmıyor — “köprüyü kur” de (telefondan, bilgisayar gerekmez)`); }
     };
     rank('pkGate', 'hisse'); rank('newsGate', 'haber');
     // canlı akış: test geçti ama uygulamadaki bağlantı ölü → yeniden aç
@@ -189,7 +189,7 @@
     if (R.fixes?.length) L.push(`\nOTOMATİK ONARIM:\n• ` + R.fixes.join('\n• '));
     const dead = R.res.filter(r => !r.ok);
     if (dead.length) L.push('\nNE YAPMALI: ' + [
-      dead.some(r => r.cat === 'hisse') && R.res.filter(r => r.cat === 'hisse').every(r => !r.ok) ? 'hisse verisi için 5 dakikalık ücretsiz Google köprüsünü kur (PİYASA → Hisse köprüsü) ya da bilgisayar yardımcısını aç' : '',
+      dead.some(r => r.cat === 'hisse') && R.res.filter(r => r.cat === 'hisse').every(r => !r.ok) ? 'hisse verisi için Satürn’e “köprüyü kur” de — telefondan 5 dakikada kurulur, bilgisayar GEREKMEZ' : '',
       R.res.filter(r => r.cat === 'doviz').every(r => !r.ok) ? 'döviz: Binance USDT/TRY kuru yedek olarak kullanılıyor' : '',
       dead.some(r => r.name === 'Gemini anahtarı') ? 'Gemini anahtarını kontrol et (Ayarlar)' : '',
       dead.some(r => r.cat === 'kripto' && r.crit) ? 'kripto verisi alınamıyor: internet/VPN ya da Binance erişimini kontrol et' : '',

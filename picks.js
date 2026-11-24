@@ -298,7 +298,7 @@
       const E = R[k];
       if (!E) {
         if (k === 'kripto' && R.kinds.includes('kripto')) L.push(`\n${KL[k]}: veri alınamadı${R.kriptoErr ? ' (' + R.kriptoErr + ')' : ''}.`);
-        else if (R.kinds.includes(k) && (k !== 'diger' || extraSyms().length)) L.push(`\n${KL[k]}: veri yetersiz (${R[k + 'N'] || 0} sembol okunabildi; hisse verisi için bilgisayar yardımcısı en güvenilir yoldur).`);
+        else if (R.kinds.includes(k) && (k !== 'diger' || extraSyms().length)) L.push(`\n${KL[k]}: veri yetersiz (${R[k + 'N'] || 0} sembol okunabildi; hisse verisi için “köprüyü kur” de — telefondan 5 dk, bilgisayar gerekmez).`);
         continue;
       }
       L.push(`\n${KL[k]} — model: ${PNAME[E.model]} · geri test ${E.bt.weeks} hafta: ilk-3 adayların %${Math.round(E.bt.hit * 100)}'i yükseldi, ort. ${pf(E.bt.avg)} (evren ort. ${pf(E.bt.univ)}) · ${E.size} varlık tarandı`);
@@ -433,25 +433,46 @@ function doGet(e) {
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }`;
   const brIn = el('input', { id: 'bridgeUrl', placeholder: 'https://script.google.com/macros/s/…/exec', inputmode: 'url' }); brIn.value = store.get('set.bridgeUrl', '');
   const brMsg = el('small', { id: 'bridgeMsg', class: 'muted' }, window.jarvisBridge.on() ? 'Köprü kayıtlı.' : 'Köprü kurulmadı.');
-  const brTest = async () => {
-    store.set('set.bridgeUrl', brIn.value.trim());
-    if (!window.jarvisBridge.on()) { brMsg.textContent = '✗ Adres “https://script.google.com/macros/s/…/exec” biçiminde olmalı.'; return false; }
-    brMsg.textContent = 'Deneniyor…';
+  async function bridgeTest(url, msg) {
+    store.set('set.bridgeUrl', String(url || '').trim()); brIn.value = store.get('set.bridgeUrl', '');
+    const say = t => { msg.textContent = t; if (msg !== brMsg) brMsg.textContent = t; };
+    if (!window.jarvisBridge.on()) { say('✗ Adres “https://script.google.com/macros/s/…/exec” biçiminde olmalı (Dağıt penceresindeki “Web uygulaması URL’si”).'); return false; }
+    say('Deneniyor…');
     try {
       const j = await getJ(window.jarvisBridge.wrap('https://query1.finance.yahoo.com/v8/finance/chart/THYAO.IS?range=5d&interval=1d'), 25000);
-      if (j?.error) throw Error(j.error === 'yetkisiz' ? 'anahtar uyuşmuyor — kodu yeniden kopyalayıp yapıştır' : j.error);
+      if (j?.error) throw Error(j.error === 'yetkisiz' ? 'anahtar uyuşmuyor — kodu Satürn’den yeniden kopyalayıp yapıştır, sonra “Dağıt → Dağıtımları yönet → yeni sürüm”' : j.error);
       const pr = j?.chart?.result?.[0]?.meta?.regularMarketPrice; if (!pr) throw Error('Yahoo verisi gelmedi');
-      brMsg.textContent = `✓ Köprü çalışıyor: THYAO ${nf(pr)} TL. Hisse ve haberler artık bu yoldan gelir.`; return true;
-    } catch (e) { brMsg.textContent = '✗ ' + e.message + ' (Dağıtım erişimi “Herkes” olmalı.)'; return false; }
-  };
+      say(`✓ Köprü çalışıyor: THYAO ${nf(pr)} TL. Hisse, dünya haberleri ve tıbbi literatür artık bu yoldan gelir.`); return true;
+    } catch (e) { say('✗ ' + e.message + ' — Dağıtımda “Erişimi olanlar: Herkes” seçili olmalı.'); return false; }
+  }
+  const brTest = () => bridgeTest(brIn.value, brMsg);
+  const copyCode = async e => { try { await navigator.clipboard.writeText(gasCode()); e.target.textContent = '✓ Kod kopyalandı'; } catch { e.target.textContent = 'Kopyalanamadı — aşağıdaki kutudan seç-kopyala'; e.target.after(el('textarea', { rows: 6, readonly: '', style: 'width:100%' }, gasCode())); } };
+  // SOHBETTE KURULUM KARTI: bilgisayar gerekmez, telefonda Safari'den yapılır
+  function bridgeCard() {
+    const inp = el('input', { placeholder: 'https://script.google.com/macros/s/…/exec', inputmode: 'url', style: 'width:100%;box-sizing:border-box' }); inp.value = store.get('set.bridgeUrl', '');
+    const m = el('small', { class: 'muted' }, window.jarvisBridge.on() ? 'Kayıtlı köprü var — “Kaydet ve dene” ile yeniden sınayabilirsin.' : '');
+    const n = bubble('ai', '🔌 HİSSE KÖPRÜSÜ — bilgisayar GEREKMEZ, telefondan 5 dakikada kurulur (ücretsiz, yalnız senin Google hesabında):');
+    n.el.append(el('div', { class: 'tool', id: 'bridgeCard' },
+      el('ol', {},
+        el('li', {}, '“📋 Kodu kopyala”ya bas.'),
+        el('li', {}, '“script.google.com’u aç”a bas → Google hesabınla gir → “Yeni proje”. (Safari’de düzenleyici sıkışık görünürse adres çubuğundaki “aA” → “Masaüstü web sitesini iste”.)'),
+        el('li', {}, 'Sayfadaki kodu tamamen sil, kopyaladığını yapıştır, 💾 kaydet.'),
+        el('li', {}, 'Sağ üstte “Dağıt” → “Yeni dağıtım” → ⚙ tür: “Web uygulaması” · Yürütme: “Ben” · Erişimi olanlar: “Herkes” → “Dağıt” → izinleri onayla (“Gelişmiş → güvenli olmayan… git” çıkarsa: kendi kodun olduğu için güvenli).'),
+        el('li', {}, '“Web uygulaması URL’si”ni kopyala, aşağıya yapıştır → “Kaydet ve dene”.')),
+      el('div', { class: 'row' },
+        el('button', { type: 'button', onclick: copyCode }, '📋 Kodu kopyala'),
+        el('a', { href: 'https://script.google.com/home/projects/create', target: '_blank', rel: 'noopener', class: 'btn ghost' }, 'script.google.com’u aç')),
+      inp, el('div', { class: 'row' }, el('button', { type: 'button', onclick: () => bridgeTest(inp.value, m) }, 'Kaydet ve dene')), m));
+    return 'Köprü kurulum kartı açıldı.';
+  }
   brIn.onchange = () => brTest();
   const brSec = el('details', { id: 'bridgeSec' }, el('summary', {}, '🔌 Hisse köprüsü (ücretsiz, 5 dk kurulum) — hisse verisi gelmiyorsa'),
     el('ol', { class: 'muted' },
-      el('li', {}, 'Telefonda ya da bilgisayarda script.google.com adresini aç → “Yeni proje”.'),
+      el('li', {}, 'Telefonda (bilgisayar gerekmez) script.google.com adresini aç → “Yeni proje”.'),
       el('li', {}, 'Aşağıdaki “Kodu kopyala” düğmesine bas, açılan sayfadaki her şeyi silip yapıştır, kaydet (💾).'),
       el('li', {}, '“Dağıt” → “Yeni dağıtım” → tür: Web uygulaması · Yürütme: Ben · Erişimi olanlar: Herkes → Dağıt → izinleri onayla.'),
       el('li', {}, 'Verilen “Web uygulaması URL’si”ni aşağıya yapıştır; Satürn kendiliğinden dener.')),
-    el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn ghost', onclick: async e => { try { await navigator.clipboard.writeText(gasCode()); e.target.textContent = '✓ Kod kopyalandı'; } catch { e.target.textContent = 'Kopyalanamadı'; } } }, '📋 Kodu kopyala'), el('button', { type: 'button', class: 'btn ghost', onclick: brTest }, 'Köprüyü dene')),
+    el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn ghost', onclick: copyCode }, '📋 Kodu kopyala'), el('button', { type: 'button', class: 'btn ghost', onclick: brTest }, 'Köprüyü dene')),
     el('label', { for: 'bridgeUrl' }, 'Web uygulaması URL’si'), brIn, brMsg,
     el('p', { class: 'muted' }, 'Köprü yalnız senin Google hesabında çalışır; içindeki gizli anahtarı bilmeyen kullanamaz. Ücretsizdir (günde 20.000 istek).'));
   sec.append(brSec);
@@ -483,9 +504,11 @@ function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setM
     haftalik_secim: { d: 'haftalik_secim|kripto / hisse / hepsi — HAFTANIN NİCEL SEÇİMİ: 45 kripto + gram altın + BIST 30 + ABD + eklenen borsalar; 9 sayısal parametre, piyasa rejimi, geri test, ölçülmüş yükseliş olasılığı, %68 aralık, risk seviyesi, gerçek sicil. “Token/coin/hisse öner, haftanın adayları, hangi coin yükselir” isteklerinde kullan.', run: async ([k]) => { const R = await run({ kinds: kindsOf(k || '') }); setTimeout(() => show(R), 30); return text(R); } },
     canli_fiyat: { d: 'canli_fiyat|sembol — kesintisiz canlı kripto/altın fiyatı (WebSocket, saniyelik)', run: async ([s]) => { const S = String(s || 'BTC').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/USDT$/, '') + 'USDT'; liveSub([S]); const v = live.prices[S]; if (v && Date.now() - v.t < 60000) return `${S.replace('USDT', '')} ${px(v.p)} $ (24s ${v.ch >= 0 ? '+' : ''}${nf(v.ch, 2)}%) · canlı, ${Math.round((Date.now() - v.t) / 1000)} sn önce`; return (await window.jarvisMarkets.quote(S.replace('USDT', ''))).text; } }
   });
+  TOOLS.kopru_kur = { d: 'kopru_kur — HİSSE/HABER KÖPRÜSÜ kurulum kartını sohbette açar (Google Apps Script, telefondan, bilgisayar GEREKMEZ)', run: async () => { setTimeout(bridgeCard, 30); return 'Kurulum kartı sohbette açıldı: kodu kopyala, script.google.com’da yapıştır, Web uygulaması olarak (Erişim: Herkes) dağıt, adresi karta yapıştır.'; } };
+  TOOL_GROUPS.push([/köprü|kopru|bridge/i, /^kopru_kur$/]);
   TOOL_GROUPS.push([/haftal|öner|tavsiye|seçim|aday|token|coin|altcoin|hisse|canlı fiyat|anlık fiyat/i, /^(haftalik_secim|canli_fiyat)$/]);
   const _tp = toolsPrompt;
-  toolsPrompt = () => _tp() + '\nHAFTALIK SEÇİM: “token/coin/hisse öner, haftanın adayları, hangi coin yükselir” → haftalik_secim. Aracın verdiği olasılık ve sayıları DEĞİŞTİRME; %80 gibi bir isabet garanti edilemez, ölçülen olasılığı ve gerçek sicili söyle. Anlık fiyat → canli_fiyat.';
+  toolsPrompt = () => _tp() + '\nHAFTALIK SEÇİM: “token/coin/hisse öner, haftanın adayları, hangi coin yükselir” → haftalik_secim. Aracın verdiği olasılık ve sayıları DEĞİŞTİRME; %80 gibi bir isabet garanti edilemez, ölçülen olasılığı ve gerçek sicili söyle. Anlık fiyat → canli_fiyat. HİSSE KÖPRÜSÜ bilgisayar GEREKTİRMEZ (bilgisayar yardımcısıyla karıştırma): “köprü kur/aç” → kopru_kur.';
   const PICK = /(haftanın|haftalık|bu haftaki|bu hafta(?:nın)?)\s+(?:\S+\s+){0,2}(token|coin|kripto|altcoin|hisse|seçim|öneri|aday|sinyal)|\b(\d+\s+)?(token|coin|kripto|altcoin|hisse)(ler)?(ini|ı|i|u|ü)?\s+(öner|tavsiye|seç|bul)|hangi\s+(coin|token|kripto|altcoin|hisse)(ler)?(i|ı|e|a)?\s+(al|alınır|alayım|alsam|yatırım|yükselir|yükselecek|öne çıkıyor|iyi|almalı|mantıklı|girilir)|nicel (tarama|seçim)|haftalık (tarama|seçim|sinyal)/i;
   const isPick = t => { t = String(t || ''); return t.length >= 8 && t.length <= 200 && PICK.test(t) && !/(hasta|seans|randevu|sicil|isabet)/i.test(t); };
   const _think = think;
@@ -503,8 +526,9 @@ function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setM
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '').replace(/[?.!]+$/, '');
+    if (/(hisse |piyasa )?köprü(sü|yü|yu|nü)?(nü)?\s*(kur|aç|ayarla|bağla|nasıl|kurulumu|kurulum)|köprü kur/i.test(t) && t.length < 70) return bridgeCard();
     if (/^(seçim sicilim|haftalık sicil|token sicilim|seçimler ne kadar tuttu)$/i.test(t)) return record() || 'Henüz sonuçlanmış seçim yok; ilk sonuç seçimden 7 gün sonra gelir.';
     return _lc(text0);
   };
-  window.jarvisPicks = { run, show, text, record, evaluate, backtest, feat, goldView, resolveDue, isPick, kindsOf, isoWeek, live, liveConnect, liveSub, yahooSeries, macro };
+  window.jarvisPicks = { bridgeCard, bridgeTest, run, show, text, record, evaluate, backtest, feat, goldView, resolveDue, isPick, kindsOf, isoWeek, live, liveConnect, liveSub, yahooSeries, macro };
 })();
