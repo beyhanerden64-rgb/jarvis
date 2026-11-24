@@ -598,6 +598,7 @@ const player = new JarvisSpeechPlayer({
   voice: () => store.get('set.ttsVoice', 'Charon') || 'Charon',
   status: t => {
     $('naturalStatus') && ($('naturalStatus').textContent = t);
+    try { const L = store.get('voiceLog', []); if (L.at(-1)?.t !== t) { L.push({ at: Date.now(), t: String(t).slice(0, 160) }); store.set('voiceLog', L.slice(-12)); } } catch {} // ses kara kutusu (bekçi raporunda)
     // doğal ses düştüğünde nedenini bir kez açıkça söyle (oturum başına)
     if (/Cihaz sesine geçildi|cihaz sesi kapalı/.test(t) && !sessionStorage.getItem('jarvis.ttsWarned')) {
       sessionStorage.setItem('jarvis.ttsWarned', '1');
@@ -784,8 +785,10 @@ $('mic').onclick = () => {
 };
 window.jarvisUnlock = () => {
   player.unlock();
-  try { if (!window.jarvisPrimed && window.speechSynthesis) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'tr-TR'; speechSynthesis.speak(u); window.jarvisPrimed = true; } } catch {}
+  // iPhone: telefon sesi kilidi arka plana gidince yeniden kapanabilir → her dokunuşta (konuşmuyorken) sessizce yeniden aç
+  try { const ss = window.speechSynthesis; if (ss && !ss.speaking && !ss.pending) { ss.resume?.(); const u = new SpeechSynthesisUtterance(' '); u.volume = 0; u.lang = 'tr-TR'; ss.speak(u); window.jarvisPrimed = true; } } catch {}
 };
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { window.speechSynthesis?.resume?.(); } catch {} } });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { stopAll(); return; }
   if (e.code !== 'Space' || e.repeat || /input|textarea|select|button/i.test(document.activeElement?.tagName || '')) return;

@@ -182,6 +182,7 @@
     L.push(`\nVERİ KAYNAKLARI: ${ok}/${R.res.length} çalışıyor`);
     for (const [c, n] of Object.entries(CAT)) { const g = R.res.filter(r => r.cat === c); if (!g.length) continue; L.push(`${n}: ` + g.map(r => `${r.ok ? '✓' : '✗'} ${r.name.replace(/^.*· /, '')}${r.ok ? (r.name === 'Telefonun Türkçe sesi' && deviceVoiceName ? ` (${deviceVoiceName})` : ` ${r.ms} ms`) : ` (${r.why})`}`).join(' · ')); }
     try { const sv = k => store.get('set.' + k, ''); L.push(`SES AYARLARI: sesli yanıt ${setting('speakOn') === '1' || sv('speakOn') === '1' ? 'AÇIK' : 'KAPALI'} · doğal ses düşerse ${({ auto: 'telefon sesi (otomatik)', '1': 'telefon sesi', '0': 'YALNIZ EKRAN (sessiz)' })[sv('deviceFallback') || 'auto'] || sv('deviceFallback')} · mikrofon ${sv('talkMode') === 'klasik' ? 'klasik dinleme' : 'CANLI'} · son doğal ses: ${localStorage.getItem('jarvisapp.ttsModel') || '—'} · CANLI model: ${store.get('liveModel', '') || 'henüz bağlanmadı'}`); } catch {}
+    try { const VL = store.get('voiceLog', []).slice(-6); if (VL.length) L.push('SON SES OLAYLARI: ' + VL.map(x => new Date(x.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) + ' ' + x.t).join(' · ')); } catch {}
     const mOk = R.mods.filter(m => m[1]).length; L.push(`\nMODÜLLER: ${mOk}/${R.mods.length} yüklü${mOk < R.mods.length ? ' — eksik: ' + R.mods.filter(m => !m[1]).map(m => m[0]).join(', ') : ''}`);
     const tOk = R.tests.filter(x => x[1]).length; L.push(`İÇ TESTLER: ${tOk}/${R.tests.length} geçti${tOk < R.tests.length ? ' — başarısız: ' + R.tests.filter(x => !x[1]).map(x => x[0] + (x[2] ? ' (' + x[2] + ')' : '')).join('; ') : ''}`);
     L.push(`DEPOLAMA: ${R.store.bad.length ? 'bozuk kayıt: ' + R.store.bad.join(', ') + (R.store.healed.length ? ' (önbellek olanlar karantinaya alındı)' : ' (asıl veri — silinmedi, yedekten geri yüklenebilir)') : 'sağlam'}`);
@@ -205,9 +206,31 @@
     try {
       lastFull = await scan({ manual: true });
       const t = report(lastFull); const n = bubble('ai', t);
-      n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: async e => { try { await navigator.clipboard.writeText(t); e.target.textContent = '✓ Kopyalandı — Claude’a yapıştırabilirsin'; } catch { e.target.textContent = 'Kopyalanamadı; metni seçip kopyala'; } } }, '📋 Raporu kopyala (geliştiriciye gönder)')));
+      n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: e => speakTest(e.target) }, '🔊 Telefon sesini dene'), el('button', { type: 'button', onclick: async e => { try { await navigator.clipboard.writeText(t); e.target.textContent = '✓ Kopyalandı — Claude’a yapıştırabilirsin'; } catch { e.target.textContent = 'Kopyalanamadı; metni seçip kopyala'; } } }, '📋 Raporu kopyala (geliştiriciye gönder)')));
       return t;
     } finally { setPhase('idle', 'Hazır.'); }
+  }
+
+  // 🔊 telefon sesini doğrudan dene (dokunuşun içinde → iPhone kuralı karşılanır)
+  function speakTest(btn) {
+    const ss = window.speechSynthesis; if (!ss) { btn.textContent = '✗ Bu tarayıcıda telefon sesi yok'; return; }
+    try {
+      ss.cancel(); ss.resume?.();
+      const u = new SpeechSynthesisUtterance('Merhaba Beyhan, ben Satürn. Sesimi duyuyorsan her şey yolunda.'); u.lang = 'tr-TR';
+      const v = ss.getVoices().filter(x => /^tr/i.test(x.lang)); if (v.length) u.voice = v.find(x => /enhanced|premium|gelişmiş/i.test(x.name)) || v[0];
+      let started = false;
+      u.onstart = () => { started = true; btn.textContent = '🔊 Konuşuyor (' + (u.voice?.name || 'varsayılan') + ') — duymuyorsan telefonun sesini aç / sessiz modu kapat'; };
+      u.onend = () => { btn.textContent = '✓ Telefon sesi çalıştı. Duyduysan sorun yok; duymadıysan ses düğmesi/sessiz mod/Bluetooth kulaklığı kontrol et.'; };
+      u.onerror = e => { btn.textContent = '✗ Telefon sesi çalmadı: ' + (e.error || 'bilinmeyen hata'); };
+      ss.speak(u);
+      setTimeout(() => { if (!started) btn.textContent = '✗ 3 sn içinde ses başlamadı — iPhone: Ayarlar → Erişilebilirlik → Seslendirilen İçerik → Sesler → Türkçe → Yelda’yı indir'; }, 3000);
+      window.jarvisPrimed = true;
+    } catch (e) { btn.textContent = '✗ ' + e.message; }
+  }
+  function voiceCard() {
+    const n = bubble('ai', '🔊 SES TESTİ — aşağıdaki düğmeye dokun; telefonun Türkçe sesiyle bir cümle okuyacağım. Doğal ses (Google) kotası dolduğunda Satürn bu sesle konuşur.');
+    n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: e => speakTest(e.target) }, '🔊 Telefon sesini dene')));
+    return 'Ses testi hazır.';
   }
 
   /* ---------- zamanlama ---------- */
@@ -243,8 +266,9 @@
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn|ultron)[,\s]+/i, '').replace(/[?.!]+$/, '');
+    if (/^(sesi|sesini|telefon sesini|hoparlörü) (test et|dene|kontrol et)$|^ses testi$/i.test(t)) return voiceCard();
     if (!guest() && isScan(t)) { setTimeout(() => runAndShow().catch(e => note(e.message)), 30); return 'Bekçi taramayı başlattı: veri kaynakları, modüller, iç testler (10-30 sn)…'; }
     return _lc(text0);
   };
-  window.jarvisGuardian = { scan, report, selfTests, storageCheck, errors: () => errs, runAndShow, PROBES, catchErr };
+  window.jarvisGuardian = { voiceCard, speakTest, scan, report, selfTests, storageCheck, errors: () => errs, runAndShow, PROBES, catchErr };
 })();
