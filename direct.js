@@ -68,31 +68,12 @@
   const provider = () => { const k = getKey(); return /^sk-ant-[\w-]{20,}$/.test(k) ? 'claude' : /^[\w.\-]{30,200}$/.test(k) ? 'gemini' : null; };
   // Gemini free tier. Model names change between releases: try in order, remember the one that answers.
   // Lite first: fastest answers for a voice assistant and the most generous free quota.
-  // Model listesi (25.11.2026, Beyhan'ın anahtarıyla canlı denendi): 2.5 ailesi kapandı (404), pro modeller ücretsiz değil (429),
-  // flash modelleri yoğunlukta 503 verebiliyor. Bu yüzden: çalışan modeller öne, kapananlar kalıcı olarak atlanır, yeni modeller günde bir keşfedilir.
-  const GONE = () => { try { return new Set(JSON.parse(localStorage.getItem('jarvisapp.goneModels') || '[]')); } catch { return new Set(); } };
-  const markGone = m => { const g = GONE(); g.add(m); localStorage.setItem('jarvisapp.goneModels', JSON.stringify([...g].slice(-60))); };
-  const BASE_MODELS = ['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemma-4-26b-a4b-it', 'gemma-4-31b-it'];
-  const discovered = () => { try { return JSON.parse(localStorage.getItem('jarvisapp.foundModels') || '[]'); } catch { return []; } };
-  async function discover() {
-    try {
-      if (Date.now() - Number(localStorage.getItem('jarvisapp.foundAt') || 0) < 86400000 || !getKey()) return;
-      const d = await fetch(GEMINI.replace(/models\/$/, 'models') + '?pageSize=200', { headers: { 'x-goog-api-key': getKey() } }).then(r => r.json());
-      const names = (d.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace('models/', ''))
-        .filter(n => /^(gemini-[\d.]+-flash(-lite)?(-preview)?|gemini-flash(-lite)?-latest|gemma-\d)/.test(n) && !/tts|image|live|audio|embed|exp|banana|omni|lyria/.test(n));
-      localStorage.setItem('jarvisapp.foundModels', JSON.stringify(names)); localStorage.setItem('jarvisapp.foundAt', String(Date.now()));
-      const g = GONE(); for (const m of BASE_MODELS) if (names.length > 5 && !names.includes(m)) g.add(m); localStorage.setItem('jarvisapp.goneModels', JSON.stringify([...g]));
-    } catch {}
-  }
-  setTimeout(discover, 4000);
-  const alive = list => { const g = GONE(); const extra = discovered().filter(m => !list.includes(m)); return [...list, ...extra].filter(m => !g.has(m)); };
-  const GEMINI_MODELS = BASE_MODELS;
-  window.jarvisGeminiModels = tier => alive(tier === 'complex' ? ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3-flash-preview', 'gemini-3.7-flash', ...BASE_MODELS] : BASE_MODELS).filter((m, i, a) => a.indexOf(m) === i);
+  const GEMINI_MODELS = ['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.5-flash-lite', 'gemini-3.8-flash'];
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
   // Automatic model choice: quick/default questions → fastest lite model; complex ones (analysis, planning, maths) → stronger flash model first.
   const geminiOrder = tier => {
-    if (tier === 'complex') { const L = window.jarvisGeminiModels('complex'), ok = localStorage.getItem('jarvisapp.geminiModelC'); return ok && L.includes(ok) ? [ok, ...L.filter(m => m !== ok)] : L; } // son çalışan öne: boşuna yoğun modelleri beklemesin
-    const L = alive(GEMINI_MODELS), ok = localStorage.getItem('jarvisapp.geminiModel'); return ok && L.includes(ok) ? [ok, ...L.filter(m => m !== ok)] : L;
+    if (tier === 'complex') return ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'];
+    const ok = localStorage.getItem('jarvisapp.geminiModel'); return ok ? [ok, ...GEMINI_MODELS.filter(m => m !== ok)] : GEMINI_MODELS;
   };
   // Akıllı yönlendirici (brain.js) varsa: soğumadaki modelleri atlar, sağlıklı/hızlı olanı öne alır, sonuçları öğrenir.
   const gate = () => window.jarvisModelGate;
@@ -171,7 +152,7 @@
     const lang = ({ 'ar-SA': 'Arapça', 'en-US': 'İngilizce', 'ku': 'Kürtçe' })[setv('listenLang')] || 'Türkçe';
     const req = { contents: [{ role: 'user', parts: [{ inlineData: { mimeType: mime, data } }, { text: `Bu ses kaydındaki konuşmayı ${lang} olarak kelimesi kelimesine yazıya dök. Yalnızca söylenen metni yaz; yorum, açıklama, tırnak ekleme. Konuşma yoksa veya anlaşılmıyorsa tek kelime yaz: BOŞ` }] }], generationConfig: { temperature: 0, maxOutputTokens: 400 } };
     let last = null;
-    for (const model of routed(alive(['gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3-flash-preview', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.5-flash']), 'quick')) {
+    for (const model of routed(['gemini-flash-lite-latest', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.5-flash-lite'], 'quick')) {
       const t0 = performance.now();
       try {
         const r = await fetch(GEMINI + model + ':generateContent', { method: 'POST', signal: options.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(req) });
@@ -219,28 +200,22 @@
       parts: typeof m.content === 'string' ? [{ text: m.content }] : m.content.map(c => (c.type === 'image' || c.type === 'document' ? { inlineData: { mimeType: c.source.media_type, data: c.source.data } } : { text: c.text }))
     }));
     const tier = ['quick', 'default', 'complex'].includes(body.tier) ? body.tier : 'default';
-    const out = { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: Math.min(32000, Number(body.maxTokens) || MAX_TOKENS[tier] * 2) } };
-    if (/^gemma/.test(body._model || '')) { // Gemma: sistem talimatı ve araç desteklemez → talimat ilk kullanıcı mesajına eklenir
-      delete out.systemInstruction; const first = out.contents.find(c => c.role === 'user'); if (first && body.system) first.parts.unshift({ text: 'TALİMATLAR:\n' + String(body.system).slice(0, 24000) + '\n---\n' });
-      return out;
-    } // tasarım gibi uzun çıktılar daha fazla isteyebilir
+    const out = { systemInstruction: { parts: [{ text: String(body.system || '').slice(0, 40000) }] }, contents, generationConfig: { maxOutputTokens: Math.min(32000, Number(body.maxTokens) || MAX_TOKENS[tier] * 2) } }; // tasarım gibi uzun çıktılar daha fazla isteyebilir
     if (body.search) out.tools = [{ google_search: {} }];
     return out;
   }
-  async function gemini(body, signal, pass = 0) {
-    let last = null; const busy = [], T0 = performance.now();
-    const list = pass ? body._retry : routed(geminiOrder(body.tier), body.tier).filter(m => !(body.search && /^gemma/.test(m)));
-    for (const model of list) {
+  async function gemini(body, signal) {
+    let last = null;
+    for (const model of routed(geminiOrder(body.tier), body.tier)) {
       const t0 = performance.now();
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
       // Each model gets 20 s to start answering; a busy model is skipped instead of hanging the app.
       const ac = new AbortController(), stop = () => ac.abort();
       signal?.addEventListener('abort', stop, { once: true });
-      if (performance.now() - T0 > 55000 && last) break; // toplam süre sınırı: kullanıcı sonsuza dek beklemesin
-      const timer = setTimeout(stop, body.tier === 'complex' || body.search ? 25000 : 12000);
+      const timer = setTimeout(stop, 20000);
       let r;
       try {
-        r = await fetch(GEMINI + model + ':streamGenerateContent?alt=sse', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(geminiBody({ ...body, _model: model })) });
+        r = await fetch(GEMINI + model + ':streamGenerateContent?alt=sse', { method: 'POST', signal: ac.signal, headers: { 'Content-Type': 'application/json', 'x-goog-api-key': getKey() }, body: JSON.stringify(geminiBody(body)) });
       } catch (e) {
         clearTimeout(timer); signal?.removeEventListener('abort', stop);
         if (signal?.aborted) throw e;
@@ -252,16 +227,11 @@
       // Missing model, its free quota used up, or the model is overloaded: try the next one.
       if (r.status === 400 && body.search) { body = { ...body, search: false }; return gemini(body, signal); } // model without search tool support
       report(model, r.status, performance.now() - t0);
-      if (r.status === 404 && /no longer available|not found/i.test(await r.clone().text())) { markGone(model); last = r; continue; }
-      if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; if (r.status === 503) busy.push(model); continue; }
-      if (r.ok && !/^gemma/.test(model)) localStorage.setItem(body.tier === 'complex' ? 'jarvisapp.geminiModelC' : 'jarvisapp.geminiModel', model);
+      if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; continue; }
+      if (r.ok && body.tier !== 'complex') localStorage.setItem('jarvisapp.geminiModel', model);
       if (r.ok) window.jarvisLastModel = model;
       return r;
     }
-    // hepsi başarısız: (1) yoğunluk (503) verenleri kısa bir beklemeden sonra bir kez daha dene,
-    // (2) Google aramalı istekte arama kotası dolmuş olabilir → aramasız tekrar dene (Gemma dahil tüm modeller)
-    if (!pass && busy.length && !signal?.aborted) { await new Promise(r => setTimeout(r, 1500)); const r2 = await gemini({ ...body, _retry: busy }, signal, 1); if (r2?.ok) return r2; last = r2 || last; }
-    if (!pass && body.search && !signal?.aborted) { const r3 = await gemini({ ...body, search: false }, signal); if (r3?.ok) return r3; last = r3 || last; }
     return last;
   }
   function geminiStream(upstream) {

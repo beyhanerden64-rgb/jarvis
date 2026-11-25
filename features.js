@@ -128,7 +128,7 @@
     } },
     eksik_program: { d: 'eksik_program — ev egzersiz programı olmayan veya ev programına uymayan hastalar', run: () => { const a = patients.filter(p => !p.program), b = patients.filter(p => p.seanslar?.at(-1)?.uyum === 'uymadı'); return `Programı olmayan (${a.length}): ${a.map(p => aiName(p) + (p.tani ? ' – ' + p.tani : '')).join(', ') || 'yok'}\nEv programına uymayan (${b.length}): ${b.map(aiName).join(', ') || 'yok'}`; } },
     program_kaydet: { d: 'program_kaydet|hasta adı|program metni — hastanın ev egzersiz programını kaydeder', run: ([q, t]) => { const p = findPatient(q); if (!p) throw Error('Hasta bulunamadı: ' + q); if (!t) throw Error('Program metni boş'); p.program = String(t).slice(0, 8000); p.programT = Date.now(); savePatients(); return 'Program kaydedildi: ' + initials(p.ad); } },
-    kasa: { d: 'kasa|gelir veya gider|tutar|açıklama — klinik gelir/gider kaydı', run: ([t, a, desc = '']) => { const amt = Number(String(a).replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.').replace(/[^\d.]/g, '')); if (!/^(gelir|gider)$/.test(fold(t)) || !(amt > 0)) throw Error('Biçim: kasa|gelir veya gider|tutar|açıklama'); ledger.push({ id: uid('k'), d: day(), type: fold(t), amt, desc }); saveLedger(); const s = monthSum(); return `Kaydedildi. Bu ay: gelir ${tl(s.g)}, gider ${tl(s.c)}, net ${tl(s.net)}.`; } },
+    kasa: { d: 'kasa|gelir veya gider|tutar|açıklama — klinik gelir/gider kaydı', run: ([t, a, desc = '']) => { const amt = Number(String(a).replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '')); if (!/^(gelir|gider)$/.test(fold(t)) || !(amt > 0)) throw Error('Biçim: kasa|gelir veya gider|tutar|açıklama'); ledger.push({ id: uid('k'), d: day(), type: fold(t), amt, desc }); saveLedger(); const s = monthSum(); return `Kaydedildi. Bu ay: gelir ${tl(s.g)}, gider ${tl(s.c)}, net ${tl(s.net)}.`; } },
     kasa_ozet: { d: 'kasa_ozet|YYYY-MM (boş: bu ay) — aylık gelir, gider, net ve en büyük kalemler', run: ([m]) => { const s = monthSum(m || undefined); const top = ledger.filter(x => x.d.startsWith(s.m) && x.type === 'gider').sort((a, b) => b.amt - a.amt).slice(0, 5); return `${s.m}: gelir ${tl(s.g)}, gider ${tl(s.c)}, net ${tl(s.net)} (${s.n} kayıt). En büyük giderler: ${top.map(x => x.desc + ' ' + tl(x.amt)).join(', ') || '-'}`; } },
     envanter: { d: 'envanter|malzeme|adet (+/- ile değişim)|en az adet — malzeme/ekipman stoğu', run: ([n, q, min]) => { if (!n) return stock.map(s => `${s.n}: ${s.q}${s.q <= s.min ? ' (AZALDI)' : ''}`).join('\n') || 'Envanter boş.'; let s = stock.find(x => fold(x.n) === fold(n)); if (!s) { s = { n, q: 0, min: 0 }; stock.push(s); } const v = String(q || '0'); s.q = /^[+-]/.test(v) ? s.q + Number(v) : Number(v); if (min) s.min = Number(min); saveStock(); return `${s.n}: ${s.q} adet${s.q <= s.min ? ' — en az seviyenin altında, sipariş ver' : ''}.`; } }
   });
@@ -227,18 +227,11 @@
   async function camera() {
     if (!navigator.mediaDevices?.getUserMedia) return note('Bu cihazda kamera erişimi yok. Ataç ile fotoğraf seçebilirsin.');
     let s;
-    try { s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1600 } }, audio: false }); }
-    catch (e) {
-      const n = e?.name || '';
-      return note(/NotFound|DevicesNotFound|Overconstrained/.test(n) ? 'Bu cihazda kamera bulunamadı. Bilgisayara kamera takılı değilse fotoğrafı ataç (📎) ile ekleyebilirsin.'
-        : /NotReadable|TrackStart/.test(n) ? 'Kamera başka bir uygulama tarafından kullanılıyor (Zoom, Teams, Kamera uygulaması…). Onu kapatıp tekrar dene.'
-        : /NotAllowed|Security/.test(n) ? 'Kamera izni verilmedi. Adres çubuğundaki kilit simgesi → Kamera → İzin ver.'
-        : 'Kamera açılamadı: ' + (e?.message || n));
-    }
+    try { s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1600 } }, audio: false }); } catch { return note('Kamera izni verilmedi.'); }
     const v = el('video', { autoplay: true, playsinline: true, muted: true }); v.srcObject = s;
     const close = () => { s.getTracks().forEach(t => t.stop()); box.remove(); };
     const box = el('div', { class: 'camera' }, v, el('div', { class: 'row' },
-      el('button', { type: 'button', class: 'btn', onclick: async () => { const c = document.createElement('canvas'); const k = Math.min(1, 1568 / Math.max(v.videoWidth, v.videoHeight)); c.width = v.videoWidth * k; c.height = v.videoHeight * k; c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85)); close(); await setImage(new File([b], 'kamera.jpg', { type: 'image/jpeg' }), 'Kamera'); const q = $('prompt').value.trim(); $('prompt').value = ''; autosize(); typedTurn(q || 'Bu görüntüde ne var? Yazı varsa oku, önemli noktaları söyle.', false); } }, '◉ Çek'),
+      el('button', { type: 'button', class: 'btn', onclick: async () => { const c = document.createElement('canvas'); const k = Math.min(1, 1568 / Math.max(v.videoWidth, v.videoHeight)); c.width = v.videoWidth * k; c.height = v.videoHeight * k; c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85)); close(); await setImage(new File([b], 'kamera.jpg', { type: 'image/jpeg' }), 'Kamera'); $('prompt').value = 'Bu görüntüde ne var? Yazı varsa oku, önemli noktaları söyle.'; autosize(); } }, '◉ Çek'),
       el('button', { type: 'button', class: 'btn', onclick: close }, 'Kapat')));
     document.body.append(box);
   }

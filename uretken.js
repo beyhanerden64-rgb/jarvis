@@ -121,7 +121,7 @@
   /* ================= 4) ALACAK TAKİBİ ================= */
   const recs = () => store.get('receivables', []);
   const saveRecs = r => store.set('receivables', r);
-  const amtOf = s => Number(String(s).replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.').replace(/[^\d.]/g, ''));
+  const amtOf = s => Number(String(s).replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
   const due = r => r.tutar - (r.odenen || []).reduce((a, x) => a + x.amt, 0);
   function alacak(op, ad = '', tutar = '', aciklama = '') {
     const R = recs(), p = ad ? pat(ad) : null, name = p?.ad || String(ad).trim();
@@ -254,7 +254,7 @@
     const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(file); });
     const prompt = (q ? `Soru: ${q}\nÖnce bu soruyu belgeye dayanarak yanıtla, sonra özetle.\n` : '') + 'Bu PDF belgesini TÜRKÇE özetle. Biçim:\nKISA ÖZET (2-3 cümle)\nANA NOKTALAR (madde madde, en çok 8)\nÖNEMLİ RAKAMLAR/TARİHLER\nYAPILACAKLAR / DİKKAT EDİLECEKLER\nBelgede olmayan bilgi ekleme.';
     let last = '';
-    for (const m of (window.jarvisGeminiModels?.('complex') || ['gemini-flash-latest', 'gemini-3-flash-preview', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite']).filter(m => !/^gemma/.test(m))) {
+    for (const m of ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite']) {
       try {
         const r = await withTimeout(fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ inlineData: { mimeType: 'application/pdf', data: b64 } }, { text: prompt }] }] }) }), 90000, 'zaman aşımı');
         if (!r.ok) { last = m + ': HTTP ' + r.status; continue; }

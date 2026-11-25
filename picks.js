@@ -134,7 +134,7 @@
     return { sym: 'GRAM ALTIN', c: G(g.c).map((v, i) => v / 31.1034768 * T[i]), h: G(g.h).map((v, i) => v / 31.1034768 * T[i]), l: G(g.l).map((v, i) => v / 31.1034768 * T[i]), v: null };
   }
   // Yahoo (her borsa): bilgisayar yardımcısı → doğrudan → açık vekil geçitler (en başarılı olan öne alınır)
-  const GATES = [['jina', u => 'https://r.jina.ai/' + u, { headers: { 'X-Return-Format': 'text' } }], ['doğrudan', u => u]]; // allorigins/codetabs öldü (25.11.2026 testi)
+  const GATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)]];
   const bump = (i, d) => { const r = store.get('pkGate', {}); const k = GATES[i][0]; r[k] = Math.max(-5, Math.min(20, (r[k] || 0) + d)); store.set('pkGate', r); };
   // devre kesici: bir taramada Yahoo'ya hiçbir yoldan ulaşılamıyorsa kalan sembolleri dakikalarca bekletme
   const yh = { ok: 0, dead: 0 };
@@ -147,7 +147,7 @@
   async function proxiedRaw(url, ms) {
     const r = store.get('pkGate', {}), fails = [];
     for (const i of [...GATES.keys()].sort((a, b) => (r[GATES[b][0]] || 0) - (r[GATES[a][0]] || 0))) {
-      try { const res = await withTimeout(fetch(GATES[i][1](url), GATES[i][2]), GATES[i][0] === 'doğrudan' ? 5000 : ms + 4000, 'zaman aşımı'); if (!res.ok) throw Error(); const j = await res.json(); bump(i, 1); fails.forEach(f => bump(f, -1)); return j; } catch { fails.push(i); }
+      try { const res = await withTimeout(fetch(GATES[i][1](url)), i ? ms : 6000, 'zaman aşımı'); if (!res.ok) throw Error(); const j = await res.json(); bump(i, 1); fails.forEach(f => bump(f, -1)); return j; } catch { fails.push(i); }
     }
     throw Error('ulaşılamadı');
   }
@@ -360,7 +360,7 @@
     const old = live.ws; live.ws = null; try { old?.close(); } catch {}
     let ws; try { ws = new WebSocket(WS[live.gate % WS.length] + [...live.subs].map(s => s.toLowerCase() + '@miniTicker').join('/')); } catch { return retry(); }
     live.ws = ws; live.state = 'bağlanıyor'; paintLive();
-    ws.onopen = () => { if (live.ws !== ws) return; live.tries = 0; live.state = 'canlı'; live.last = Date.now(); clearInterval(live.poll); live.poll = 0; paintLive(); };
+    ws.onopen = () => { if (live.ws !== ws) return; live.tries = 0; live.state = 'canlı'; live.last = Date.now(); paintLive(); };
     ws.onmessage = ev => {
       try {
         const d = JSON.parse(ev.data).data; if (!d?.s) return;
@@ -372,18 +372,7 @@
     ws.onclose = () => { if (live.ws === ws) { live.ws = null; live.state = 'yeniden bağlanıyor'; paintLive(); retry(); } };
     ws.onerror = () => { try { ws.close(); } catch {} };
   }
-  function retry() { clearTimeout(live.rt); live.tries++; if (live.tries % 3 === 0) live.gate++; if (live.tries >= 2) restPoll(); live.rt = setTimeout(liveConnect, Math.min(30000, 1000 * 2 ** Math.min(5, live.tries))); }
-  // WebSocket bu ağda/tarayıcıda açılamazsa (25.11.2026: masaüstü tarayıcıda bağlanamadı) fiyatlar 15 sn'de bir REST ile güncellenir
-  async function restPollOnce() {
-    if (live.ws?.readyState === 1 && Date.now() - live.last < 30000) { clearInterval(live.poll); live.poll = 0; return; }
-    if (document.hidden) return;
-    try {
-      const d = await withTimeout(fetch('https://data-api.binance.vision/api/v3/ticker/24hr?type=MINI&symbols=' + encodeURIComponent(JSON.stringify([...live.subs]))), 10000, 'zaman aşımı').then(r => r.ok ? r.json() : []);
-      for (const x of d) { const p = +x.lastPrice, o = +x.openPrice; live.prices[x.symbol] = { p, ch: o ? (p / o - 1) * 100 : 0, t: Date.now(), h: +x.highPrice || 0, l: +x.lowPrice || 0, q: +x.quoteVolume || 0 }; for (const f of live.fn) { try { f(x.symbol, live.prices[x.symbol]); } catch {} } }
-      if (d.length) { live.last = Date.now(); live.state = 'yedek akış · 15 sn'; paintLive(); }
-    } catch {}
-  }
-  function restPoll() { if (live.poll) return; restPollOnce(); live.poll = setInterval(restPollOnce, 15000); }
+  function retry() { clearTimeout(live.rt); live.tries++; if (live.tries % 3 === 0) live.gate++; live.rt = setTimeout(liveConnect, Math.min(30000, 1000 * 2 ** Math.min(5, live.tries))); }
   function liveSub(syms) {
     const add = syms.filter(s => /^[A-Z0-9]{3,20}$/.test(s) && !live.subs.has(s)); if (!add.length) return;
     add.forEach(s => live.subs.add(s));

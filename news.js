@@ -87,7 +87,8 @@
   const GATES = [
     ['doğrudan', u => u],
     ['rss2json', u => 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(u)],
-    ['jina', u => 'https://r.jina.ai/' + u, { headers: { 'X-Return-Format': 'text' } }], // allorigins/codetabs öldü (25.11.2026)
+    ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)],
+    ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)],
     ['köprü', u => window.jarvisBridge.wrap(u)]
   ];
   const gateRank = () => { const ok = store.get('newsGate', {}); return [...GATES.keys()].sort((a, b) => (ok[GATES[b][0]] || 0) - (ok[GATES[a][0]] || 0)); };
@@ -114,7 +115,7 @@
     const order = gateRank().filter(i => GATES[i][0] !== 'köprü' || window.jarvisBridge?.on()).sort((a, b) => (GATES[b][0] === 'köprü') - (GATES[a][0] === 'köprü'));
     for (const i of order) {
       try {
-        const r = await withTimeout(fetch(GATES[i][1](url), GATES[i][2]), i === 0 ? 5000 : 12000, 'zaman aşımı');
+        const r = await withTimeout(fetch(GATES[i][1](url)), i === 0 ? 5000 : 12000, 'zaman aşımı');
         if (!r.ok) throw Error('HTTP ' + r.status);
         const it = parseFeed(await r.text(), name);
         if (!it.length) throw Error('boş');
@@ -131,10 +132,7 @@
     return res.flatMap(r => r.status === 'fulfilled' ? r.value : []).filter(x => Date.now() - x.t < 2 * DAY).map(x => ({ ...x, lang: trish(x.title) ? 'tr' : 'en' }));
   }
   async function gdeltArts(q, span) {
-    // devre kesici: GDELT bu ağdan çoğu zaman yanıt vermiyor (25.11.2026 testi); düşünce 1 saat hiç denenmez, akış RSS ile sürer
-    if (Date.now() < store.get('gdeltDown', 0)) throw Error('GDELT kapalı (devre kesici)');
-    let d; try { d = await Promise.race([gdelt(q, span), new Promise((_, j) => setTimeout(() => j(Error('GDELT yavaş')), 8000))]); }
-    catch (e) { store.set('gdeltDown', Date.now() + 3600000); throw e; }
+    const d = await Promise.race([gdelt(q, span), new Promise((_, j) => setTimeout(() => j(Error('GDELT yavaş')), 10000))]);
     return (d.articles || []).filter(a => /^(turkish|english)$/i.test(a.language || '')).map(a => ({ title: String(a.title || '').trim(), url: a.url, img: /^https:\/\//.test(a.socialimage || '') ? a.socialimage : '', domain: a.domain, lang: /turk/i.test(a.language) ? 'tr' : 'en', t: pdate(a.seendate) }));
   }
   async function collect(key, q, span) { // RSS + GDELT birlikte; hangisi gelirse
@@ -262,7 +260,7 @@
   const keyOf = s => KEYMAP.find(([re]) => re.test(s))?.[1] || null;
   Object.assign(TOOLS, {
     haber: { d: 'haber|son veya ekonomi/finans/merkez/saglik/siyaset/karar/afet/abd/avrupa/cin/rusya/turkiye — anlık haber akışı (binlerce kaynak, kümelenmiş, kaynak sayılı, Türkçe)', run: async ([k]) => { const key = CATS[fold(k || '')] ? fold(k) : keyOf(k || '') || 'son'; const items = key === 'son' ? await breaking() : await translate(await fetchCat(key)); return fmt(items || [], 10) + '\n(Tarafsız aktar; kaynak sayısını belirt; doğrulanmamışı iddia olarak söyle.)'; } },
-    gundem_brifing: { d: 'gundem_brifing|kategori (boş: tümü) — ekonomi/sağlık/siyaset başlıklarında tarafsız gündem özeti', run: async ([k]) => (await brief(CATS[fold(k || '')] ? fold(k) : 'son')) || 'Brifing hazırlanamadı (yapay zekâ anahtarı veya bağlantı sorunu); “haber” aracıyla başlıkları verebilirim.' }
+    gundem_brifing: { d: 'gundem_brifing|kategori (boş: tümü) — ekonomi/sağlık/siyaset başlıklarında tarafsız gündem özeti', run: async ([k]) => (await brief(CATS[fold(k || '')] ? fold(k) : 'son')) || 'brifing yok' }
   });
   const _tp = toolsPrompt;
   toolsPrompt = () => _tp() + '\nGÜNDEM: haber/son dakika/gelişme sorularında haber aracını (uygun kategoriyle), özet istenirse gundem_brifing kullan. Haberleri tarafsız aktar, kaynak sayısını söyle, siyasi taraf tutma, doğrulanmamış bilgiyi iddia olarak belirt.';

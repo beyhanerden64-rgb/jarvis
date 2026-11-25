@@ -54,18 +54,12 @@
       st.b68 = b68; st.b95 = b95;
       quant = `NİCEL VERİ (${st.label}, birim ${st.unit}): son fiyat ${nf(st.last)}; 7 gün ${nf(st.ch7, 1)}%, 30 gün ${nf(st.ch30, 1)}%; günlük oynaklık %${nf(st.sd * 100, 2)}; RSI ${st.rsi ? nf(st.rsi, 0) : '—'}; 50 günlük ort. ${nf(st.s50)}${st.s200 ? ', 200 günlük ort. ' + nf(st.s200) : ''}.\nOYNAKLIĞA GÖRE ${days} GÜN SONRASI ARALIĞI: %68 olasılıkla ${nf(b68[0])}–${nf(b68[1])}; %95 olasılıkla ${nf(b95[0])}–${nf(b95[1])}.`;
     } else if (st?.q) quant = 'GÜNCEL: ' + st.q.text;
-    // KAHİN (ölçülmüş model) varsa çapa olarak eklenir: olasılık ve aralıklar ondan, senaryolar onunla tutarlı olmalı
-    if (st && window.jarvisKahin && days <= 90) { try { const K = await window.jarvisKahin.forecast(subject, days); quant += `\nKAHİN ÖLÇÜLMÜŞ MODEL (${K.H} gün): yükseliş olasılığı %${Math.round(K.p * 100)} (${K.M.skilled ? 'örneklem dışı testte ANLAMLI avantaj' : 'yön için avantaj YOK — yönü %50 kabul et'}; Brier beceri ${(K.M.bss * 100).toFixed(1)}%, p=${K.M.pval.toFixed(2)}); medyan ${nf(K.q[50])}; %80 aralık ${nf(K.q[10])}–${nf(K.q[90])}; %95 aralık ${nf(K.q[2.5])}–${nf(K.q[97.5])}. Senaryo olasılıklarını ve aralıkları BUNA göre ver.`; } catch {} }
     setPhase('thinking', 'Senaryoları hesaplıyorum…');
-    let raw; try { raw = await window.jarvisResearch.ask(`Sen deneyimli bir tahminci ve analistsin (süper-tahminci yaklaşımı: temel oranlar, güncel veri, belirsizlik). Bugün ${ymd(Date.now())}. Vade: ${days} gün (${until}).
+    const raw = await window.jarvisResearch.ask(`Sen deneyimli bir tahminci ve analistsin (süper-tahminci yaklaşımı: temel oranlar, güncel veri, belirsizlik). Bugün ${ymd(Date.now())}. Vade: ${days} gün (${until}).
 Verilen nicel veriyi ÇAPA olarak kullan; aralıkları bu oynaklıkla tutarlı tut. Haber bağlamını hesaba kat. Olasılıklar toplamı 100 olsun. Kesinlik/garanti ifadesi kullanma; “al/sat” deme.
 YALNIZ JSON:
 {"ozet":"2 cümle, doğrudan cevap (en olası sonuç ve olasılığı)","senaryolar":[{"ad":"İyimser","olasilik":25,"aralik":"sayısal aralık ya da sonuç","aciklama":"neden, hangi koşulda"},{"ad":"Temel",...},{"ad":"Kötümser",...}],"gostergeler":["tahmini destekleyen/zayıflatan veriler"],"izlenecek":["bu tahmini değiştirecek olaylar/tarihler"],"guven":"düşük|orta|yüksek","olculebilir":{"metin":"vade sonunda doğrulanabilir TEK cümle (temel senaryo)","olasilik":55,"alt":sayı ya da null,"ust":sayı ya da null}}`,
-      `KONU: ${subject}\n${quant}\nGÜNCEL BAĞLAM: ${ctx.text || '(alınamadı)'}`, 'complex'); }
-    catch (e) { // yapay zekâ kotası/yoğunluğu: piyasa konusunda KAHİN yapay zekâsız tahmini verir
-      if (st && !st.quoteOnly && window.jarvisKahin && days <= 90) { setPhase('idle', 'Hazırım.'); return '⚠ Yapay zekâ şu an yanıt vermiyor (' + e.message + '); ölçülmüş model tahmini:\n\n' + window.jarvisKahin.text(await window.jarvisKahin.forecast(subject, days)); }
-      throw e;
-    }
+      `KONU: ${subject}\n${quant}\nGÜNCEL BAĞLAM: ${ctx.text || '(alınamadı)'}`, 'complex');
     let j = jsonOf(raw);
     if (!j?.senaryolar?.length) { // ikinci deneme: daha sıkı biçim, başka model katmanı
       const raw2 = await window.jarvisResearch.ask('Aşağıdaki tahmin metnini YALNIZ şu JSON’a dönüştür, başka hiçbir şey yazma: {"ozet":"…","senaryolar":[{"ad":"İyimser","olasilik":0,"aralik":"…","aciklama":"…"},{"ad":"Temel",…},{"ad":"Kötümser",…}],"gostergeler":[],"izlenecek":[],"guven":"orta","olculebilir":{"metin":"…","olasilik":50,"alt":null,"ust":null}}', String(raw).slice(0, 6000), 'default').catch(() => '');

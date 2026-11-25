@@ -31,12 +31,11 @@
 
   /* ---------- prob araçları ---------- */
   const tFetch = (url, o = {}, ms = 10000) => withTimeout(fetch(url, o), ms, 'zaman aşımı');
-  const jOk = (url, test, o, ms) => async () => { let r; try { r = await tFetch(url, o, ms); } catch (e) { if (o || !window.jarvisBridge?.on() || /yahoo|jina|tradingview|rss2json|binance|script\.google/.test(url)) throw e; /* geçit denemeleri kendi başına ölçülür */ const t = await window.jarvisViaBridge(url, ms || 20000); if (!test(JSON.parse(t))) throw Error('beklenmeyen yanıt'); return; } if (!r.ok) throw Error('HTTP ' + r.status); const j = await r.json(); if (!test(j)) throw Error('beklenmeyen yanıt'); };
+  const jOk = (url, test, o, ms) => async () => { let r; try { r = await tFetch(url, o, ms); } catch (e) { if (o || !window.jarvisBridge?.on() || /yahoo|allorigins|codetabs|rss2json|binance|script\.google/.test(url)) throw e; /* geçit denemeleri kendi başına ölçülür */ const t = await window.jarvisViaBridge(url, ms || 20000); if (!test(JSON.parse(t))) throw Error('beklenmeyen yanıt'); return; } if (!r.ok) throw Error('HTTP ' + r.status); const j = await r.json(); if (!test(j)) throw Error('beklenmeyen yanıt'); };
   const tOk = (url, test, ms) => async () => { const r = await tFetch(url, {}, ms); if (!r.ok) throw Error('HTTP ' + r.status); const t = await r.text(); if (!test(t)) throw Error('beklenmeyen yanıt'); };
   const YURL = 'https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=5d&interval=1d';
   const RSS = 'https://feeds.bbci.co.uk/turkce/rss.xml';
-  const JH = { headers: { 'X-Return-Format': 'text' } };
-  const YGATES = [['jina', u => 'https://r.jina.ai/' + u, JH]]; // allorigins/codetabs/doğrudan Yahoo öldü (25.11.2026 canlı testi)
+  const YGATES = [['doğrudan', u => u], ['allorigins', u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u)], ['codetabs', u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)]];
   const yOk = j => j?.chart?.result?.[0]?.meta?.regularMarketPrice > 0;
   function wsProbe() {
     return new Promise((res, rej) => {
@@ -58,11 +57,11 @@
     ['doviz', 'Döviz kuru (ExchangeRate-API)', jOk('https://open.er-api.com/v6/latest/USD', j => j.rates?.TRY > 0)],
     ['altin', 'Kapalıçarşı fiyatı (Truncgil)', jOk('https://finans.truncgil.com/v4/today.json', j => !!j && typeof j === 'object')],
     ['hisse', 'Hisse · kendi Google köprün', async () => { if (!window.jarvisBridge?.on()) throw Error('kurulmadı — PİYASA → Hisse köprüsü'); await jOk(window.jarvisBridge.wrap(YURL.replace('AAPL', 'THYAO.IS')), yOk, undefined, 20000)(); }, 0, 'köprü'],
-    ['hisse', 'TradingView anlık fiyat (BIST, ABD, endeks, emtia)', async () => { const m = await window.jarvisSrc.tv(['XU100.IS', 'AAPL']); if (!m.size) throw Error('veri yok'); }, 1],
-    ...YGATES.map(([n, g, o]) => ['hisse', 'Yahoo grafik · ' + n, jOk(g(YURL), yOk, o, 16000), 0, n]),
+    ...YGATES.map(([n, g]) => ['hisse', 'Yahoo hisse · ' + n, jOk(g(YURL), yOk), 0, n]),
     ['haber', 'Haber geçidi · rss2json', jOk('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(RSS), j => Array.isArray(j.items) && j.items.length > 0), 0, 'rss2json'],
-    ['haber', 'Haber geçidi · jina', async () => { const r = await tFetch('https://r.jina.ai/' + RSS, JH, 16000); if (!r.ok) throw Error('HTTP ' + r.status); if (!/<item|<entry/.test(await r.text())) throw Error('beklenmeyen yanıt'); }, 0, 'jina'],
-    ['haber', 'Haber · DW Türkçe (doğrudan)', tOk('https://rss.dw.com/rdf/rss-tur-all', t => /<item|<entry/.test(t), 12000)],
+    ['haber', 'Haber geçidi · allorigins', tOk('https://api.allorigins.win/raw?url=' + encodeURIComponent(RSS), t => /<item|<entry/.test(t), 15000), 0, 'allorigins'],
+    ['haber', 'Haber geçidi · codetabs', tOk('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RSS), t => /<item|<entry/.test(t), 15000), 0, 'codetabs'],
+    ['haber', 'GDELT dünya haberleri', jOk('https://api.gdeltproject.org/api/v2/doc/doc?query=economy&mode=artlist&format=json&maxrecords=1', j => Array.isArray(j.articles), undefined, 20000)],
     ['afet', 'Deprem (USGS)', jOk('https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&limit=1', j => Array.isArray(j.features))],
     ['hava', 'Hava (Open-Meteo)', jOk('https://api.open-meteo.com/v1/forecast?latitude=37.33&longitude=42.19&current=temperature_2m', j => j.current?.temperature_2m != null)],
     ['gorsel', 'Görsel üretimi (Pollinations)', imgOk('https://image.pollinations.ai/prompt/blue%20circle?width=64&height=64&nologo=true&seed=7')],
@@ -126,7 +125,8 @@
     for (const k of bad) {
       if (CACHE.test(k)) { try { const q = JSON.parse(localStorage.getItem('jarvisapp.grdQuar') || '{}'); q[k] = String(localStorage.getItem(k)).slice(0, 2000); localStorage.setItem('jarvisapp.grdQuar', JSON.stringify(q)); localStorage.removeItem(k); healed.push(k.replace('jarvisapp.', '')); } catch {} }
     }
-    return { bad: bad.map(k => k.replace('jarvisapp.', '')), healed };
+    let kb = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); kb += (k.length + (localStorage.getItem(k) || '').length) * 2 / 1024; } } catch {}
+    return { bad: bad.map(k => k.replace('jarvisapp.', '')), healed, kb: Math.round(kb), full: !!window.__storeFull };
   }
 
   /* ---------- tam tarama ---------- */
@@ -141,7 +141,7 @@
           const [cat, name, fn, crit, gate, only] = PROBES[i++]; const s = Date.now();
           if (only === 'manual' && !manual) continue; // kotalı deneme yalnız elle taramada
           if (gate === 'köprü' && !window.jarvisBridge?.on()) continue; // kurulmamış köprü arıza sayılmaz
-          try { try { await fn(); } catch (e) { if (!/failed to fetch|zaman aşımı|network|load failed/i.test(e?.message || '')) throw e; await new Promise(r => setTimeout(r, 1500)); await fn(); } /* geçici ağ hatasında bir kez daha dene */ res.push({ cat, name, ok: true, ms: Date.now() - s, crit, gate }); } catch (e) { res.push({ cat, name, ok: false, ms: Date.now() - s, why: String(e.message || e).slice(0, 90), crit, gate }); }
+          try { await fn(); res.push({ cat, name, ok: true, ms: Date.now() - s, crit, gate }); } catch (e) { res.push({ cat, name, ok: false, ms: Date.now() - s, why: String(e.message || e).slice(0, 90), crit, gate }); }
         }
       }));
       res.sort((a, b) => PROBES.findIndex(p => p[1] === a.name) - PROBES.findIndex(p => p[1] === b.name));
@@ -189,7 +189,7 @@
     try { const VL = store.get('voiceLog', []).slice(-6); if (VL.length) L.push('SON SES OLAYLARI: ' + VL.map(x => new Date(x.at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) + ' ' + x.t).join(' · ')); } catch {}
     const mOk = R.mods.filter(m => m[1]).length; L.push(`\nMODÜLLER: ${mOk}/${R.mods.length} yüklü${mOk < R.mods.length ? ' — eksik: ' + R.mods.filter(m => !m[1]).map(m => m[0]).join(', ') : ''}`);
     const tOk = R.tests.filter(x => x[1]).length; L.push(`İÇ TESTLER: ${tOk}/${R.tests.length} geçti${tOk < R.tests.length ? ' — başarısız: ' + R.tests.filter(x => !x[1]).map(x => x[0] + (x[2] ? ' (' + x[2] + ')' : '')).join('; ') : ''}`);
-    L.push(`DEPOLAMA: ${R.store.bad.length ? 'bozuk kayıt: ' + R.store.bad.join(', ') + (R.store.healed.length ? ' (önbellek olanlar karantinaya alındı)' : ' (asıl veri — silinmedi, yedekten geri yüklenebilir)') : 'sağlam'}`);
+    L.push(`DEPOLAMA: ${R.store.bad.length ? 'bozuk kayıt: ' + R.store.bad.join(', ') + (R.store.healed.length ? ' (önbellek olanlar karantinaya alındı)' : ' (asıl veri — silinmedi, yedekten geri yüklenebilir)') : 'sağlam'}${R.store.kb ? ` · ${R.store.kb} KB kullanılıyor` : ''}${R.store.full ? ' · ⚠️ HAFIZA DOLU: bazı kayıtlar yazılamadı — yedek al, eski görselleri sil' : ''}`);
     L.push(`ÇALIŞMA HATALARI (24 saat): ${R.errs.length ? R.errs.slice(0, 6).map(e => `${e.mod}: ${short(e.msg, 70)} ×${e.n}`).join(' · ') : 'yok'}`);
     if (R.fixes?.length) L.push(`\nOTOMATİK ONARIM:\n• ` + R.fixes.join('\n• '));
     const dead = R.res.filter(r => !r.ok);

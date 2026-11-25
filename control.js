@@ -16,7 +16,7 @@
     const shot = await pcCall('ekran', [], false);
     const geo = shot.screen || window.jarvisLastScreen;
     if (!shot.image || !geo?.width) throw Error('Ekran görüntüsü alınamadı');
-    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system: 'Ekran görüntüsünde istenen öğeyi bul. YALNIZCA JSON yaz: {"bulundu":true,"x":0-1000,"y":0-1000,"ad":"öğenin görünen adı"} — x ve y öğenin MERKEZİNİN görüntü genişliği ve yüksekliğine göre binde biri cinsinden konumu. Bulamazsan {"bulundu":false,"neden":"..."}', messages: [{ role: 'user', content: 'Bul: ' + target }], image: { mediaType: shot.mime || 'image/jpeg', data: shot.image } }) });
+    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system: 'Ekran görüntüsünde istenen öğeyi bul. YALNIZCA JSON yaz: {"bulundu":true,"x":0-1000,"y":0-1000,"ad":"öğenin görünen adı"} — x ve y öğenin MERKEZİNİN görüntü genişliği ve yüksekliğine göre binde biri cinsinden konumu. Bulamazsan {"bulundu":false,"neden":"..."}', messages: [{ role: 'user', content: 'Bul: ' + target }], image: { mediaType: 'image/jpeg', data: shot.image } }) });
     if (!r.ok) throw Error('Görüntü incelenemedi (' + r.status + ')');
     const raw = (await r.text()).split('\u0000')[0];
     let j; try { j = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)); } catch { throw Error('Hedef konumu anlaşılamadı'); }
@@ -28,7 +28,7 @@
     if (fold(how) === 'cift') await pcCall('fare', ['ciftik'], true);
     await sleep(900);
     const after = await pcCall('ekran', [], false);
-    return { text: `“${j.ad || target}” öğesine tıklandı (${x}, ${y}). Tıklama sonrası ekran görüntüsü ekte; sonucu kontrol et.`, image: after.image ? { mediaType: after.mime || 'image/jpeg', data: after.image } : null };
+    return { text: `“${j.ad || target}” öğesine tıklandı (${x}, ${y}). Tıklama sonrası ekran görüntüsü ekte; sonucu kontrol et.`, image: after.image ? { mediaType: 'image/jpeg', data: after.image } : null };
   }
 
   /* ================= 2) telefona anlık bildirim (ntfy.sh) ================= */

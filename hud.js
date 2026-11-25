@@ -70,7 +70,7 @@
     a.classList.toggle('hot', id === 'gCpu' && frac > 0.85);
     $(id + 'Txt').textContent = text;
   }
-  async function gaugesTick() {
+  async function gaugesTick() { if (document.hidden) return;
     try { const b = await navigator.getBattery?.(); if (b) setGauge('gBat', b.level, Math.round(b.level * 100) + '%'); } catch {}
     const today = isoLocal(now()).slice(0, 10), t = items.filter(i => i.kind === 'task' && (i.due || '').startsWith(today));
     const done = t.filter(i => i.done).length; setGauge('gTask', t.length ? done / t.length : 0, t.length ? `${done}/${t.length}` : '0');
@@ -216,13 +216,13 @@
   const ticker = el('div', { class: 'ticker', 'aria-label': 'Canlı bilgi şeridi' }, el('div', { class: 'tk-track', id: 'tkTrack' }));
   document.querySelector('.dock').append(ticker);
   const tk = { wx: '', btc: '', fx: '', quake: '' };
-  async function tickerData() {
+  async function tickerData() { if (document.hidden) return;
     try { const r = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22%5D'); const d = await r.json(); tk.btc = d.map(x => `${x.symbol.replace('USDT', '')} ${Number(x.lastPrice).toLocaleString('tr-TR', { maximumFractionDigits: 0 })}$ ${Number(x.priceChangePercent) >= 0 ? '▲' : '▼'}${Math.abs(Number(x.priceChangePercent)).toFixed(1)}%`).join('  ·  '); } catch {}
     try { const d = (await window.jarvisFx('USD', ['TRY', 'EUR'])).rates; tk.fx = `USD/TRY ${d.TRY.toFixed(2)}  ·  EUR/TRY ${(d.TRY / d.EUR).toFixed(2)}`; } catch {}
     try { tk.quake = await lastQuake(); } catch {}
     renderTicker();
   }
-  function renderTicker() {
+  function renderTicker() { if (document.hidden) return;
     const parts = [`CİZRE ${$('wx').textContent}`, tk.btc, tk.fx, tk.quake, '▸ ' + $('hNext').textContent, `GÖREV ${items.filter(i => i.kind === 'task' && !i.done).length} AÇIK`, `HAFIZA ${items.filter(i => i.kind === 'memory').length}`, `HASTA ${patients.length}`, ...(window.jarvisTickerExtra?.() || [])].filter(Boolean);
     const line = parts.join('   ◆   ');
     $('tkTrack').replaceChildren(el('span', {}, line), el('span', { 'aria-hidden': 'true' }, line));
@@ -384,5 +384,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v35.0.0`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v25.0.3`;
 })();

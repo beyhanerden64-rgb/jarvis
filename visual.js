@@ -154,7 +154,7 @@ KESİN KURALLAR:
 - Marka: ${b.ad} — ${b.alt}. Renkler: ${b.renk}. ${b.iletisim ? 'İletişim: ' + b.iletisim + ' (altta küçük).' : ''} Logo yerine şık bir yazı-logo kullan.
 - Sağlık içeriğinde doğru ve abartısız bilgi; tıbbi iddia uydurma. Gerçek kişi/hasta adı yazma.
 - Akış şeması/diyagramda kutular ve oklar (marker ile) düzgün hizalı, kesişmeyen.
-- Fotoğraf gerçekten yararlıysa en fazla bir tane <image href="{{FOTO}}" x=".." y=".." width=".." height=".." preserveAspectRatio="xMidYMid slice"/> kullan ve SVG'nin EN BAŞINA <!-- FOTO: kısa İngilizce görsel istemi --> yorumu ekle; değilse hiç kullanma.` + (window.jarvisDesignRules?.(fmt, W, H, b) || '');
+- Fotoğraf gerçekten yararlıysa en fazla bir tane <image href="{{FOTO}}" x=".." y=".." width=".." height=".." preserveAspectRatio="xMidYMid slice"/> kullan ve SVG'nin EN BAŞINA <!-- FOTO: kısa İngilizce görsel istemi --> yorumu ekle; değilse hiç kullanma.`;
   let designs = store.get('designs', []);
   const saveD = () => { try { store.set('designs', designs.slice(0, 12)); } catch { designs = designs.slice(0, 6); try { store.set('designs', designs); } catch {} } renderD(); };
   async function design(request, { format = '', revise = null } = {}) {
@@ -175,9 +175,7 @@ KESİN KURALLAR:
       svg = data ? svg.split('{{FOTO}}').join(data) : svg.replace(/<image[^>]*\{\{FOTO\}\}[^>]*\/?>(<\/image>)?/g, '');
       photo = data;
     }
-    let qa = null;
-    if (window.jarvisDesignQA) { setPhase('thinking', 'Tasarımı kalite kontrolünden geçiriyorum…'); try { const r = await window.jarvisDesignQA(svg, { W, H, request, key, fmt, brand: b }); svg = r.svg; qa = r.report; } catch (e) { console.warn('QA', e); } }
-    const rec = { id: uid('ds'), t: Date.now(), request: revise ? revise.request + ' → ' + request : request, format: key, svg, photo: photo || revise?.photo || '', qa };
+    const rec = { id: uid('ds'), t: Date.now(), request: revise ? revise.request + ' → ' + request : request, format: key, svg, photo: photo || revise?.photo || '' };
     designs.unshift(rec); saveD();
     logOp('tasarım', [fmt, short(request, 60)], 'başarılı');
     setPhase('idle', 'Hazır.');
@@ -185,7 +183,7 @@ KESİN KURALLAR:
   }
   function showDesign(d) {
     show({ src: svgSrc(d.svg), svg: d.svg, title: FORMATS[d.format]?.[0] || 'Tasarım', text: d.request, source: 'SATÜRN tasarım' });
-    const n = bubble('ai', `🎨 ${FORMATS[d.format]?.[0] || 'Tasarım'} hazır — ana ekranda (SAHNE) gösteriyorum.${d.qa ? '\n' + d.qa : ''}\nDüzeltmek için: “tasarımı değiştir: başlığı büyüt, rengi maviye çevir”.`);
+    const n = bubble('ai', `🎨 ${FORMATS[d.format]?.[0] || 'Tasarım'} hazır — ana ekranda (SAHNE) gösteriyorum.\nDüzeltmek için: “tasarımı değiştir: başlığı büyüt, rengi maviye çevir”.`);
     n.el.append(el('img', { src: svgSrc(d.svg), alt: d.request, class: 'genimg' }), el('div', { class: 'tool' },
       el('button', { type: 'button', onclick: () => exportPng(d.svg, 'saturn-tasarim') }, '⬇ PNG'),
       el('button', { type: 'button', onclick: () => dl(new Blob([d.svg], { type: 'image/svg+xml' }), 'saturn-tasarim.svg') }, '⬇ SVG'),
@@ -248,5 +246,5 @@ KESİN KURALLAR:
   ($('p-img') || $('p-settings'))?.prepend(box);
   function renderD() { dg.replaceChildren(...(designs.length ? designs.map(d => el('button', { type: 'button', class: 'imgthumb', title: d.request, onclick: () => { $('drawer').classList.remove('open'); showDesign(d); } }, el('img', { src: svgSrc(d.svg), alt: d.request, loading: 'lazy' }))) : [el('p', { class: 'muted' }, 'Henüz tasarım yok.')])); }
   renderD();
-  window.jarvisStage = { FORMATS, svgSrc, dl, show, close, mini, go, chart, chartSvg, findImages, showSearch, topicOf, design, runDesign, showDesign, sanitize, exportPng, items: () => items, designs: () => designs };
+  window.jarvisStage = { show, close, mini, go, chart, chartSvg, findImages, showSearch, topicOf, design, runDesign, showDesign, sanitize, exportPng, items: () => items, designs: () => designs };
 })();

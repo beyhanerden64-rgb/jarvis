@@ -312,41 +312,17 @@ function linkChip(url, title) { pendingLinks.push({ url, title }); }
 
 /* ================= bilgisayar yardımcısı (Windows) ================= */
 const PC = 'http://127.0.0.1:8765';
-const PC_RISKY = new Set(['klasor_duzenle', 'klasor_geri_al', 'servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet']);
+const PC_RISKY = new Set(['servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet']);
 let pcLocal = false;
 async function pcLocalCall(tool, args, onay) {
   const r = await withTimeout(fetch(PC + '/run', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ tool, args, onay }) }), tool === 'powershell' || tool === 'tarama' ? 70000 : 30000, 'Bilgisayar yanıt vermedi');
   const d = await r.json().catch(() => ({}));
-  if (!r.ok || d.ok === false) {
-    if (/Bilinmeyen işlem/i.test(d.error || '')) { pcOutdated(); throw Error((d.error || '') + ' — bilgisayar yardımcısı eski sürüm; güncelleme öneriyorum.'); }
-    throw Error(d.error || 'Bilgisayar işlemi başarısız');
-  }
+  if (!r.ok || d.ok === false) throw Error(d.error || 'Bilgisayar işlemi başarısız');
   return d;
-}
-/* Eski yardımcı (ör. 8.x) yeni araçları (web_al, ekran, nöbet…) tanımıyor; panel bunu fark edip tek dokunuşla günceller. */
-const PC_MIN = '9.1.0';
-const verLt = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; };
-let pcUpgradeAsked = false;
-function pcOutdated(ver) {
-  if (pcUpgradeAsked) return; pcUpgradeAsked = true;
-  const b = bubble('note', `Bilgisayar yardımcısı eski sürüm${ver ? ' (' + ver + ')' : ''}. Haberler, döviz/altın, ekran ve kripto gibi özellikler bu yüzden çalışmıyor.`);
-  b.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', class: 'yes', onclick: async ev => { ev.target.disabled = true; try { note(await pcUpgrade()); } catch (e) { note('Güncellenemedi: ' + e.message + '. PowerShell’e şunu yapıştır: irm https://beyhanerden64-rgb.github.io/jarvis/pc/kur.ps1 | iex'); ev.target.disabled = false; } } }, 'Yardımcıyı şimdi güncelle')));
-}
-async function pcUpgrade() {
-  try { const d = await pcLocalCall('kendini_guncelle', [], true); setTimeout(pcPing, 15000); return d.text || 'Yardımcı güncelleniyor; 15 sn içinde yeniden bağlanır.'; }
-  catch (e) { if (!/Bilinmeyen/i.test(e.message)) throw e; }
-  // 8.x: güncelleme nöbetçi ajanın “onay bekliyor” olayı üzerinden yapılır
-  const find = async () => (((await pcLocalCall('nobet', [], false)).data || {}).olaylar || []).find(i => i.ajan === 'surum' && i.durum !== 'onarıldı');
-  let inc = await find();
-  if (!inc) { try { await pcLocalCall('nobet_tara', [], false); } catch {} await sleep(8000); inc = await find(); }
-  if (!inc) throw Error('güncelleme kaydı bulunamadı');
-  const d = await pcLocalCall('nobet_onay', [inc.id, 'evet'], true);
-  setTimeout(() => { pcUpgradeAsked = false; pcPing(); }, 15000);
-  return d.text || 'Yardımcı güncelleniyor; 15 sn içinde yeniden bağlanır.';
 }
 async function pcPing() {
   if (!opt('pcToken') || /android|iphone|ipad|ipod/i.test(navigator.userAgent)) { pcLocal = false; $('pcState').textContent = opt('pcToken') ? 'telefon: bilgisayara eşitleme köprüsüyle ulaşılır' : 'bağlı değil · erişim kodu girilmedi'; return false; }
-  try { const r = await withTimeout(fetch(PC + '/durum', { headers: { 'X-Jarvis-Token': opt('pcToken') || '' } }), 2500); pcLocal = r.ok; if (r.ok) { const d = await r.json(); $('pcState').textContent = 'bağlı · ' + (d.pc || 'bilgisayar') + (d.version ? ' · yardımcı ' + d.version : '') + (d.relay ? ' · telefondan komut açık' : ''); pcPair(); if (verLt(d.version, PC_MIN)) pcOutdated(d.version); } }
+  try { const r = await withTimeout(fetch(PC + '/durum', { headers: { 'X-Jarvis-Token': opt('pcToken') || '' } }), 2500); pcLocal = r.ok; if (r.ok) { const d = await r.json(); $('pcState').textContent = 'bağlı · ' + (d.pc || 'bilgisayar') + (d.relay ? ' · telefondan komut açık' : ''); pcPair(); } }
   catch { pcLocal = false; $('pcState').textContent = sync.ready() ? 'bu cihazdan doğrudan yok · telefon köprüsü ile denenir' : 'bağlı değil'; }
   return pcLocal;
 }
@@ -465,7 +441,7 @@ ${isIOS ? 'Beyhan şu an iPhone kullanıyor: uygulama açmak için ac veya kesti
 /** Runs the tool calls of one step. Calls of the same step run in parallel. Returns text for the model and an optional image. */
 // Tools that change something (asked first when autonomy is "always ask"); read-only tools never ask.
 const WRITE_TOOLS = new Set(['pc', 'ev', 'hasta_ekle', 'seans_ekle', 'program_kaydet', 'kasa', 'envanter', 'portfoy', 'izle']);
-const PC_READONLY = new Set(['klasor_analiz', 'sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran', 'pencereler', 'surecler', 'wifi', 'pil', 'klasor_listele', 'son_dosyalar', 'dosya_al', 'programlar', 'servisler', 'ag_bilgi', 'suruculer']);
+const PC_READONLY = new Set(['sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran', 'pencereler', 'surecler', 'wifi', 'pil', 'klasor_listele', 'son_dosyalar', 'dosya_al', 'programlar', 'servisler', 'ag_bilgi', 'suruculer']);
 window.jarvisRunTools = async (calls, ctx) => {
   const results = await Promise.all(calls.map(async raw => {
     const [name0, ...args] = raw.split('|').map(s => s.trim());
@@ -490,7 +466,7 @@ window.jarvisRunTools = async (calls, ctx) => {
         try {
           if (name === 'pc') {
             const d = await pcCall(sub, args.slice(1), onay); text = d.text || 'tamam';
-            if (d.image) image = { mediaType: d.mime || 'image/jpeg', data: d.image };
+            if (d.image) image = { mediaType: 'image/jpeg', data: d.image };
             if (d.screen) window.jarvisLastScreen = d.screen;
             if (d.file) { const bytes = Uint8Array.from(atob(d.file.data), c => c.charCodeAt(0)); pendingLinks.push({ url: URL.createObjectURL(new Blob([bytes])), title: '⬇ ' + d.file.name, download: d.file.name }); text += ' — indirme bağlantısı hazır'; }
           }
@@ -697,7 +673,7 @@ function renderLockState() { $('lockState').textContent = store.get('lockCred', 
   full.onclick = () => { document.body.classList.toggle('focus'); if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {}); else document.exitFullscreen?.(); };
   document.querySelector('.readout').append(full);
   // more skills
-  const extra = { crypto: ['Kripto radar', () => window.jarvisSkillTurn('BTC ve ETH için günlük teknik görünüm: rejimi, riskleri ve olası senaryoları olasılıklarıyla kısaca anlat. Kesin tahmin verme.', ['kripto|BTC', 'kripto|ETH'], false)], screen: ['Ekranımı incele', screenShot], where: ['Nerede kalmıştık?', () => window.jarvisSkillTurn('Nerede kalmıştık?', null, opt('speakOn') === '1')], pcstat: ['Bilgisayar durumu', () => window.jarvisSkillTurn('Bilgisayarımın CPU, RAM ve disk durumunu kontrol et, sorun varsa söyle.', ['pc|sistem'], false)] };
+  const extra = { crypto: ['Kripto radar', () => typedTurn('BTC ve ETH için günlük teknik görünüm: kripto aracıyla veriyi al, rejimi, riskleri ve olası senaryoları olasılıklarıyla kısaca anlat. Kesin tahmin verme.', false)], screen: ['Ekranımı incele', screenShot], where: ['Nerede kalmıştık?', () => typedTurn('Nerede kalmıştık?', opt('speakOn') === '1')], pcstat: ['Bilgisayar durumu', () => typedTurn('Bilgisayarımın CPU, RAM ve disk durumunu kontrol et, sorun varsa söyle.', false)] };
   for (const [k, [label, fn]] of Object.entries(extra)) {
     SKILLS[k] = { label, run: fn };
     $('skills').append(el('button', { type: 'button', 'data-skill': k, onclick: () => { window.jarvisUnlock(); fn(); } }, label));
@@ -724,35 +700,18 @@ function renderHistory() {
   $('histList').replaceChildren(...list.map(x => el('li', {}, el('details', {}, el('summary', {}, el('small', { class: 'muted' }, dateTR(x.t) + ' · '), short(x.q, 90)), el('p', {}, x.a)))));
 }
 
-/* ekranı incele: bilgisayar yardımcısı bağlıysa doğrudan ekran görüntüsü alır (paylaşım penceresi çıkmaz), değilse ekran paylaşımı; sonra hemen sorar */
-const SCREEN_Q = 'Ekranımda ne var? Hata veya dikkat etmem gereken bir şey varsa söyle.';
+/* ekranı paylaş → bir kare al → görsel olarak sor */
 async function screenShot() {
-  const direct = pcLocal || await pcPing();
-  if (direct || (typeof sync !== 'undefined' && sync.ready())) { // yerel bağlantı yoksa telefon/ntfy köprüsüyle de dener
-    setPhase('thinking', 'Ekran görüntüsü alınıyor…');
-    try {
-      const d = direct ? await pcLocalCall('ekran', [], false) : await withTimeout(pcCall('ekran', [], false), 25000, 'bilgisayar yanıt vermedi');
-      if (d.image) {
-        if (d.screen) window.jarvisLastScreen = d.screen;
-        const mime = d.mime || 'image/jpeg', blob = new Blob([Uint8Array.from(atob(d.image), c => c.charCodeAt(0))], { type: mime }); // CSP data: fetch'e izin vermiyor
-        await setImage(new File([blob], mime === 'image/png' ? 'ekran.png' : 'ekran.jpg', { type: mime }), 'Ekran görüntüsü');
-        return typedTurn(SCREEN_Q, false);
-      }
-    } catch (e) { note('Yardımcı ekran görüntüsü alamadı (' + e.message + '); ekran paylaşımıyla deniyorum.'); }
-  }
-  if (!navigator.mediaDevices?.getDisplayMedia) { note('Bu cihazda ekran paylaşımı yok. Bilgisayarda SATÜRN yardımcısını çalıştırırsan ekranı doğrudan alırım.'); setPhase('idle', 'Hazırım.'); return; }
-  let s;
-  try { s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }); }
-  catch (e) { setPhase('idle', 'Hazırım.'); return note(e?.name === 'NotAllowedError' ? 'Ekran paylaşımı iptal edildi.' : 'Ekran paylaşımı başlatılamadı: ' + (e?.message || e)); }
+  if (!navigator.mediaDevices?.getDisplayMedia) { note('Bu cihazda ekran paylaşımı yok. Bilgisayar yardımcısı kuruluysa “Jarvis, ekranıma bak” de.'); return; }
   try {
+    const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
     const v = el('video', { muted: true, playsinline: true }); v.srcObject = s; await v.play(); await sleep(400);
     const c = document.createElement('canvas'); const k = Math.min(1, 1568 / Math.max(v.videoWidth, v.videoHeight)); c.width = v.videoWidth * k; c.height = v.videoHeight * k;
-    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); s.getTracks().forEach(t => t.stop());
     const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
     await setImage(new File([blob], 'ekran.jpg', { type: 'image/jpeg' }), 'Ekran görüntüsü');
-    return typedTurn(SCREEN_Q, false);
-  } catch (e) { note('Ekran görüntüsü alınamadı: ' + (e?.message || e)); }
-  finally { s.getTracks().forEach(t => t.stop()); }
+    $('prompt').value = 'Ekranımda ne var? Hata veya dikkat etmem gereken bir şey varsa söyle.'; autosize();
+  } catch { note('Ekran paylaşımı iptal edildi.'); }
 }
 
 /* PC stats card when the helper is reachable on this computer */

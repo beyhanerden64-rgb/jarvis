@@ -48,7 +48,7 @@
         const shot = await pcCall('ekran', [], false);
         if (!shot.image || !shot.screen?.width) throw Error('Ekran görüntüsü alınamadı');
         const geo = shot.screen;
-        const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system: SYS, messages: [{ role: 'user', content: `GÖREV: ${goal}\nŞU ANA KADAR YAPILANLAR: ${steps.length ? steps.map((s, k) => k + 1 + '. ' + s).join('\n') : '(yok)'}\nEkran görüntüsü ekte. Sıradaki TEK adımı JSON olarak ver.` }], image: { mediaType: shot.mime || 'image/jpeg', data: shot.image } }) });
+        const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system: SYS, messages: [{ role: 'user', content: `GÖREV: ${goal}\nŞU ANA KADAR YAPILANLAR: ${steps.length ? steps.map((s, k) => k + 1 + '. ' + s).join('\n') : '(yok)'}\nEkran görüntüsü ekte. Sıradaki TEK adımı JSON olarak ver.` }], image: { mediaType: 'image/jpeg', data: shot.image } }) });
         if (!r.ok) throw Error('Yapay zekâ yanıt vermedi (' + r.status + ')');
         const raw = (await r.text()).split('\u0000')[0];
         let a; try { a = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)); } catch { steps.push('(anlaşılmayan yanıt)'); continue; }
@@ -92,9 +92,7 @@ BİLGİSAYARA TAM HÂKİMİYET: Kurulu her programı pc|ac ile adından açabili
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => { auto.value = '2'; store.set('set.autonomy', '2'); full.value = '1'; full.onchange(); note('TAM YETKİ açıldı: SATÜRN bilgisayarında yalnız geri alınamayan işler için (silme, kapatma, kurulum, süreç/servis durdurma, tehlikeli PowerShell) onay ister. ACİL DUR her zaman çalışır.'); } }, 'Tam yetkiyi aç')));
 
   // skills
-  // yazı kutusunu doldurup bekletmek yerine küçük form: görevi yaz → hemen başlar
-  SKILLS.pcagent = { label: 'Bilgisayarda yap…', form: { title: 'Bilgisayarda yapılacak iş', fields: [['gorev', 'Ne yapayım?', 'ör. Masaüstündeki PDF’leri Belgeler klasörüne taşı; Chrome’da YouTube Studio’yu aç', true]], build: v => 'Bilgisayarımda şunu yap: ' + v.gorev },
-    run: () => (typeof skillForm === 'function' ? skillForm(SKILLS.pcagent) : ($('prompt').value = 'Bilgisayarımda şunu yap: ', autosize(), $('prompt').focus())) };
+  SKILLS.pcagent = { label: 'Bilgisayarda yap…', run: () => { $('prompt').value = 'Bilgisayarımda şunu yap: '; autosize(); $('prompt').focus(); } };
   $('skills').append(el('button', { type: 'button', onclick: () => { window.jarvisUnlock(); SKILLS.pcagent.run(); } }, 'Bilgisayarda yap…'));
   SKILLS.pcscreen = { label: 'Bilgisayar ekranı', run: () => typedTurn('Bilgisayarımın ekranında şu an ne var? pc ekran ile bak.', false) };
   $('mobileSkills').append(el('button', { type: 'button', onclick: () => { window.jarvisUnlock(); SKILLS.pcscreen.run(); } }, 'Bilgisayar ekranı'));

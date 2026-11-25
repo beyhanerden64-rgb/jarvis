@@ -26,7 +26,7 @@
   async function gemini(parts, json = false) {
     const key = gemKey(); if (!key) throw Error('Gemini anahtarı gerekli');
     let last = '';
-    for (const m of (window.jarvisGeminiModels?.('complex') || ['gemini-flash-latest', 'gemini-3-flash-preview', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite']).filter(m => !/^gemma/.test(m))) {
+    for (const m of ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite']) {
       try {
         const r = await withTimeout(fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ role: 'user', parts }], ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}) }) }), 60000, 'zaman aşımı');
         if (!r.ok) { last = m + ': HTTP ' + r.status; continue; }
@@ -120,7 +120,7 @@
     if ((m = f.match(/^(\d[\d.,]*)\s*(?:tl)?\s*kdv(?:den| haric| haric hali)?\s*(?:cikar|haric|ayir)\s*%?\s*(\d{1,2})?$/)) || (m = f.match(/^kdv\s*haric\s*(\d[\d.,]*)\s*(?:tl)?\s*%?\s*(\d{1,2})?$/))) { const a = num(m[1]), r = +(m[2] || 20), net = a / (1 + r / 100); return `🧾 KDV dahil ${tl(a)} → KDV hariç ${tl(Math.round(net * 100) / 100)} + %${r} KDV ${tl(Math.round((a - net) * 100) / 100)}`; }
     if ((m = f.match(/^(\d[\d.,]*)\s*(?:tl)?(?:'?[nd][ie]?n?)?\s*%\s*(\d{1,2}(?:[.,]\d+)?)\s*indirim(?:li)?(?: hali)?$/))) { const a = num(m[1]), r = num(m[2]); return `🏷 ${tl(a)} − %${r} = ${tl(Math.round(a * (1 - r / 100) * 100) / 100)} (indirim ${tl(Math.round(a * r) / 100)})`; }
     if ((m = f.match(/^(\d[\d.,]*)\s*(?:tl)?\s*['’]?(?:den|dan|ten|tan)\s*(\d[\d.,]*)\s*(?:tl)?\s*['’]?(?:ye|ya|e|a)\s*(?:degisim|artis|dusus|ne kadar degisti|yuzde kac)/))) { const a = num(m[1]), b = num(m[2]); const r = (b / a - 1) * 100; return `📈 ${tl(a)} → ${tl(b)}: %${r.toFixed(1).replace('.', ',')} ${r >= 0 ? 'artış' : 'düşüş'}`; }
-    if ((m = f.match(/(\d[\d.,]*)\s*(?:tl)?\s*(?:kredi|borc)\s*(\d{1,3})\s*ay\s*(?:vade)?\s*%?\s*(\d{1,2}(?:[.,]\d+)?)/)) || (m = f.match(/(\d[\d.,]*)\s*(?:tl)?\s*(?:kredi|borc)?\s*(\d{1,3})\s*ay\s*(?:vade)?\s*%?\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:faiz)?.*(?:taksit|kredi)/)) || (m = f.match(/^kredi\s*(\d[\d.,]*)\s*(?:tl)?\s*(\d{1,3})\s*ay\s*%?\s*(\d{1,2}(?:[.,]\d+)?)/))) {
+    if ((m = f.match(/(\d[\d.,]*)\s*(?:tl)?\s*(?:kredi|borc)?\s*(\d{1,3})\s*ay\s*(?:vade)?\s*%?\s*(\d{1,2}(?:[.,]\d+)?)\s*(?:faiz)?.*(?:taksit|kredi)/)) || (m = f.match(/^kredi\s*(\d[\d.,]*)\s*(?:tl)?\s*(\d{1,3})\s*ay\s*%?\s*(\d{1,2}(?:[.,]\d+)?)/))) {
       const P = num(m[1]), n = +m[2], r = num(m[3]) / 100; const pay = r ? P * r / (1 - Math.pow(1 + r, -n)) : P / n;
       return `🏦 ${tl(P)} · ${n} ay · aylık %${String(num(m[3])).replace('.', ',')}\nAylık taksit: ${tl(Math.round(pay * 100) / 100)} · toplam geri ödeme ${tl(Math.round(pay * n))} · toplam faiz ${tl(Math.round(pay * n - P))}\n(Vergiler/masraflar hariç tahmini hesap.)`;
     }

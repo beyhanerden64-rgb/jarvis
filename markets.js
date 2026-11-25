@@ -4,7 +4,7 @@
  *  • Altın/gümüş: PAXG (ons altın karşılığı, canlı) × USDT/TRY → gram, çeyrek, yarım, tam (has altın karşılığı); varsa Kapalıçarşı fiyatı (Truncgil)
  *  • Döviz: USD, EUR, GBP / TRY (Binance canlı + ECB)
  *  • Hisse, endeks, emtia: BIST 100, S&P 500, Nasdaq, DAX, Brent, gümüş vadeli, tek tek hisseler (THYAO, AAPL…)
- *      TradingView (anlık) → Yahoo (r.jina.ai geçidi / köprü / bilgisayar yardımcısı) → en son Gemini web araması (gecikmeli; kaynağı belirtilir)
+ *      bilgisayar yardımcısı bağlıysa Yahoo verisi (gerçek), değilse Gemini web araması (gecikmeli olabilir; kaynağı belirtilir)
  *  • Fırsat/risk radarı, takip listesi, fiyat alarmları (telefona bildirim), yapay zekâ piyasa yorumu */
 (() => {
   const BN = 'https://data-api.binance.vision/api/v3/';
@@ -12,7 +12,7 @@
   const OZ = 31.1034768;
   const nf = (v, d = 2) => Number(v).toLocaleString('tr-TR', { maximumFractionDigits: d, minimumFractionDigits: Math.min(d, Number(v) >= 1000 ? 0 : d) });
   const pct = v => (v >= 0 ? '+' : '') + nf(v, 2) + '%';
-  const getJ = async (url, ms = 12000) => { const r = await withTimeout(fetch(url, { cache: 'no-store' }), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); }; // canlı fiyat: tarayıcı önbelleği dünkü veriyi vermesin
+  const getJ = async (url, ms = 12000) => { const r = await withTimeout(fetch(url), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); };
   const cache = new Map();
   const cached = async (k, ms, fn) => { const c = cache.get(k); if (c && Date.now() - c.t < ms) return c.v; const v = await fn(); cache.set(k, { t: Date.now(), v }); return v; };
 
@@ -32,8 +32,8 @@
       const ons = +p.lastPrice, gram = ons / OZ * u;
       const out = { ons, onsCh: +p.priceChangePercent, gram, ceyrek: gram * 1.604, yarim: gram * 3.208, tam: gram * 6.416, kaynak: 'PAXG ons × USDT/TRY (has altın karşılığı)' };
       try { // Kapalıçarşı/kuyumcu fiyatı (varsa)
-        const t = await getJ('https://finans.truncgil.com/v4/today.json?_=' + Math.floor(Date.now() / 60000), 7000);
-        const pick = re => { const k = Object.keys(t).find(x => re.test(fold(x))); const v = k && t[k]; const raw = v && (v.Selling ?? v.selling ?? v.Satış ?? ''); const n = v && (typeof raw === 'number' ? raw : +(String(raw).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'))); return n > 0 ? n : null; };
+        const t = await getJ('https://finans.truncgil.com/v4/today.json', 7000);
+        const pick = re => { const k = Object.keys(t).find(x => re.test(fold(x))); const v = k && t[k]; const n = v && +(String(v.Selling ?? v.selling ?? v.Satış ?? '').replace(/\./g, '').replace(',', '.')); return n > 0 ? n : null; };
         const piyasa = { gram: pick(/^(gra|gram ?altin|gram-altin)$/), ceyrek: pick(/ceyrek/), yarim: pick(/yarim/), tam: pick(/^tam/), cumhuriyet: pick(/cumhuriyet/), gumus: pick(/gumus/) };
         if (piyasa.gram) out.piyasa = piyasa;
       } catch {}
@@ -76,7 +76,7 @@
     let j;
     try { if (!window.jarvisBridge?.on()) throw Error(); j = await getJ(window.jarvisBridge.wrap(url), 12000); if (!j.chart) throw Error(); } // kendi Google köprüsü
     catch {
-      try { j = await window.jarvisSrc.jinaJ(url, 12000); if (!j.chart) throw Error(); } // r.jina.ai geçidi (Yahoo doğrudan CORS'a takılır)
+      try { j = await getJ(url, 6000); } // tarayıcı izin verirse doğrudan
       catch { if (typeof pcLocal === 'undefined' || !pcLocal) throw Error('yardımcı yok'); j = JSON.parse((await pcCall('web_al', [url], false)).text); }
     }
     const m = j.chart?.result?.[0]?.meta; if (!m?.regularMarketPrice) throw Error('veri yok');
@@ -92,10 +92,7 @@
   const eqCache = new Map();
   async function equities(list) {
     const fresh = s => { const c = eqCache.get(s); return c && Date.now() - c.t < (c.v.web ? 15 : 3) * 60000 ? c.v : null; };
-    const need0 = list.filter(s => !fresh(s));
-    const tvGot = need0.length ? await window.jarvisSrc.tv(need0).catch(() => new Map()) : new Map(); // TradingView: anlık, anahtarsız
-    for (const v of tvGot.values()) eqCache.set(v.sym, { t: Date.now(), v });
-    const need = need0.filter(s => !tvGot.has(s));
+    const need = list.filter(s => !fresh(s));
     const got = await Promise.all(need.map(s => yahoo(s).catch(() => null)));
     const miss = need.filter((s, i) => !got[i]);
     const extra = miss.length ? await viaSearch(miss).catch(() => []) : [];
@@ -203,7 +200,7 @@
   let alarms = store.get('mktAlarms', []);
   const saveA = () => { store.set('mktAlarms', alarms); renderPanel(); };
   function addAlarm(sym, op, val, note2 = '') {
-    val = Number(String(val).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); if (!sym || !(val > 0) || !/^[<>]$/.test(op)) throw Error('Örnek: “BTC 100000 üstüne çıkarsa haber ver” ya da piyasa_alarm|ekle|gram altın|<|3000');
+    val = Number(String(val).replace(/\./g, '').replace(',', '.')); if (!sym || !(val > 0) || !/^[<>]$/.test(op)) throw Error('Örnek: “BTC 100000 üstüne çıkarsa haber ver” ya da piyasa_alarm|ekle|gram altın|<|3000');
     alarms.push({ id: uid('ma'), sym: String(sym).trim(), op, val, note: note2, created: Date.now() }); saveA();
     return `Alarm kuruldu: ${sym} ${op === '>' ? 'üstüne çıkınca' : 'altına inince'} ${nf(val)}. Uygulama açıkken 5 dakikada bir bakarım; tetiklenince telefonuna da bildiririm.`;
   }
