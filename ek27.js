@@ -52,7 +52,8 @@
   }
   function closeAll() {
     try { cleanup?.(); } catch {} cleanup = null; clearAll(); keepAwake(false);
-    for (const id of ['gonView', 'testView', 'coachView', 'breathView', 'recView']) document.getElementById(id)?.remove();
+    try { window.__e28Cleanup?.(); } catch {}
+    for (const id of ['gonView', 'testView', 'coachView', 'breathView', 'recView', 'appView', 'mmView', 'scan28View', 'podView']) document.getElementById(id)?.remove();
     try { window.jarvisE26?.closeTranslator?.(); window.jarvisE26?.closeScanner?.(); } catch {}
   }
 

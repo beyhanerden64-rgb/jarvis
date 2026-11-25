@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Uygulama önizleme</title></head>
+<body style="margin:0;font:15px system-ui,sans-serif;color:#456">
+<script>
+/* SATÜRN uygulama çalıştırıcısı: yalnız korumalı (sandbox) çerçevede ve yalnız SATÜRN’ün kendisinden gelen uygulamayı çalıştırır. */
+(function () {
+  var sandboxed = false;
+  try { void window.localStorage; } catch (e) { sandboxed = true; }
+  if (!sandboxed || window.parent === window) { document.body.textContent = 'Bu sayfa yalnız SATÜRN içinden, korumalı önizlemede çalışır.'; return; }
+  var mine = new URL(location.href).origin, done = false;
+  addEventListener('message', function (e) {
+    if (done || e.origin !== mine || e.source !== window.parent || !e.data || e.data.t !== 'saturn-app' || typeof e.data.html !== 'string') return;
+    done = true; document.open(); document.write(e.data.html); document.close();
+  });
+  window.parent.postMessage({ t: 'saturn-app-ready' }, '*');
+})();
+</script>
+</body></html>

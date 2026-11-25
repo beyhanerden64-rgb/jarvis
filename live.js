@@ -212,29 +212,41 @@
   $('mic')?.after(btn);
   /* ---------- CANLI KAMERA (Gemini Live görüntü girişi): saniyede 1 kare, 640 px JPEG ---------- */
   let cam = null;
-  async function camStart() {
-    if (!S?.ready) { note('Önce CANLI’yı aç, sonra 📷’a dokun.'); return false; }
-    if (cam) return true;
+  async function camStart(kind = 'camera') {
+    const screen = kind === 'screen';
+    if (!S?.ready) { note(`Önce CANLI’yı aç, sonra ${screen ? '🖥' : '📷'}’a dokun.`); return false; }
+    if (cam) { if (cam.kind === kind) return true; camStop(); }
     let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: store.get('set.camFacing', 'environment'), width: { ideal: 1280 } }, audio: false }); }
-    catch (e) { note(e.name === 'NotAllowedError' ? 'Kamera izni verilmedi (Ayarlar → Safari → Kamera → İzin Ver).' : 'Kamera açılamadı: ' + e.message); return false; }
+    if (screen) {
+      if (!navigator.mediaDevices?.getDisplayMedia) { note('Bu cihaz ekran paylaşımını desteklemiyor (telefon tarayıcıları izin vermez). Bilgisayarda Chrome/Edge ile dene.'); return false; }
+      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false }); }
+      catch (e) { note(e.name === 'NotAllowedError' ? 'Ekran paylaşımı iptal edildi.' : 'Ekran paylaşılamadı: ' + e.message); return false; }
+      stream.getVideoTracks()[0]?.addEventListener('ended', () => { if (cam?.stream === stream) camStop(); });
+    } else {
+      try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: store.get('set.camFacing', 'environment'), width: { ideal: 1280 } }, audio: false }); }
+      catch (e) { note(e.name === 'NotAllowedError' ? 'Kamera izni verilmedi (Ayarlar → Safari → Kamera → İzin Ver).' : 'Kamera açılamadı: ' + e.message); return false; }
+    }
     const v = el('video', { autoplay: '', muted: '', playsinline: '', id: 'liveCamView', style: 'position:fixed;right:12px;top:calc(70px + env(safe-area-inset-top));width:120px;border-radius:12px;border:2px solid #57d3ff;z-index:60;background:#000' });
     v.srcObject = stream; document.body.append(v); try { await v.play(); } catch {}
     const cv = document.createElement('canvas');
     cam = { stream, v, n: 0, iv: setInterval(() => {
       if (!S?.ready || !S.ws || v.readyState < 2) return;
-      const s = Math.min(1, 640 / (v.videoWidth || 640)); cv.width = Math.round((v.videoWidth || 640) * s); cv.height = Math.round((v.videoHeight || 480) * s);
+      const s = Math.min(1, (screen ? 1280 : 640) / (v.videoWidth || 640)); cv.width = Math.round((v.videoWidth || 640) * s); cv.height = Math.round((v.videoHeight || 480) * s);
       cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
-      const data = cv.toDataURL('image/jpeg', 0.6).split(',')[1];
+      const data = cv.toDataURL('image/jpeg', screen ? 0.7 : 0.6).split(',')[1];
       try { S.ws.send(JSON.stringify({ realtimeInput: { video: { data, mimeType: 'image/jpeg' } } })); cam.n++; } catch {}
-    }, 1000) };
-    camBtn.setAttribute('aria-pressed', 'true'); note('📷 Satürn artık kameranı görüyor — “bu ne?”, “bunu oku”, “bu hareketi doğru mu yapıyorum?” diyebilirsin.');
+    }, screen ? 1500 : 1000), kind };
+    (screen ? scrBtn : camBtn).setAttribute('aria-pressed', 'true');
+    note(screen ? '🖥 Satürn artık ekranını görüyor — “bu hata ne?”, “bu tabloyu yorumla”, “bu e-postaya ne cevap yazayım?” diyebilirsin. Paylaşımı durdurmak için 🖥’a tekrar dokun.' : '📷 Satürn artık kameranı görüyor — “bu ne?”, “bunu oku”, “bu hareketi doğru mu yapıyorum?” diyebilirsin.');
     return true;
   }
-  function camStop() { if (!cam) return; clearInterval(cam.iv); try { cam.stream.getTracks().forEach(t => t.stop()); } catch {} cam.v.remove(); cam = null; camBtn?.setAttribute('aria-pressed', 'false'); }
-  const camBtn = el('button', { type: 'button', class: 'livebtn', id: 'liveCam', 'aria-pressed': 'false', title: 'CANLI’da kamerayı göster (Gemini görür)', onclick: () => { cam ? camStop() : camStart(); } }, '📷');
+  function camStop() { if (!cam) return; clearInterval(cam.iv); try { cam.stream.getTracks().forEach(t => t.stop()); } catch {} cam.v.remove(); cam = null; camBtn?.setAttribute('aria-pressed', 'false'); scrBtn?.setAttribute('aria-pressed', 'false'); }
+  const camBtn = el('button', { type: 'button', class: 'livebtn', id: 'liveCam', 'aria-pressed': 'false', title: 'CANLI’da kamerayı göster (Gemini görür)', onclick: () => { cam?.kind === 'camera' ? camStop() : camStart('camera'); } }, '📷');
   btn.after(camBtn);
-  { const st = document.createElement('style'); st.textContent = 'body:not(.live-on) #liveCam{display:none}#liveCam{position:fixed;right:16px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:61;width:56px;height:56px;border-radius:50%;font-size:24px;padding:0;display:grid;place-items:center;background:#0b1220;border:2px solid #57d3ff;box-shadow:0 4px 14px rgb(0 0 0 / .45)}#liveCam[aria-pressed="true"]{background:#57d3ff}'; document.head.append(st); }
+  const scrBtn = el('button', { type: 'button', class: 'livebtn', id: 'liveScreen', 'aria-pressed': 'false', title: 'CANLI’da ekranını paylaş (Gemini görür)', onclick: () => { cam?.kind === 'screen' ? camStop() : camStart('screen'); } }, '🖥');
+  camBtn.after(scrBtn);
+  if (!navigator.mediaDevices?.getDisplayMedia || /android|iphone|ipad|mobile/i.test(navigator.userAgent)) scrBtn.dataset.na = '1';
+  { const st = document.createElement('style'); st.textContent = 'body:not(.live-on) #liveCam{display:none}#liveCam{position:fixed;right:16px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:61;width:56px;height:56px;border-radius:50%;font-size:24px;padding:0;display:grid;place-items:center;background:#0b1220;border:2px solid #57d3ff;box-shadow:0 4px 14px rgb(0 0 0 / .45)}#liveCam[aria-pressed="true"]{background:#57d3ff}body:not(.live-on) #liveScreen,#liveScreen[data-na]{display:none}#liveScreen{position:fixed;right:16px;bottom:calc(214px + env(safe-area-inset-bottom));z-index:61;width:56px;height:56px;border-radius:50%;font-size:24px;padding:0;display:grid;place-items:center;background:#0b1220;border:2px solid #57d3ff;box-shadow:0 4px 14px rgb(0 0 0 / .45)}#liveScreen[aria-pressed="true"]{background:#57d3ff}'; document.head.append(st); }
   const vs = el('select', { id: 'liveVoice' }); for (const [v, t] of VOICES) vs.append(new Option(t, v));
   vs.value = store.get('set.liveVoice', 'Puck') || 'Puck'; vs.onchange = () => store.set('set.liveVoice', vs.value);
   const f = el('div', { class: 'field' }, el('label', { for: 'liveVoice' }, 'Canlı mod sesi (Gemini Live · doğal, akıcı)'), vs);
@@ -303,5 +315,5 @@
     return p;
   }
   window.jarvisLiveTts = (text, signal) => (opt('liveTts') === '0' || tFail >= 3 ? Promise.reject(Error('kapalı')) : liveTts(text, signal));
-  window.jarvisLive = { diag, start, stop, camStart, camStop, cam: () => cam && { frames: cam.n }, active: () => !!S, state: () => S && { model: S.model, ready: S.ready } };
+  window.jarvisLive = { diag, start, stop, camStart, camStop, screenStart: () => camStart('screen'), cam: () => cam && { frames: cam.n, kind: cam.kind }, active: () => !!S, state: () => S && { model: S.model, ready: S.ready } };
 })();
