@@ -409,7 +409,7 @@ function renderItems() {
 function persist() { updated = Date.now(); store.set('items', items); store.set('history', chat.messages.slice(-28)); store.set('summary', chat.summary); store.set('updated', updated); renderItems(); sysInfo(); scheduleSync(); }
 function saveItem(i) {
   const id = i.id || (i.kind[0] + Date.now().toString(36) + Math.random().toString(36).slice(2, 6));
-  const clean = { id, kind: i.kind, text: String(i.text).slice(0, 4000), title: String(i.title || '').slice(0, 120), due: i.due || '', done: !!i.done, created: i.created || Date.now(), private: !!i.private, src: String(i.src || '').slice(0, 40) };
+  const clean = { id, kind: i.kind, text: String(i.text).slice(0, 4000), title: String(i.title || '').slice(0, 120), due: i.due || '', done: !!i.done, doneAt: i.done ? (i.doneAt || Date.now()) : 0, created: i.created || Date.now(), private: !!i.private, src: String(i.src || '').slice(0, 40) };
   items = items.filter(x => x.id !== id).concat(clean); persist(); return id;
 }
 function removeItem(id) { items = items.filter(x => x.id !== id); persist(); }

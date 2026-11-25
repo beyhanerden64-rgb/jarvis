@@ -49,7 +49,7 @@
   }
   /* ---------- Europe PMC ---------- */
   async function europepmc(q, n = 5) {
-    const d = await getJson(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=${n}&sort=CITED%20desc&query=${encodeURIComponent(q + ' AND (PUB_YEAR:[' + (new Date().getFullYear() - 12) + ' TO 3000])')}`);
+    const d = await getJson(`https://www.ebi.ac.uk/europepmc/webservices/rest/search?format=json&resultType=core&pageSize=${n}&sort=CITED%20desc&query=${encodeURIComponent(q + ' AND (PUB_YEAR:[' + (new Date().getFullYear() - 12) + ' TO 3000])')}`, 28000); // Europe PMC yavaş yanıt verebiliyor (canlı testte 2–15 sn)
     return (d.resultList?.result || []).map(r => ({ src: 'Europe PMC', id: r.pmid ? 'PMID:' + r.pmid : (r.doi ? 'DOI:' + r.doi : r.id), url: r.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/` : `https://europepmc.org/article/${r.source}/${r.id}`, level: /review|meta/i.test(r.pubTypeList?.pubType?.join(' ') || '') ? 'derleme' : 'çalışma', title: clean(r.title), journal: clean(r.journalInfo?.journal?.isoabbreviation || r.journalTitle), year: r.pubYear, cited: r.citedByCount, abstract: clean(r.abstractText).slice(0, 1500), oa: r.isOpenAccess === 'Y' }));
   }
   /* ---------- ClinicalTrials.gov ---------- */

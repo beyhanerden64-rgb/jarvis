@@ -33,7 +33,7 @@
       const out = { ons, onsCh: +p.priceChangePercent, gram, ceyrek: gram * 1.604, yarim: gram * 3.208, tam: gram * 6.416, kaynak: 'PAXG ons × USDT/TRY (has altın karşılığı)' };
       try { // Kapalıçarşı/kuyumcu fiyatı (varsa)
         const t = await getJ('https://finans.truncgil.com/v4/today.json', 7000);
-        const pick = re => { const k = Object.keys(t).find(x => re.test(fold(x))); const v = k && t[k]; const n = v && +(String(v.Selling ?? v.selling ?? v.Satış ?? '').replace(/\./g, '').replace(',', '.')); return n > 0 ? n : null; };
+        const pick = re => { const k = Object.keys(t).find(x => re.test(fold(x))); const v = k && t[k]; const raw = v && (v.Selling ?? v.selling ?? v.Satış ?? ''); const n = v && (typeof raw === 'number' ? raw : +(String(raw).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'))); return n > 0 ? n : null; };
         const piyasa = { gram: pick(/^(gra|gram ?altin|gram-altin)$/), ceyrek: pick(/ceyrek/), yarim: pick(/yarim/), tam: pick(/^tam/), cumhuriyet: pick(/cumhuriyet/), gumus: pick(/gumus/) };
         if (piyasa.gram) out.piyasa = piyasa;
       } catch {}
@@ -203,7 +203,7 @@
   let alarms = store.get('mktAlarms', []);
   const saveA = () => { store.set('mktAlarms', alarms); renderPanel(); };
   function addAlarm(sym, op, val, note2 = '') {
-    val = Number(String(val).replace(/\./g, '').replace(',', '.')); if (!sym || !(val > 0) || !/^[<>]$/.test(op)) throw Error('Örnek: “BTC 100000 üstüne çıkarsa haber ver” ya da piyasa_alarm|ekle|gram altın|<|3000');
+    val = Number(String(val).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); if (!sym || !(val > 0) || !/^[<>]$/.test(op)) throw Error('Örnek: “BTC 100000 üstüne çıkarsa haber ver” ya da piyasa_alarm|ekle|gram altın|<|3000');
     alarms.push({ id: uid('ma'), sym: String(sym).trim(), op, val, note: note2, created: Date.now() }); saveA();
     return `Alarm kuruldu: ${sym} ${op === '>' ? 'üstüne çıkınca' : 'altına inince'} ${nf(val)}. Uygulama açıkken 5 dakikada bir bakarım; tetiklenince telefonuna da bildiririm.`;
   }

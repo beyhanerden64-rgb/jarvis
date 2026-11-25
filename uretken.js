@@ -121,7 +121,7 @@
   /* ================= 4) ALACAK TAKİBİ ================= */
   const recs = () => store.get('receivables', []);
   const saveRecs = r => store.set('receivables', r);
-  const amtOf = s => Number(String(s).replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, ''));
+  const amtOf = s => Number(String(s).replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.').replace(/[^\d.]/g, ''));
   const due = r => r.tutar - (r.odenen || []).reduce((a, x) => a + x.amt, 0);
   function alacak(op, ad = '', tutar = '', aciklama = '') {
     const R = recs(), p = ad ? pat(ad) : null, name = p?.ad || String(ad).trim();

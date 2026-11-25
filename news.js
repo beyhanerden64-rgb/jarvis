@@ -262,7 +262,7 @@
   const keyOf = s => KEYMAP.find(([re]) => re.test(s))?.[1] || null;
   Object.assign(TOOLS, {
     haber: { d: 'haber|son veya ekonomi/finans/merkez/saglik/siyaset/karar/afet/abd/avrupa/cin/rusya/turkiye — anlık haber akışı (binlerce kaynak, kümelenmiş, kaynak sayılı, Türkçe)', run: async ([k]) => { const key = CATS[fold(k || '')] ? fold(k) : keyOf(k || '') || 'son'; const items = key === 'son' ? await breaking() : await translate(await fetchCat(key)); return fmt(items || [], 10) + '\n(Tarafsız aktar; kaynak sayısını belirt; doğrulanmamışı iddia olarak söyle.)'; } },
-    gundem_brifing: { d: 'gundem_brifing|kategori (boş: tümü) — ekonomi/sağlık/siyaset başlıklarında tarafsız gündem özeti', run: async ([k]) => (await brief(CATS[fold(k || '')] ? fold(k) : 'son')) || 'brifing yok' }
+    gundem_brifing: { d: 'gundem_brifing|kategori (boş: tümü) — ekonomi/sağlık/siyaset başlıklarında tarafsız gündem özeti', run: async ([k]) => (await brief(CATS[fold(k || '')] ? fold(k) : 'son')) || 'Brifing hazırlanamadı (yapay zekâ anahtarı veya bağlantı sorunu); “haber” aracıyla başlıkları verebilirim.' }
   });
   const _tp = toolsPrompt;
   toolsPrompt = () => _tp() + '\nGÜNDEM: haber/son dakika/gelişme sorularında haber aracını (uygun kategoriyle), özet istenirse gundem_brifing kullan. Haberleri tarafsız aktar, kaynak sayısını söyle, siyasi taraf tutma, doğrulanmamış bilgiyi iddia olarak belirt.';
