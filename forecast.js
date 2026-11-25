@@ -54,6 +54,8 @@
       st.b68 = b68; st.b95 = b95;
       quant = `NİCEL VERİ (${st.label}, birim ${st.unit}): son fiyat ${nf(st.last)}; 7 gün ${nf(st.ch7, 1)}%, 30 gün ${nf(st.ch30, 1)}%; günlük oynaklık %${nf(st.sd * 100, 2)}; RSI ${st.rsi ? nf(st.rsi, 0) : '—'}; 50 günlük ort. ${nf(st.s50)}${st.s200 ? ', 200 günlük ort. ' + nf(st.s200) : ''}.\nOYNAKLIĞA GÖRE ${days} GÜN SONRASI ARALIĞI: %68 olasılıkla ${nf(b68[0])}–${nf(b68[1])}; %95 olasılıkla ${nf(b95[0])}–${nf(b95[1])}.`;
     } else if (st?.q) quant = 'GÜNCEL: ' + st.q.text;
+    // KAHİN (ölçülmüş model) varsa çapa olarak eklenir: olasılık ve aralıklar ondan, senaryolar onunla tutarlı olmalı
+    if (st && window.jarvisKahin && days <= 90) { try { const K = await window.jarvisKahin.forecast(subject, days); quant += `\nKAHİN ÖLÇÜLMÜŞ MODEL (${K.H} gün): yükseliş olasılığı %${Math.round(K.p * 100)} (${K.M.skilled ? 'örneklem dışı testte ANLAMLI avantaj' : 'yön için avantaj YOK — yönü %50 kabul et'}; Brier beceri ${(K.M.bss * 100).toFixed(1)}%, p=${K.M.pval.toFixed(2)}); medyan ${nf(K.q[50])}; %80 aralık ${nf(K.q[10])}–${nf(K.q[90])}; %95 aralık ${nf(K.q[2.5])}–${nf(K.q[97.5])}. Senaryo olasılıklarını ve aralıkları BUNA göre ver.`; } catch {} }
     setPhase('thinking', 'Senaryoları hesaplıyorum…');
     const raw = await window.jarvisResearch.ask(`Sen deneyimli bir tahminci ve analistsin (süper-tahminci yaklaşımı: temel oranlar, güncel veri, belirsizlik). Bugün ${ymd(Date.now())}. Vade: ${days} gün (${until}).
 Verilen nicel veriyi ÇAPA olarak kullan; aralıkları bu oynaklıkla tutarlı tut. Haber bağlamını hesaba kat. Olasılıklar toplamı 100 olsun. Kesinlik/garanti ifadesi kullanma; “al/sat” deme.
