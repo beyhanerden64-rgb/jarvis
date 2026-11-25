@@ -292,6 +292,13 @@
       const h = m[2] ? +m[2] * ({ hafta: 7, haftalik: 7, ay: 30, aylik: 30 }[m[3]] || 1) : 7;
       setTimeout(() => showForecast(m[1], h).catch(e => note(e.message)), 10); return '🔮 KAHİN hesaplıyor (ileriye dönük test birkaç saniye sürer)…';
     }
+    // serbest söyleyiş: “BTC tahmin ver”, “gram altın ne olur”, “dolar yükselir mi”, “THYAO için 30 günlük tahmin” → yapay zekâ beklemeden KAHİN
+    const ASSET = /^(btc|bitcoin|eth|ethereum|eter|sol|solana|xrp|ripple|bnb|doge|dogecoin|ada|avax|link|ltc|ton|trx|dot|pepe|shib|sui|altin|gram altin|gram|ceyrek|ceyrek altin|yarim altin|tam altin|ons|ons altin|gumus|dolar|dolar tl|euro|avro|sterlin|bist|bist 100|bist100|borsa|borsa istanbul|thyao|asels|aselsan|garan|akbnk|kchol|sise|eregl|tuprs|bimas|nasdaq|s&p|s&p 500|sp500|dow|dax|apple|aapl|nvda|nvidia|tesla|tsla|msft|[a-z]{2,6})$/;
+    if ((m = f.match(/^(.{2,22}?)(?:\s+(?:icin|için))?\s+(?:(\d{1,3})\s*(gun|gunluk|hafta|haftalik|ay|aylik)\w*\s+)?(?:tahmin(?:i|in|ini)?(?:\s+(?:ver|et|yap|nedir|ne))?|ne olur|ne olacak|nereye gider|yukselir mi|duser mi|artar mi|azalir mi)$/)) && ASSET.test(m[1].trim()) && !/^(hava|mac|secim|enflasyon|faiz|deprem|yarin|bugun|bu|ne|hafta|ay|yil|sene|bu yil|o|sonra|gelecek|durum)$/.test(m[1].trim()) && window.__kahinSkip !== t0) {
+      const h = m[2] ? +m[2] * ({ hafta: 7, haftalik: 7, ay: 30, aylik: 30 }[m[3]] || 1) : /hafta/.test(f) ? 7 : /ay\b/.test(f) ? 30 : 7;
+      setTimeout(() => showForecast(m[1].trim(), h).catch(e => { if (/bulamadım|en az 320|veri/.test(e.message)) { window.__kahinSkip = t0; typedTurn(t0, false); } else note('KAHİN: ' + e.message); }), 10); /* piyasa sembolü değilse soru normal yapay zekâya gider */ return `🔮 KAHİN ${h} günlük tahmini hesaplıyor (yapay zekâ kotası gerekmez)…`;
+    }
+    if (/^(tahmin ver|tahmin et|tahmin yap|piyasa tahmini|tahminler|ne olacak piyasa)$/.test(f)) { setTimeout(async () => { try { const s = await scan(7, UNIVERSE, x => setPhase('thinking', x)); setPhase('idle', 'Hazırım.'); bubble('ai', s); } catch (e) { setPhase('idle', 'Hazırım.'); note(e.message); } }, 10); return '📡 KAHİN 16 varlık için 7 günlük tahmin hazırlıyor (1–2 dk, yapay zekâ kotası gerekmez)… Tek varlık için: “BTC tahmin ver”, “gram altın 30 günlük tahmin”.'; }
     if ((m = f.match(/^kahin (?:taramasi|tara)\s*(\d{1,2})?/))) { setTimeout(async () => { try { const s = await scan(m[1] || 7, UNIVERSE, x => setPhase('thinking', x)); setPhase('idle', 'Hazırım.'); bubble('ai', s); } catch (e) { setPhase('idle', 'Hazırım.'); note(e.message); } }, 10); return '📡 KAHİN 16 varlığı tarıyor (1–2 dk)…'; }
     if (/^kahin (?:karnesi|karne|sicili)$/.test(f)) { setTimeout(async () => bubble('ai', await scorecard()), 10); return '📒 Karne hazırlanıyor…'; }
     return _lc(t0);

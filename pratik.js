@@ -26,7 +26,7 @@
   async function gemini(parts, json = false) {
     const key = gemKey(); if (!key) throw Error('Gemini anahtarı gerekli');
     let last = '';
-    for (const m of ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite']) {
+    for (const m of (window.jarvisGeminiModels?.('complex') || ['gemini-flash-latest', 'gemini-3-flash-preview', 'gemini-3.8-flash', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite']).filter(m => !/^gemma/.test(m))) {
       try {
         const r = await withTimeout(fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify({ contents: [{ role: 'user', parts }], ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}) }) }), 60000, 'zaman aşımı');
         if (!r.ok) { last = m + ': HTTP ' + r.status; continue; }
