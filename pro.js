@@ -74,8 +74,19 @@
       if (at <= Date.now()) at += DAY;
       return { kind: 'once', at, cmd: cleanCmd(m[4]) };
     }
-    if ((m = t.match(new RegExp('^yarın\\s+' + HM + '\\s+(.{3,})$')))) {
-      const L = local(Date.now()); return { kind: 'once', at: atLocal(L.getUTCFullYear(), L.getUTCMonth(), L.getUTCDate() + 1, Number(m[1]), Number(m[2] || 0)), cmd: cleanCmd(m[3]) };
+    // “yarın 9da …”, “bu akşam 23:30 …”, “pazartesi 10:00 …”: saat açıkça yazılmalı (9da / 9:00) ya da komut “hatırlat” içermeli —
+    // böylece “yarın 2 hasta gelecek” gibi cümleler yanlışlıkla görev olmaz.
+    const DAYW = '(yarın|bugün|bu akşam|bu sabah|bu gece|akşam|sabah|(?:önümüzdeki|gelecek)?\\s*(?:pazartesi|salı|çarşamba|perşembe|cuma|cumartesi|pazar))(?:\\s+günü)?';
+    if ((m = t.match(new RegExp('^' + DAYW + '\\s+(?:saat\\s*)?(\\d{1,2})(?:[:.](\\d{2}))?([\'’]?(?:de|da|te|ta))?\\s+(.{3,})$')))) {
+      const [, dw, hs, ms, suf, rest] = m; if (!ms && !suf && !isReminder(rest)) return null;
+      let h = Number(hs); const mi = Number(ms || 0); if (h > 23 || mi > 59) return null;
+      if (/akşam/.test(dw) && h >= 1 && h < 12) h += 12; else if (/gece/.test(dw) && h >= 6 && h < 12) h += 12; /* gece 1–5 = sabaha karşı */
+      const L = local(Date.now()); let add = 0; const wd = dw.replace(/^(?:önümüzdeki|gelecek)\s*/, '').trim();
+      if (dw === 'yarın') add = 1;
+      else if (wd in DOW) { const cur = L.getUTCDay(); add = (DOW[wd] - cur + 7) % 7; if (add === 0 && /önümüzdeki|gelecek/.test(dw)) add = 7; /* bugün o günse ve saat geçmediyse bugün */ }
+      let at = atLocal(L.getUTCFullYear(), L.getUTCMonth(), L.getUTCDate() + add, h, mi);
+      if (at <= Date.now()) at += wd in DOW ? 7 * DAY : DAY;
+      return { kind: 'once', at, cmd: cleanCmd(rest) };
     }
     return null;
   }
