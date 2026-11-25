@@ -91,7 +91,7 @@
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/';
   // Automatic model choice: quick/default questions → fastest lite model; complex ones (analysis, planning, maths) → stronger flash model first.
   const geminiOrder = tier => {
-    if (tier === 'complex') return window.jarvisGeminiModels('complex');
+    if (tier === 'complex') { const L = window.jarvisGeminiModels('complex'), ok = localStorage.getItem('jarvisapp.geminiModelC'); return ok && L.includes(ok) ? [ok, ...L.filter(m => m !== ok)] : L; } // son çalışan öne: boşuna yoğun modelleri beklemesin
     const L = alive(GEMINI_MODELS), ok = localStorage.getItem('jarvisapp.geminiModel'); return ok && L.includes(ok) ? [ok, ...L.filter(m => m !== ok)] : L;
   };
   // Akıllı yönlendirici (brain.js) varsa: soğumadaki modelleri atlar, sağlıklı/hızlı olanı öne alır, sonuçları öğrenir.
@@ -254,7 +254,7 @@
       report(model, r.status, performance.now() - t0);
       if (r.status === 404 && /no longer available|not found/i.test(await r.clone().text())) { markGone(model); last = r; continue; }
       if ([404, 429, 500, 503].includes(r.status) || (r.status === 400 && /model/i.test(await r.clone().text()))) { last = r; if (r.status === 503) busy.push(model); continue; }
-      if (r.ok && body.tier !== 'complex') localStorage.setItem('jarvisapp.geminiModel', model);
+      if (r.ok && !/^gemma/.test(model)) localStorage.setItem(body.tier === 'complex' ? 'jarvisapp.geminiModelC' : 'jarvisapp.geminiModel', model);
       if (r.ok) window.jarvisLastModel = model;
       return r;
     }
