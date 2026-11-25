@@ -312,7 +312,7 @@ function linkChip(url, title) { pendingLinks.push({ url, title }); }
 
 /* ================= bilgisayar yardımcısı (Windows) ================= */
 const PC = 'http://127.0.0.1:8765';
-const PC_RISKY = new Set(['servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet']);
+const PC_RISKY = new Set(['klasor_duzenle', 'klasor_geri_al', 'servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet']);
 let pcLocal = false;
 async function pcLocalCall(tool, args, onay) {
   const r = await withTimeout(fetch(PC + '/run', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Jarvis-Token': opt('pcToken') || '' }, body: JSON.stringify({ tool, args, onay }) }), tool === 'powershell' || tool === 'tarama' ? 70000 : 30000, 'Bilgisayar yanıt vermedi');
@@ -324,7 +324,7 @@ async function pcLocalCall(tool, args, onay) {
   return d;
 }
 /* Eski yardımcı (ör. 8.x) yeni araçları (web_al, ekran, nöbet…) tanımıyor; panel bunu fark edip tek dokunuşla günceller. */
-const PC_MIN = '9.0.1';
+const PC_MIN = '9.1.0';
 const verLt = (a, b) => { const x = String(a || '0').split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) < (y[i] || 0); } return false; };
 let pcUpgradeAsked = false;
 function pcOutdated(ver) {
@@ -465,7 +465,7 @@ ${isIOS ? 'Beyhan şu an iPhone kullanıyor: uygulama açmak için ac veya kesti
 /** Runs the tool calls of one step. Calls of the same step run in parallel. Returns text for the model and an optional image. */
 // Tools that change something (asked first when autonomy is "always ask"); read-only tools never ask.
 const WRITE_TOOLS = new Set(['pc', 'ev', 'hasta_ekle', 'seans_ekle', 'program_kaydet', 'kasa', 'envanter', 'portfoy', 'izle']);
-const PC_READONLY = new Set(['sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran', 'pencereler', 'surecler', 'wifi', 'pil', 'klasor_listele', 'son_dosyalar', 'dosya_al', 'programlar', 'servisler', 'ag_bilgi', 'suruculer']);
+const PC_READONLY = new Set(['klasor_analiz', 'sistem', 'sistem_ozet', 'baslangic', 'dosya_ara', 'dosya_oku', 'gunluk', 'temizlik', 'yazici', 'monitor', 'pano_al', 'durum', 'ekran', 'pencereler', 'surecler', 'wifi', 'pil', 'klasor_listele', 'son_dosyalar', 'dosya_al', 'programlar', 'servisler', 'ag_bilgi', 'suruculer']);
 window.jarvisRunTools = async (calls, ctx) => {
   const results = await Promise.all(calls.map(async raw => {
     const [name0, ...args] = raw.split('|').map(s => s.trim());

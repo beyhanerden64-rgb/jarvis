@@ -8,7 +8,7 @@ onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarı
 import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, socket, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '9.0.1'
+VERSION = '9.1.0'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -37,7 +37,7 @@ APPS = {  # izin listesi: sesli ad → komut
 PROC = {'notepad': 'notepad.exe', 'chrome': 'chrome.exe', 'msedge': 'msedge.exe', 'winword': 'WINWORD.EXE', 'excel': 'EXCEL.EXE',
         'powerpnt': 'POWERPNT.EXE', 'mspaint': 'mspaint.exe', 'code': 'Code.exe', 'spotify:': 'Spotify.exe', 'whatsapp:': 'WhatsApp.exe',
         'calc': 'CalculatorApp.exe', 'firefox': 'firefox.exe', 'tg:': 'Telegram.exe', 'obs64': 'obs64.exe', 'taskmgr': 'Taskmgr.exe'}
-RISKY = {'kendini_guncelle', 'nobet_onay', 'servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet'}
+RISKY = {'klasor_duzenle', 'klasor_geri_al', 'kendini_guncelle', 'nobet_onay', 'servis', 'kapat', 'powershell', 'temizlik_sil', 'tarama', 'yaz', 'yedekle', 'dosya_olustur', 'word_olustur', 'excel_olustur', 'donustur', 'tikla', 'kur', 'yazdir', 'surec_kapat', 'guc', 'dosya_tasi', 'dosya_kopyala', 'dosya_sil', 'dosya_kaydet'}
 TEXT_EXT = ('.txt', '.md', '.csv', '.json', '.log', '.py', '.js', '.html', '.css', '.ini', '.xml', '.yaml', '.yml')
 
 
@@ -236,6 +236,141 @@ def _gdi_shot(path):
     return path, base64.b64encode(png).decode(), {'left': left, 'top': top, 'width': width, 'height': height}
 
 
+# ---------- İndirilenler düzenleyici: kopya/tür analizi, onaylı taşıma (asla silmez), geri alma ----------
+TIDY_CATS = {
+    'Belgeler': {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'odt', 'rtf', 'md', 'json', 'xml'},
+    'Görseller': {'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'bmp', 'svg', 'tif', 'tiff'},
+    'Videolar': {'mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v'},
+    'Müzik': {'mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac'},
+    'Kurulumlar': {'exe', 'msi', 'msix', 'appx', 'appxbundle', 'msixbundle'},
+    'Arşivler': {'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'},
+    'Disk Görüntüleri': {'iso', 'vdi', 'vhd', 'vhdx', 'vmdk', 'img', 'ova'},
+    'Kod ve Betikler': {'py', 'js', 'html', 'htm', 'css', 'ps1', 'bat', 'cmd', 'sh', 'ts'},
+}
+
+
+def _tidy_root(a0):
+    k = fold(a0 or 'indirilenler')
+    if k in ('indirilenler', 'downloads', ''):
+        return os.path.join(HOME, 'Downloads')
+    raise ValueError('Şimdilik yalnız İndirilenler klasörü düzenlenebilir.')
+
+
+def _fhash(path, size):
+    h = hashlib.sha1()
+    with open(path, 'rb') as f:
+        if size <= 64 * 1024 * 1024:
+            for b in iter(lambda: f.read(1 << 20), b''):
+                h.update(b)
+        else:  # büyük dosya: baş + son 8 MB + boyut
+            h.update(f.read(8 << 20)); f.seek(-(8 << 20), 2); h.update(f.read(8 << 20)); h.update(str(size).encode())
+    return h.hexdigest()
+
+
+def _tidy_scan(root):
+    files = []
+    for n in os.listdir(root):
+        p = os.path.join(root, n)
+        if not os.path.isfile(p) or n.lower() in ('desktop.ini', 'thumbs.db') or n.startswith('~$') or n.endswith(('.crdownload', '.part', '.tmp')):
+            continue
+        try:
+            st = os.stat(p)
+        except OSError:
+            continue
+        ext = n.rsplit('.', 1)[-1].lower() if '.' in n else ''
+        cat = next((c for c, exts in TIDY_CATS.items() if ext in exts), 'Diğer')
+        files.append({'n': n, 'p': p, 'size': st.st_size, 'mtime': st.st_mtime, 'ext': ext, 'cat': cat})
+    by_size = {}
+    for f in files:
+        if f['size'] > 0:
+            by_size.setdefault(f['size'], []).append(f)
+    dups = []
+    for group in by_size.values():
+        if len(group) < 2:
+            continue
+        by_h = {}
+        for f in group:
+            try:
+                by_h.setdefault(_fhash(f['p'], f['size']), []).append(f)
+            except OSError:
+                pass
+        for same in by_h.values():
+            if len(same) > 1:
+                same.sort(key=lambda f: (len(f['n']), f['mtime']))  # en kısa ad (kopya ekisiz) ve en eski korunur
+                dups.extend(same[1:])
+    return files, dups
+
+
+def _hb(n):
+    for u in ('B', 'KB', 'MB', 'GB'):
+        if n < 1024:
+            return f'{n:.0f} {u}'
+        n /= 1024
+    return f'{n:.1f} TB'
+
+
+def folder_tidy(name, a0, onay):
+    root = _tidy_root(a0)
+    if name == 'klasor_geri_al':
+        if not onay:
+            raise PermissionError('Bu işlem için uygulamada onay gerekiyor.')
+        logs = sorted(x for x in os.listdir(WORK) if x.startswith('duzenle-') and x.endswith('.json')) if os.path.isdir(WORK) else []
+        if not logs:
+            return {'text': 'Geri alınacak düzenleme kaydı yok.'}
+        with open(os.path.join(WORK, logs[-1]), encoding='utf-8') as f:
+            moves = json.load(f)
+        back = 0
+        for m in reversed(moves):
+            if os.path.exists(m['to']) and not os.path.exists(m['from']):
+                shutil.move(m['to'], m['from']); back += 1
+        os.rename(os.path.join(WORK, logs[-1]), os.path.join(WORK, logs[-1] + '.geri-alindi'))
+        for d in list(TIDY_CATS) + ['Diğer', '_Kopyalar']:
+            dp = os.path.join(root, d)
+            try:
+                if os.path.isdir(dp) and not os.listdir(dp):
+                    os.rmdir(dp)
+            except OSError:
+                pass
+        return {'text': f'Geri alındı: {back} dosya eski yerine döndü.'}
+    files, dups = _tidy_scan(root)
+    dupset = {f['p'] for f in dups}
+    if name == 'klasor_analiz':
+        cats = {}
+        for f in files:
+            c = cats.setdefault(f['cat'], [0, 0]); c[0] += 1; c[1] += f['size']
+        old_inst = [f for f in files if f['cat'] == 'Kurulumlar' and time.time() - f['mtime'] > 30 * 86400]
+        zips_done = [f for f in files if f['ext'] == 'zip' and os.path.isdir(os.path.join(root, f['n'][:-4]))]
+        big = sorted(files, key=lambda f: -f['size'])[:5]
+        lines = [f'🗂 İNDİRİLENLER: {len(files)} dosya · {_hb(sum(f["size"] for f in files))}']
+        lines += [f'• {c}: {v[0]} dosya, {_hb(v[1])}' for c, v in sorted(cats.items(), key=lambda x: -x[1][1])]
+        lines.append(f'Kopyalar: {len(dups)} dosya, {_hb(sum(f["size"] for f in dups))} boşaltılabilir' + (' — ör. ' + ', '.join(f['n'] for f in dups[:4]) if dups else ''))
+        if old_inst:
+            lines.append(f'30 günden eski kurulum dosyası: {len(old_inst)} ({_hb(sum(f["size"] for f in old_inst))}) — program kurulduysa gereksiz')
+        if zips_done:
+            lines.append(f'Zaten açılmış ZIP: {len(zips_done)} ({_hb(sum(f["size"] for f in zips_done))})')
+        lines.append('En büyükler: ' + ', '.join(f'{f["n"]} ({_hb(f["size"])})' for f in big))
+        return {'text': '\n'.join(lines), 'data': {'files': len(files), 'dups': len(dups)}}
+    if not onay:
+        raise PermissionError('Bu işlem için uygulamada onay gerekiyor.')
+    moves = []
+    for f in files:
+        dest_dir = os.path.join(root, '_Kopyalar' if f['p'] in dupset else f['cat'])
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, f['n'])
+        i = 1
+        while os.path.exists(dest):
+            stem, dot, ext = f['n'].rpartition('.')
+            dest = os.path.join(dest_dir, f'{stem or f["n"]} ({i}){dot}{ext}' if dot else f'{f["n"]} ({i})'); i += 1
+        try:
+            shutil.move(f['p'], dest); moves.append({'from': f['p'], 'to': dest})
+        except OSError:
+            pass  # kullanımda olan dosya atlanır
+    os.makedirs(WORK, exist_ok=True)
+    with open(os.path.join(WORK, time.strftime('duzenle-%Y%m%d-%H%M%S.json')), 'w', encoding='utf-8') as f:
+        json.dump(moves, f, ensure_ascii=False)
+    return {'text': f'✓ {len(moves)} dosya klasörlere taşındı ({len([m for m in moves if "_Kopyalar" in m["to"]])} kopya “_Kopyalar”a). Hiçbir şey silinmedi; “indirilenleri geri al” ile eski hâline döner.'}
+
+
 def tool(name, args, onay):
     """Tek bir izinli işlemi yapar. {'text': ..., 'image'?: base64, 'data'?: {...}} döndürür."""
     a = [str(x) for x in (args or [])]
@@ -244,6 +379,8 @@ def tool(name, args, onay):
         raise PermissionError('Bu işlem için uygulamada onay gerekiyor.')
     if name == 'durum':
         return {'text': f'{platform.node()} · {platform.system()} {platform.release()} · JARVIS yardımcı {VERSION}'}
+    if name in ('klasor_analiz', 'klasor_duzenle', 'klasor_geri_al'):
+        return folder_tidy(name, a0, onay)
     if name in ('ac', 'aç'):
         k = fold(a0)
         if not k:
