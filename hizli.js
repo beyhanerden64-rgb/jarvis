@@ -97,7 +97,7 @@
     // gider
     if (!p && a > 0 && (m = f.match(/^(.{2,40}?)\s+(?:icin\s+)?[\d.,]+\s*(?:bin|k)?\s*(?:tl|lira)?\s*(odedim|harcadim|verdim|aldim|odendi)$/))) { setTimeout(() => runTool(`kasa|gider|${String(a).replace('.', ',')}|${m[1]}`).catch(e => note(e.message)), 5); return `⚡ Gider kaydediliyor: ${m[1]} ${tl(a)}…`; }
     // hasta notu
-    if (p && (m = t.match(/^\S+(?:\s+\S+)?\s+(?:hakkında|için)?\s*not[:\s]+(.{4,})$/i))) { p.notlar = [...(p.notlar || []), { t: Date.now(), not: m[1] }].slice(-50); if (typeof savePatients === 'function') savePatients(); return `📝 ${nm(p)} dosyasına not eklendi.`; }
+    if (p && (m = t.match(/^\S+(?:\s+\S+)?\s+(?:hakkında|için)?\s*not[:\s]+(.{4,})$/i))) { window.jarvisZeki?.snap('not: ' + p.ad); p.notlar = [...(p.notlar || []), { t: Date.now(), not: m[1] }].slice(-50); if (typeof savePatients === 'function') savePatients(); return `📝 ${nm(p)} dosyasına not eklendi.`; }
     return null;
   }
 
@@ -106,7 +106,8 @@
   function planSeries(pq, nRaw, perWeekRaw, timeRaw, startRaw) {
     const p = P().find(x => fold(x.ad) === fold(pq)) || (typeof findPatient === 'function' ? findPatient(pq) : null);
     const N = Math.max(1, Math.min(40, parseInt(nRaw, 10) || 10)), W = Math.max(1, Math.min(6, parseInt(perWeekRaw, 10) || 3));
-    const tm = (String(timeRaw || '').match(/(\d{1,2})[:.]?(\d{2})?/) || []); let H = tm[1] ? +tm[1] : 14, M = tm[2] ? +tm[2] : 0;
+    const tm = (String(timeRaw || '').match(/(\d{1,2})[:.]?(\d{2})?/) || []); let H = tm[1] ? +tm[1] : 14, M = tm[2] ? +tm[2] : 0, learned = false;
+    if (!tm[1] && p?.seanslar?.length >= 2) { const c = {}; for (const x of p.seanslar) { const h = new Date(x.t).getHours(); if (h >= 8 && h <= 19) c[h] = (c[h] || 0) + 1; } const best = Object.entries(c).sort((a, b) => b[1] - a[1])[0]; if (best && best[1] >= 2) { H = +best[0]; M = 0; learned = true; } }
     const name = p?.ad || String(pq || '').trim(); if (!name) throw Error('Biçim: seri_planla|hasta|seans sayısı|haftada kaç|saat|başlangıç (yarın/YYYY-MM-DD)');
     const hol = new Set([...(store.get('tatil.' + new Date().getFullYear(), []) || []), ...(store.get('tatil.' + (new Date().getFullYear() + 1), []) || [])].map(x => x[0]));
     const busy = IT().filter(i => i.kind === 'task' && !i.done && i.due).map(i => i.due);
@@ -121,10 +122,10 @@
       }
       d = new Date(d.getTime() + DAY);
     }
-    return { name, p, out, N, W };
+    return { name, p, out, N, W, learned, H };
   }
-  function planText(r) { const fmt = s => new Date(s).toLocaleString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); return `📆 ${r.name}: ${r.out.length} seans, haftada ${r.W} (pazar ve resmi tatiller atlandı, mevcut randevularla çakışma yok)\n${r.out.map((s, i) => `${i + 1}. ${fmt(s)}`).join('\n')}`; }
-  function planCommit(r) { r.out.forEach((s, i) => saveItem({ kind: 'task', text: `Seans: ${r.name} (${i + 1}/${r.out.length})`, due: s })); if (r.p) { r.p.paket = r.out.length; r.p.paketBas = Date.now(); if (typeof savePatients === 'function') savePatients(); } return `✓ ${r.out.length} seans takvime eklendi${r.p ? ' ve ' + r.out.length + ' seanslık paket başlatıldı' : ''}.`; }
+  function planText(r) { const fmt = s => new Date(s).toLocaleString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); return `📆 ${r.name}: ${r.out.length} seans, haftada ${r.W} (pazar ve resmi tatiller atlandı, mevcut randevularla çakışma yok${r.learned ? `; saat, hastanın her zamanki saati ${String(r.H).padStart(2, '0')}:00` : ''})\n${r.out.map((s, i) => `${i + 1}. ${fmt(s)}`).join('\n')}`; }
+  function planCommit(r) { window.jarvisZeki?.snap('seans serisi: ' + r.name); r.out.forEach((s, i) => saveItem({ kind: 'task', text: `Seans: ${r.name} (${i + 1}/${r.out.length})`, due: s })); if (r.p) { r.p.paket = r.out.length; r.p.paketBas = Date.now(); if (typeof savePatients === 'function') savePatients(); } return `✓ ${r.out.length} seans takvime eklendi${r.p ? ' ve ' + r.out.length + ' seanslık paket başlatıldı' : ''}.`; }
   function planCard(r) { const b = bubble('ai', planText(r)); b.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', class: 'yes', onclick: ev => { ev.target.disabled = true; note(planCommit(r)); } }, '✓ Takvime ekle'), r.p?.tel ? el('button', { type: 'button', onclick: () => window.open(`https://wa.me/${String(r.p.tel).replace(/\D/g, '').replace(/^0/, '90')}?text=${encodeURIComponent(`Merhaba ${r.name.split(' ')[0]}, seans programınız:\n` + r.out.map((s, i) => `${i + 1}) ${new Date(s).toLocaleString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}`).join('\n') + '\nFİZYOVİTA')}`, '_blank', 'noopener') }, '💬 Hastaya gönder') : null)); }
 
   /* ================= 4) AYLIK GELİR HEDEFİ ================= */
@@ -198,7 +199,7 @@
     const t = String(t0 || '').trim(), f = fold(t).replace(/[?!.]+$/, '');
     if (window.jarvisUltra?.guest?.()) return _lc(t0);
     let m;
-    if ((m = t.match(/^(.{3,40}?)\s+(?:için|icin)\s+(\d{1,2})\s*seans\s*(?:,?\s*haftada\s*(\d))?(?:\s*(?:saat\s*)?(\d{1,2}[:.]\d{2}|\d{1,2})(?:'?(?:de|da|te|ta))?)?(?:\s*(planla|ayarla|programla))?$/i))) { try { const r = planSeries(m[1], m[2], m[3] || 3, m[4] || '14:00'); planCard(r); return null === r ? '' : '📆 Seans serisi hazır — kontrol edip “Takvime ekle”ye bas.'; } catch (e) { return e.message; } }
+    if ((m = t.match(/^(.{3,40}?)\s+(?:için|icin)\s+(\d{1,2})\s*seans\s*(?:,?\s*haftada\s*(\d))?(?:\s*(?:saat\s*)?(\d{1,2}[:.]\d{2}|\d{1,2})(?:'?(?:de|da|te|ta))?)?(?:\s*(planla|ayarla|programla))?$/i))) { try { const r = planSeries(m[1], m[2], m[3] || 3, m[4] || ''); planCard(r); return null === r ? '' : '📆 Seans serisi hazır — kontrol edip “Takvime ekle”ye bas.'; } catch (e) { return e.message; } }
     if ((m = f.match(/^(?:aylik\s+)?(?:gelir|ciro)\s+hedef(?:im|i)?\s*(.*)$/))) return revenue(m[1]);
     if (/^(birakma riski|riskli hastalar|hasta riski)$/.test(f)) return risk();
     if (/^(komut paleti|palet|ara)$/.test(f)) { palette(); return 'Komut paleti açıldı (Ctrl+K).'; }
