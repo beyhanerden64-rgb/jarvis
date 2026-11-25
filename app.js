@@ -625,7 +625,7 @@ async function think(text, { voiceTurn = false, onDelta = () => {}, image = null
   } catch (e) {
     if (e.name === 'AbortError') { store.set('pendingTask', null); out.body.textContent = shown || '(durduruldu)'; return null; }
     // yapay zekâ kotası dolsa da düğme boşa çıkmasın: önceden alınan gerçek veri doğrudan gösterilir
-    if (!shown && preData) { const t = (e.status === 429 ? '⚠ Yapay zekâ kotası şu an dolu; veriyi yorumsuz gösteriyorum:\n\n' : '⚠ Yapay zekâ yanıt vermedi; alınan veri:\n\n') + preData; out.body.textContent = t; answerTools(out.el, t); return t; }
+    if (!shown && preData) { const t = (e.status === 429 ? '⚠ Yapay zekâ kotası şu an dolu; veriyi yorumsuz gösteriyorum:\n\n' : '⚠ Yapay zekâ yanıt vermedi; alınan veri:\n\n') + preData.replace(/^[a-z_]+(?:\|[^\n:]*)?: BAŞARILI — /gm, ''); out.body.textContent = t; answerTools(out.el, t); return t; }
     out.body.textContent = shown || (e.status === 429 ? 'Kullanım sınırına takıldım; biraz sonra tekrar dene.' : !navigator.onLine ? 'İnternet yok. Sayaç, not, hatırlatma gibi yerel komutlar çalışmaya devam ediyor.' : 'Yanıt alınamadı: ' + e.message);
     throw e;
   } finally { answering = false; controller = null; }
