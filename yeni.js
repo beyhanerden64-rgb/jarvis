@@ -50,12 +50,13 @@
     if (!(amount > 0) || !from) throw Error('Birimi tanıyamadım. Desteklenen: TL, dolar, euro, sterlin, frank, riyal, dinar, dirhem, manat, gram/has/çeyrek/yarım/tam/Cumhuriyet altın, bilezik, gümüş.');
     const v = await kc();
     const rate = k => (k === 'TRY' ? 1 : v[k]?.s);
+    const amt = x => Number(x).toLocaleString('tr-TR', { maximumFractionDigits: 4 }), rt = x => Number(x).toLocaleString('tr-TR', { maximumFractionDigits: x < 1 ? 5 : 2 }) + ' TL';
     const a = rate(from[1]), b = rate(to[1]);
     if (!a || !b) throw Error('Kur alınamadı: ' + (!a ? from[2] : to[2]));
     const res = amount * a / b;
     const unit = to[1] === 'TRY' ? 'TL' : to[2];
-    const back = from[1] !== 'TRY' && to[1] === 'TRY' ? ` (1 ${from[2]} = ${tl(a)})` : to[1] !== 'TRY' && from[1] === 'TRY' ? ` (1 ${to[2]} = ${tl(b)})` : '';
-    return `💱 ${nf(amount, 4)} ${from[1] === 'TRY' ? 'TL' : from[2]} ≈ ${nf(res, res < 10 ? 4 : 2)} ${unit}${back}\nKapalıçarşı satış fiyatı · ${v._date ? v._date.slice(11, 16) : 'şimdi'} · ${NOTE}`;
+    const back = from[1] !== 'TRY' && to[1] === 'TRY' ? ` (1 ${from[2]} = ${rt(a)})` : to[1] !== 'TRY' && from[1] === 'TRY' ? ` (1 ${to[2]} = ${rt(b)})` : '';
+    return `💱 ${amt(amount)} ${from[1] === 'TRY' ? 'TL' : from[2]} ≈ ${Number(res).toLocaleString('tr-TR', { maximumFractionDigits: res < 10 ? 4 : 2 })} ${unit}${back}\nKapalıçarşı satış fiyatı · ${v._date ? v._date.slice(11, 16) : 'şimdi'} · ${NOTE}`;
   }
   async function bazaar() {
     const v = await kc();
@@ -71,7 +72,7 @@
     const mk = /abd|amerika|us|nasdaq/.test(fold(market)) ? 'america' : 'turkey';
     const k = fold(kind);
     const sort = /dus/.test(k) ? { sortBy: 'change', sortOrder: 'asc' } : /hacim|islem|aktif/.test(k) ? { sortBy: 'Value.Traded', sortOrder: 'desc' } : { sortBy: 'change', sortOrder: 'desc' };
-    const body = { filter: [{ left: 'type', operation: 'equal', right: 'stock' }, { left: mk === 'america' ? 'market_cap_basic' : 'Value.Traded', operation: 'greater', right: mk === 'america' ? 2e9 : 5e7 }], columns: ['name', 'description', 'close', 'change', 'Value.Traded'], sort, range: [0, 10] };
+    const body = { filter: [{ left: 'type', operation: 'equal', right: 'stock' }, { left: 'Value.Traded', operation: 'greater', right: mk === 'america' ? 2e7 : 5e7 }, ...(mk === 'america' ? [{ left: 'exchange', operation: 'in_range', right: ['NASDAQ', 'NYSE', 'AMEX'] }, { left: 'market_cap_basic', operation: 'greater', right: 2e9 }] : [])], columns: ['name', 'description', 'close', 'change', 'Value.Traded'], sort, range: [0, 10] };
     const r = await retry(() => withTimeout(fetch(`https://scanner.tradingview.com/${mk}/scan`, { method: 'POST', body: JSON.stringify(body) }), 10000, 'zaman aşımı').then(x => { if (!x.ok) throw Error('HTTP ' + x.status); return x.json(); }));
     const rows = (r.data || []).map(x => x.d).filter(d => d?.[2] != null);
     if (!rows.length) throw Error('Liste boş geldi (piyasa kapalı olabilir).');
@@ -314,5 +315,10 @@
     return _lc(text0);
   };
   const HELP = '🆕 SATÜRN 26 — 10 YENİ ÖZELLİK\n1) “250 euro kaç TL”, “3 çeyrek kaç TL”, “1 milyon dinar kaç TL” — anında çeviri\n2) “Kapalıçarşı” — tüm altın ve döviz tablosu (IQD, SAR dahil)\n3) “BIST’te en çok yükselenler”, “ABD düşenler” — günün hisseleri\n4) “gram altın 90 gün grafiği”, “BTC geçmişi” — fiyat geçmişi ve grafik\n5) “diz egzersiz programı orta” — internetsiz, anında ev programı\n6) “Ayşe Yılmaz için 1500 TL makbuz” — numaralı ödeme makbuzu\n7) “resmi tatiller” — bayramlar ve sıradaki tatil\n8) “klinik panosu” — hasta istatistikleri ve tanı grafiği\n9) “deprem alarmını aç” — Cizre çevresi deprem uyarısı\n10) “bugün ne yaptım” — gün günlüğü';
+  // yetenek düğmeleri
+  for (const [k, label, fn] of [['kc', 'Kapalıçarşı', () => { note('🏛 Kapalıçarşı fiyatlarını alıyorum…'); later(bazaar, ''); }], ['yeni', 'Yeni özellikler', () => show(HELP)]]) {
+    SKILLS[k] = { label, run: fn };
+    for (const box of ['skills', 'mobileSkills']) $(box)?.append(el('button', { type: 'button', onclick: () => { window.jarvisUnlock?.(); fn(); } }, label));
+  }
   window.jarvisYeni = { convert, bazaar, movers, history, program, receipt, holidays, dashboard, quakeCheck, journal, trWords, HELP };
 })();

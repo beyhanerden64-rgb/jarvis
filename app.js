@@ -295,7 +295,7 @@ function parseTimer(t) {
 /* ================= skills (one-tap abilities) ================= */
 const SKILLS = {
   news: { label: 'Haberler', ask: 'Bugünün Türkiye ve dünya gündeminden en önemli 5 haberi birer cümleyle özetle.' },
-  fx: { label: 'Döviz · altın', ask: 'Güncel dolar, euro ve gram altın fiyatları ne kadar?', pre: ['fiyat|dolar', 'fiyat|euro', 'fiyat|gram altın'] },
+  fx: { label: 'Döviz · altın', ask: 'Güncel dolar, euro ve gram altın fiyatları ne kadar?', pre: ['kapalicarsi', 'fiyat|ons'] },
   wx: { label: 'Hava', ask: 'Bugün ve yarın Cizre’de hava nasıl? Dışarı çıkarken nelere dikkat etmeliyim?', pre: ['hava_tahmini|Cizre|2 gün'] },
   exercise: { label: 'Egzersiz programı', form: { title: 'Ev egzersiz programı', fields: [['bolge', 'Tanı / bölge', 'ör. bel fıtığı, diz ön çapraz bağ ameliyatı sonrası', true], ['yas', 'Yaş', 'ör. 45'], ['seviye', 'Seviye', ['başlangıç', 'orta', 'ileri']]],
     build: v => `Ev egzersiz programı hazırla. Tanı/bölge: ${v.bolge}.${v.yas ? ' Yaş: ' + v.yas + '.' : ''} Seviye: ${v.seviye}. Her egzersiz için set, tekrar, sıklık, ilerleme ölçütü ve dikkat edilecekleri sade dille yaz; ağrı artarsa ne yapılacağını ve kırmızı bayrakları ekle.` } },
