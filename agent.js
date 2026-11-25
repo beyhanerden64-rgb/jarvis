@@ -48,7 +48,7 @@
         const shot = await pcCall('ekran', [], false);
         if (!shot.image || !shot.screen?.width) throw Error('Ekran görüntüsü alınamadı');
         const geo = shot.screen;
-        const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system: SYS, messages: [{ role: 'user', content: `GÖREV: ${goal}\nŞU ANA KADAR YAPILANLAR: ${steps.length ? steps.map((s, k) => k + 1 + '. ' + s).join('\n') : '(yok)'}\nEkran görüntüsü ekte. Sıradaki TEK adımı JSON olarak ver.` }], image: { mediaType: 'image/jpeg', data: shot.image } }) });
+        const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ tier: 'complex', system: SYS, messages: [{ role: 'user', content: `GÖREV: ${goal}\nŞU ANA KADAR YAPILANLAR: ${steps.length ? steps.map((s, k) => k + 1 + '. ' + s).join('\n') : '(yok)'}\nEkran görüntüsü ekte. Sıradaki TEK adımı JSON olarak ver.` }], image: { mediaType: shot.mime || 'image/jpeg', data: shot.image } }) });
         if (!r.ok) throw Error('Yapay zekâ yanıt vermedi (' + r.status + ')');
         const raw = (await r.text()).split('\u0000')[0];
         let a; try { a = JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1)); } catch { steps.push('(anlaşılmayan yanıt)'); continue; }

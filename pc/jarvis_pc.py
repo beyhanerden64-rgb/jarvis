@@ -8,7 +8,7 @@ onaylanmadan çalışmaz. Telefon köprüsü açıksa, komutlar şifre anahtarı
 import base64, ctypes, datetime, hashlib, hmac, json, os, platform, secrets, shutil, socket, subprocess, sys, tempfile, threading, time, urllib.request, webbrowser, zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '9.0.0'
+VERSION = '9.0.1'
 PORT = 8765
 ORIGINS = {'https://beyhanerden64-rgb.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'}
 HOME = os.path.expanduser('~')
@@ -24,7 +24,15 @@ APPS = {  # izin listesi: sesli ad → komut
     'dosya gezgini': 'explorer', 'vscode': 'code', 'kod': 'code', 'ayarlar': 'ms-settings:', 'spotify': 'spotify:',
     'whatsapp': 'whatsapp:', 'telegram': 'tg:', 'görev yöneticisi': 'taskmgr', 'gorev yoneticisi': 'taskmgr',
     'kamera': 'microsoft.windows.camera:', 'takvim': 'outlookcal:', 'posta': 'outlookmail:', 'ekran alıntısı': 'ms-screenclip:',
-    'firefox': 'firefox', 'teams': 'msteams:', 'zoom': 'zoommtg:', 'obs': 'obs64'
+    'firefox': 'firefox', 'teams': 'msteams:', 'zoom': 'zoommtg:', 'obs': 'obs64',
+    # kurulu programı olmayan web uygulamaları: tarayıcıda açılır
+    'instagram': 'https://www.instagram.com/', 'fizyovita instagram': 'https://www.instagram.com/fizyo_vitaaa/',
+    'youtube': 'https://www.youtube.com/', 'youtube studio': 'https://studio.youtube.com/', 'gmail': 'https://mail.google.com/',
+    'google': 'https://www.google.com/', 'haritalar': 'https://maps.google.com/', 'google haritalar': 'https://maps.google.com/',
+    'whatsapp web': 'https://web.whatsapp.com/', 'facebook': 'https://www.facebook.com/', 'tiktok': 'https://www.tiktok.com/',
+    'twitter': 'https://x.com/', 'x': 'https://x.com/', 'linkedin': 'https://www.linkedin.com/', 'drive': 'https://drive.google.com/',
+    'google drive': 'https://drive.google.com/', 'takvim web': 'https://calendar.google.com/', 'satürn': 'https://beyhanerden64-rgb.github.io/jarvis/',
+    'saturn': 'https://beyhanerden64-rgb.github.io/jarvis/', 'jarvis': 'https://beyhanerden64-rgb.github.io/jarvis/'
 }
 PROC = {'notepad': 'notepad.exe', 'chrome': 'chrome.exe', 'msedge': 'msedge.exe', 'winword': 'WINWORD.EXE', 'excel': 'EXCEL.EXE',
         'powerpnt': 'POWERPNT.EXE', 'mspaint': 'mspaint.exe', 'code': 'Code.exe', 'spotify:': 'Spotify.exe', 'whatsapp:': 'WhatsApp.exe',
@@ -58,14 +66,25 @@ def fold(s):
     return str(s or '').lower().replace('ı', 'i').replace('ş', 's').replace('ğ', 'g').replace('ü', 'u').replace('ö', 'o').replace('ç', 'c').replace('İ', 'i').strip()
 
 
+def _ps_err(err):
+    """-EncodedCommand ile hata metni CLIXML gelebilir; okunur metne çevirir."""
+    if err.lstrip().startswith('#< CLIXML'):
+        import re, html
+        parts = re.findall(r'<S S="Error">(.*?)</S>', err, re.S)
+        err = html.unescape(''.join(parts)).replace('_x000D__x000A_', '\n').replace('_x000A_', '\n') if parts else ''
+    return err.strip()
+
+
 def ps(script, timeout=30):
-    """PowerShell çalıştırır, çıktıyı döndürür."""
+    """PowerShell çalıştırır, çıktıyı döndürür. Betik base64 (-EncodedCommand) ile gider: tırnak/Türkçe karakter bozulmaz."""
     if not WIN:
         raise RuntimeError('Bu işlem yalnız Windows’ta çalışır.')
-    r = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    full = "$ProgressPreference='SilentlyContinue'; [Console]::OutputEncoding=[Text.Encoding]::UTF8; $OutputEncoding=[Text.Encoding]::UTF8\n" + script
+    enc = base64.b64encode(full.encode('utf-16-le')).decode()
+    r = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', enc],
                        capture_output=True, timeout=timeout, creationflags=NO_WINDOW)
     out = r.stdout.decode('utf-8', 'replace') if r.stdout else ''
-    err = r.stderr.decode('utf-8', 'replace') if r.stderr else ''
+    err = _ps_err(r.stderr.decode('utf-8', 'replace')) if r.stderr else ''
     if r.returncode != 0 and not out.strip():
         raise RuntimeError((err or 'PowerShell hatası').strip()[:600])
     return out.strip()
@@ -149,7 +168,26 @@ def key_press(vk):
 def screenshot():
     path = os.path.join(WORK, 'Ekran', datetime.datetime.now().strftime('ekran-%Y%m%d-%H%M%S.jpg'))
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    geo = ps(f"""Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+    try:
+        geo = _ps_shot(path)
+    except Exception as e:
+        if not WIN:
+            raise
+        log_line = str(e)
+        try:
+            return _gdi_shot(path)
+        except Exception as e2:
+            raise RuntimeError(f'Ekran görüntüsü alınamadı. PowerShell: {log_line[:200]} · GDI: {e2}')
+    try:
+        left, top, width, height = [int(x) for x in geo.strip().splitlines()[-1].split(',')]
+    except Exception:
+        left = top = 0; width = height = 0
+    with open(path, 'rb') as f:
+        return path, base64.b64encode(f.read()).decode(), {'left': left, 'top': top, 'width': width, 'height': height}
+
+
+def _ps_shot(path):
+    return ps(f"""Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 Add-Type -Name U -Namespace W -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
 [W.U]::SetProcessDPIAware() | Out-Null
 $b=[System.Windows.Forms.SystemInformation]::VirtualScreen
@@ -161,12 +199,41 @@ $codec=[System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders()|?{{$_.MimeTyp
 $p=New-Object System.Drawing.Imaging.EncoderParameters 1; $p.Param[0]=New-Object System.Drawing.Imaging.EncoderParameter([System.Drawing.Imaging.Encoder]::Quality,[long]80)
 $o.Save('{path}',$codec,$p)
 Write-Output ("$($b.Left),$($b.Top),$($b.Width),$($b.Height)")""", 30)
+
+
+def _gdi_shot(path):
+    """PowerShell çalışmazsa yedek: Windows GDI ile ekranı alıp PNG kaydeder (yalnız Python standart kitaplığı)."""
+    import struct, zlib
+    u32, g32 = ctypes.windll.user32, ctypes.windll.gdi32
     try:
-        left, top, width, height = [int(x) for x in geo.strip().splitlines()[-1].split(',')]
+        u32.SetProcessDPIAware()
     except Exception:
-        left = top = 0; width = height = 0
-    with open(path, 'rb') as f:
-        return path, base64.b64encode(f.read()).decode(), {'left': left, 'top': top, 'width': width, 'height': height}
+        pass
+    left, top = u32.GetSystemMetrics(76), u32.GetSystemMetrics(77)
+    width, height = u32.GetSystemMetrics(78), u32.GetSystemMetrics(79)
+    k = min(1.0, 1568 / max(width, height)); w, h = max(1, int(width * k)), max(1, int(height * k))
+    sdc = u32.GetDC(0); mdc = g32.CreateCompatibleDC(sdc); bmp = g32.CreateCompatibleBitmap(sdc, w, h)
+    g32.SelectObject(mdc, bmp); g32.SetStretchBltMode(mdc, 4)
+    g32.StretchBlt(mdc, 0, 0, w, h, sdc, left, top, width, height, 0x00CC0020)
+    class BIH(ctypes.Structure):
+        _fields_ = [('biSize', ctypes.c_uint32), ('biWidth', ctypes.c_int32), ('biHeight', ctypes.c_int32), ('biPlanes', ctypes.c_uint16), ('biBitCount', ctypes.c_uint16),
+                    ('biCompression', ctypes.c_uint32), ('biSizeImage', ctypes.c_uint32), ('biXPelsPerMeter', ctypes.c_int32), ('biYPelsPerMeter', ctypes.c_int32), ('biClrUsed', ctypes.c_uint32), ('biClrImportant', ctypes.c_uint32)]
+    bi = BIH(ctypes.sizeof(BIH), w, -h, 1, 32, 0, 0, 0, 0, 0, 0)
+    buf = ctypes.create_string_buffer(w * h * 4)
+    g32.GetDIBits(mdc, bmp, 0, h, buf, ctypes.byref(bi), 0)
+    g32.DeleteObject(bmp); g32.DeleteDC(mdc); u32.ReleaseDC(0, sdc)
+    raw, rowlen = buf.raw, w * 4
+    rows = bytearray()
+    for y in range(h):
+        r = raw[y * rowlen:(y + 1) * rowlen]
+        rgb = bytearray(w * 3); rgb[0::3] = r[2::4]; rgb[1::3] = r[1::4]; rgb[2::3] = r[0::4]
+        rows += b'\x00' + rgb
+    chunk = lambda t, d: struct.pack('>I', len(d)) + t + d + struct.pack('>I', zlib.crc32(t + d) & 0xffffffff)
+    png = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(bytes(rows), 6)) + chunk(b'IEND', b'')
+    path = path[:-4] + '.png'
+    with open(path, 'wb') as f:
+        f.write(png)
+    return path, base64.b64encode(png).decode(), {'left': left, 'top': top, 'width': width, 'height': height}
 
 
 def tool(name, args, onay):
@@ -196,8 +263,16 @@ def tool(name, args, onay):
             cmd = next((v for n, v in APPS.items() if k and (k in fold(n) or fold(n) in k)), None)
         if not cmd:
             raise ValueError(f'“{a0}” adlı program bulunamadı. Kurulu programları görmek için: programlar')
+        if cmd.startswith(('http://', 'https://')):
+            webbrowser.open(cmd); return {'text': f'{a0} tarayıcıda açıldı'}
         if cmd.endswith(':'):
-            open_target(cmd)
+            try:
+                open_target(cmd)
+            except OSError:
+                web = {'whatsapp:': 'https://web.whatsapp.com/', 'spotify:': 'https://open.spotify.com/', 'tg:': 'https://web.telegram.org/', 'msteams:': 'https://teams.microsoft.com/'}.get(cmd)
+                if not web:
+                    raise ValueError(f'“{a0}” bu bilgisayarda kurulu değil')
+                webbrowser.open(web); return {'text': f'{a0} uygulaması kurulu değil; web sürümü tarayıcıda açıldı'}
         elif WIN:
             subprocess.Popen(['cmd', '/c', 'start', '', cmd], creationflags=NO_WINDOW)
         else:
@@ -305,7 +380,7 @@ def tool(name, args, onay):
         os.makedirs(p, exist_ok=True) if p == WORK else None
         open_target(p); return {'text': 'Klasör açıldı: ' + p}
     if name == 'ekran':
-        p, b64, geo = screenshot(); return {'text': 'Ekran görüntüsü alındı: ' + p, 'image': b64, 'screen': geo}
+        p, b64, geo = screenshot(); return {'text': 'Ekran görüntüsü alındı: ' + p, 'image': b64, 'mime': 'image/png' if p.endswith('.png') else 'image/jpeg', 'screen': geo}
     if name == 'ses':
         k = fold(a0); vk = {'yukari': 0xAF, 'arttir': 0xAF, 'asagi': 0xAE, 'azalt': 0xAE, 'kapat': 0xAD, 'sessiz': 0xAD, 'ac': 0xAD}.get(k)
         if not vk:
@@ -629,7 +704,7 @@ def tool(name, args, onay):
         vbs = os.path.join(BASE, 'JARVIS-PC.vbs')
         if WIN and os.path.isfile(vbs):  # 3 sn sonra yeni sürümü başlat; bu kopya 1 sn sonra çıkar
             subprocess.Popen(['powershell', '-NoProfile', '-WindowStyle', 'Hidden', '-Command', f"Start-Sleep 3; wscript.exe '{vbs}'"], creationflags=NO_WINDOW)
-        threading.Timer(1, lambda: os._exit(0)).start()
+        threading.Timer(1.5, lambda: os._exit(0)).start()
         return {'text': f'{VERSION} → {latest} kuruldu; yardımcı birkaç saniye içinde yeni sürümle açılıyor.'}
     if name == 'nobet':
         st = nb_state(); bad = [a for a in st['ajanlar'] if a['durum'] == 'sorun']
@@ -1291,14 +1366,7 @@ def nb_register():
             return atla('kontrol edilemedi')
         if latest and latest != VERSION:
             def update():
-                code = urllib.request.urlopen('https://beyhanerden64-rgb.github.io/jarvis/pc/jarvis_pc.py', timeout=30).read()
-                compile(code, 'jarvis_pc.py', 'exec')  # bozuk indirme kurulmaz
-                me = os.path.abspath(__file__)
-                shutil.copy2(me, me + '.eski')
-                with open(me, 'wb') as f:
-                    f.write(code)
-                threading.Timer(3, lambda: os._exit(0)).start()  # bekçi görevi yeni sürümle yeniden başlatır
-                return f'{latest} sürümü kuruldu, yardımcı yeniden başlıyor'
+                return tool('kendini_guncelle', [], True)['text']
             return sorun(f'Yeni yardımcı sürümü var: {latest} (şu an {VERSION})', 'bilgi', ('güncelle', update, False))
         return ok('güncel')
 

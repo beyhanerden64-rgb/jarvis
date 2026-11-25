@@ -227,11 +227,18 @@
   async function camera() {
     if (!navigator.mediaDevices?.getUserMedia) return note('Bu cihazda kamera erişimi yok. Ataç ile fotoğraf seçebilirsin.');
     let s;
-    try { s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1600 } }, audio: false }); } catch { return note('Kamera izni verilmedi.'); }
+    try { s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1600 } }, audio: false }); }
+    catch (e) {
+      const n = e?.name || '';
+      return note(/NotFound|DevicesNotFound|Overconstrained/.test(n) ? 'Bu cihazda kamera bulunamadı. Bilgisayara kamera takılı değilse fotoğrafı ataç (📎) ile ekleyebilirsin.'
+        : /NotReadable|TrackStart/.test(n) ? 'Kamera başka bir uygulama tarafından kullanılıyor (Zoom, Teams, Kamera uygulaması…). Onu kapatıp tekrar dene.'
+        : /NotAllowed|Security/.test(n) ? 'Kamera izni verilmedi. Adres çubuğundaki kilit simgesi → Kamera → İzin ver.'
+        : 'Kamera açılamadı: ' + (e?.message || n));
+    }
     const v = el('video', { autoplay: true, playsinline: true, muted: true }); v.srcObject = s;
     const close = () => { s.getTracks().forEach(t => t.stop()); box.remove(); };
     const box = el('div', { class: 'camera' }, v, el('div', { class: 'row' },
-      el('button', { type: 'button', class: 'btn', onclick: async () => { const c = document.createElement('canvas'); const k = Math.min(1, 1568 / Math.max(v.videoWidth, v.videoHeight)); c.width = v.videoWidth * k; c.height = v.videoHeight * k; c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85)); close(); await setImage(new File([b], 'kamera.jpg', { type: 'image/jpeg' }), 'Kamera'); $('prompt').value = 'Bu görüntüde ne var? Yazı varsa oku, önemli noktaları söyle.'; autosize(); } }, '◉ Çek'),
+      el('button', { type: 'button', class: 'btn', onclick: async () => { const c = document.createElement('canvas'); const k = Math.min(1, 1568 / Math.max(v.videoWidth, v.videoHeight)); c.width = v.videoWidth * k; c.height = v.videoHeight * k; c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85)); close(); await setImage(new File([b], 'kamera.jpg', { type: 'image/jpeg' }), 'Kamera'); const q = $('prompt').value.trim(); $('prompt').value = ''; autosize(); typedTurn(q || 'Bu görüntüde ne var? Yazı varsa oku, önemli noktaları söyle.', false); } }, '◉ Çek'),
       el('button', { type: 'button', class: 'btn', onclick: close }, 'Kapat')));
     document.body.append(box);
   }
