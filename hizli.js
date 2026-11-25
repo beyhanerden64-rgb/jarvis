@@ -93,7 +93,7 @@
     if (p && a > 0 && /(borclu|borcu var|veresiye|sonra odeyecek|odemedi)/.test(f)) { setTimeout(() => runTool(`alacak|ekle|${p.ad}|${String(a).replace('.', ',')}|hızlı kayıt`).catch(e => note(e.message)), 5); return `⚡ ${nm(p)} için ${tl(a)} alacak kaydediliyor…`; }
     // seans
     let m;
-    if (p && /(seans|tedavi)\s*(yapildi|yaptik|bitti|tamam|geldi)|geldi\s*seans/.test(f)) { const v = (f.match(/agri(?:si)?\s*(\d{1,2})/) || f.match(/vas\s*(\d{1,2})/) || [])[1]; const not = t.replace(/^.*?(yapıldı|yaptık|bitti|tamam|geldi)\s*/i, '').replace(/ağrı(sı)?\s*\d{1,2}/i, '').trim(); setTimeout(() => runTool(`seans_ekle|${p.ad}|${v ?? ''}|${not || 'hızlı kayıt'}`).catch(e => note(e.message)), 5); return `⚡ ${nm(p)} seansı kaydediliyor${v ? ' (ağrı ' + v + ')' : ''}…`; }
+    if (p && /(seans|tedavi)\s*(yapildi|yaptik|bitti|tamam|geldi)|geldi\s*seans/.test(f)) { const v = (f.match(/agri(?:si)?\s*(\d{1,2})/) || f.match(/vas\s*(\d{1,2})/) || [])[1]; const not = t.replace(/^.*?(yapıldı|yaptık|bitti|tamam|geldi)\s*/i, '').replace(/ağrı(sı)?\s*\d{1,2}/i, '').replace(/^[\s,;.:-]+/, '').trim(); setTimeout(() => runTool(`seans_ekle|${p.ad}|${v ?? ''}|${not || 'hızlı kayıt'}`).catch(e => note(e.message)), 5); return `⚡ ${nm(p)} seansı kaydediliyor${v ? ' (ağrı ' + v + ')' : ''}…`; }
     // gider
     if (!p && a > 0 && (m = f.match(/^(.{2,40}?)\s+(?:icin\s+)?[\d.,]+\s*(?:bin|k)?\s*(?:tl|lira)?\s*(odedim|harcadim|verdim|aldim|odendi)$/))) { setTimeout(() => runTool(`kasa|gider|${String(a).replace('.', ',')}|${m[1]}`).catch(e => note(e.message)), 5); return `⚡ Gider kaydediliyor: ${m[1]} ${tl(a)}…`; }
     // hasta notu
