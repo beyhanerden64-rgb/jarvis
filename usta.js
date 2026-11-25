@@ -173,13 +173,14 @@
     const D = ST().designs(); D.unshift(rec); try { store.set('designs', D.slice(0, 12)); } catch {}
     ST().showDesign(rec); return rec;
   }
-  async function smartTemplate(text, fmt, forced) {
+  async function smartTemplate(text, fmt, forced) { const { kind, d } = await dataOf(text, forced); return template(kind, d, fmt); }
+  async function dataOf(text, forced) {
     const f = fold(text), kind = TPL[forced] ? forced : tplOf(f);
     const parts = text.split(/\s*\|\s*/).map(s => s.trim()).filter(Boolean);
-    if (parts.length >= 2) { const [baslik, ...rest] = parts; const d = { baslik }; if (kind === 'bilgi' || kind === 'egzersiz') d.maddeler = rest; else { d.alt = rest[0]; d.vurgu = rest[1]; d.cta = rest[2]; } if (kind === 'istatistik') { d.vurgu = rest[0]; d.alt = rest[1]; d.kaynak = rest[2]; } if (kind === 'soz') { d.alt = rest[0]; } return template(kind, d, fmt); }
+    if (parts.length >= 2) { const [baslik, ...rest] = parts; const d = { baslik }; if (kind === 'bilgi' || kind === 'egzersiz') d.maddeler = rest; else { d.alt = rest[0]; d.vurgu = rest[1]; d.cta = rest[2]; } if (kind === 'istatistik') { d.vurgu = rest[0]; d.alt = rest[1]; d.kaynak = rest[2]; } if (kind === 'soz') { d.alt = rest[0]; } return { kind, d }; }
     setPhase('thinking', 'Tasarım metnini yazıyorum…');
     const sys = `Sosyal medya için kısa, doğru ve etkili Türkçe metin yazarı ve fizyoterapi uzmanısın. ${brand().ad} için. Yalnız JSON döndür: {"baslik":"≤ 8 kelime","alt":"≤ 14 kelime","maddeler":["her biri ≤ 9 kelime", 3-5 adet],"vurgu":"kısa vurgu (ör. %20, ÜCRETSİZ, 3 dk) veya boş","cta":"≤ 6 kelime","etiket":"tek kelime (DUYURU/YENİ/ÖNEMLİ)"}. Tıbbi iddia uydurma; abartısız ve güvenli bilgi ver.`;
-    try { const d = jsonOf(await window.jarvisResearch.ask(sys, `Şablon türü: ${TPL_TR[kind]}. Konu: ${text}`, 'default')); if (!d?.baslik) throw Error('metin gelmedi'); return template(kind, d, fmt); }
+    try { const d = jsonOf(await window.jarvisResearch.ask(sys, `Şablon türü: ${TPL_TR[kind]}. Konu: ${text}`, 'default')); if (!d?.baslik) throw Error('metin gelmedi'); return { kind, d }; }
     finally { setPhase('idle', 'Hazır.'); }
   }
 
@@ -275,5 +276,5 @@ ${fv.s}${sv.s}${rows}${tb}</svg>`;
     if (/^(tasarim kontrol|tasarimi kontrol et|kalite kontrol)$/.test(fold(t))) { TOOLS.tasarim_kontrol.run([]).catch(e => note(e.message)); return '🔎 Son tasarım kontrol ediliyor…'; }
     return _lc(t0);
   };
-  window.jarvisUsta = { audit, template, smartTemplate, TPL, sheet, product, contrast, fit };
+  window.jarvisUsta = { audit, template, smartTemplate, dataOf, tplOf, qaLine, TPL, TPL_TR, brand, wrap, fit, sheet, product, contrast, fit };
 })();
