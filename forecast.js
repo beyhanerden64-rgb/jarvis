@@ -146,12 +146,21 @@ YALNIZ JSON:
   /* ---------- tahmin niyeti: yapay zekânın kararına bırakmadan, cümlenin herhangi bir yerinde yakala ---------- */
   const FUT = /(ne olacak|ne olur\b(?!\s+(?:yardım|lütfen|bana|bi|bir))|nasıl olacak|kaç olacak|ne kadar olacak|ne kadar olur|kaç olur|olacak mı|olacak mi|yükselecek|yükselir mi|çıkacak mı|çıkar mı|düşecek|düşer mi|artacak|artar mı|azalacak|azalır mı|geriler mi|gerileyecek|kazanacak|kazanır mı|kim kazanır|nereye gider|nereye gidecek|tahmin|öngörü|beklenti|senaryo|ihtimal|olasılı[ğk]|şansı)/i;
   const NOT_FC = /(hava|yağmur|kar yağ|hasta|seans|randevu|görev|hatırlat|isabet|zoi|tahmin isabet|tahminlerim|kaydet|beni|bana ne olur|sana|kendin)/i;
-  const subjectOf = t => String(t)
+  // endeks adları (BIST 100, S&P 500…) süre ifadesiyle karışmasın; Türkçe ekli varlık adları köküne insin (altının → altın)
+  const IDX = [[/\bbist\s*100\b/gi, 'QBISTYUZQ'], [/\bbist\s*30\b/gi, 'QBISTOTUZQ'], [/\bs&p\s*500\b/gi, 'QSPBESYUZQ'], [/\bnasdaq\s*100\b/gi, 'QNASDAQYUZQ'], [/\bdax\s*40\b/gi, 'QDAXKIRKQ']];
+  const IDX_BACK = { QBISTYUZQ: 'BIST 100', QBISTOTUZQ: 'BIST 30', QSPBESYUZQ: 'S&P 500', QNASDAQYUZQ: 'Nasdaq 100', QDAXKIRKQ: 'DAX 40' }; // rakamsız yer tutucu: “100 yıl” süre sanılmasın
+  const STEMS = ['altın', 'gümüş', 'dolar', 'euro', 'avro', 'sterlin', 'bitcoin', 'ethereum', 'solana', 'petrol', 'brent', 'faiz', 'enflasyon', 'borsa', 'bist', 'kira', 'konut', 'asgari ücret', 'benzin', 'motorin', 'doğalgaz', 'elektrik', 'gram altın', 'çeyrek altın', 'ons altın'];
+  const tidy = x => { let r = x.replace(/Q[A-Z]+Q/g, k => IDX_BACK[k] || k).replace(/\s{2,}/g, ' ').trim(); const f = r.toLocaleLowerCase('tr'); const st = STEMS.filter(w => f === w || (f.startsWith(w) && /^(['’]?(nın|nin|nun|nün|ın|in|un|ün|ı|i|u|ü|a|e|da|de|ta|te|dan|den|tan|ten|ya|ye)?)$/.test(f.slice(w.length)))).sort((a, b) => b.length - a.length)[0]; if (st) return st; return r.replace(/['’](nın|nin|nun|nün|ın|in|un|ün|ı|i|u|ü|a|e|ya|ye|da|de|ta|te)$/i, ''); };
+  const subjectOf = t => tidy(IDX.reduce((a, [re, k]) => a.replace(re, k), String(t))
+    .replace(/(yükselme|düşme|artma|azalma|yükseliş|düşüş|çıkış)\s+(şansı|ihtimali|olasılığı)/gi, ' ')
+    .replace(/(yıl|ay|hafta|sene)\s+(sonu|başı|ortası)(na kadar|nda|na|ndan|nu)?/gi, ' ')
+    .replace(/(sonuna|başına|ortasına)\s+kadar/gi, ' ')
+    .replace(/(['’]?(n?[ıiuü]n))?\s+(geleceği|gidişatı|gidişi|durumu|fiyatı|değeri|seyri|kuru)(?![\p{L}])/giu, ' ')
     .replace(/^\s*(?:hey\s+)?(?:jarvis|s[aâ]t[uüıi]r[uüı]?n)[,\s]+/i, '').replace(/^(peki|acaba|sence|bence|söyle|bir de|ya)\s+/i, '')
     .replace(/[?.!,]/g, ' ')
     .replace(/(önümüzdeki|gelecek|bu|önümüzde)\s+(gün|hafta|ay|yıl|sene|çeyrek)(ler)?|yıl sonu(na kadar)?|ay sonu(na kadar)?|\d+\s*(gün|hafta|ay|yıl)(\s+(içinde|sonra|boyunca))?|yarın|bugün|haftaya|seneye|ileride|kısa vadede|uzun vadede/gi, ' ')
-    .replace(/\b(ne olacak|ne olur|nasıl olacak|kaç olacak|ne kadar olacak|ne kadar olur|kaç olur|olacak mı|olacak mi|yükselecek mi|yükselecek|yükselir mi|çıkacak mı|çıkar mı|düşecek mi|düşecek|düşer mi|artacak mı|artacak|artar mı|azalacak mı|azalacak|azalır mı|geriler mi|gerileyecek mi|kazanacak mı|kazanacak|kazanır mı|kim kazanır|nereye gider|nereye gidecek|tahmin(i|in|ini)?|tahmin et|tahmin ver|öngörün?|beklentin?|senaryo(ları|lar)?|ihtimali?|olasılığı?|şansı|nedir|ne|ver|yap|et|için|sence|hakkında|konusunda|bana|söyle|mi|mı|mu|mü)\b/gi, ' ')
-    .replace(/\b20\d\d(['’]?(de|da|te|ta|e|a|ye|ya))?\b/gi, ' ').replace(/\s{2,}/g, ' ').trim();
+    .replace(/(^|[^\p{L}\p{N}])(ne olacak|ne olur|nasıl olacak|kaç olacak|ne kadar olacak|ne kadar olur|kaç olur|olacak mı|olacak mi|yükselecek mi|yükselecek|yükselir mi|çıkacak mı|çıkar mı|düşecek mi|düşecek|düşer mi|artacak mı|artacak|artar mı|azalacak mı|azalacak|azalır mı|geriler mi|gerileyecek mi|kazanacak mı|kazanacak|kazanır mı|kim kazanır|nereye gider|nereye gidecek|tahmin(i|in|ini)?|tahmin et|tahmin ver|öngörün?|beklentin?|senaryo(ları|lar)?|ihtimali?|olasılığı?|şansı|nedir|ne|ver|yap|et|için|sence|hakkında|konusunda|bana|söyle|mi|mı|mu|mü)(?![\p{L}\p{N}])/giu, '$1 ')
+    .replace(/\b20\d\d(['’]?(de|da|te|ta|e|a|ye|ya))?\b/gi, ' ').replace(/\s{2,}/g, ' ').trim());
   function isForecast(text) {
     const t = String(text || ''); if (t.length < 6 || t.length > 160 || !FUT.test(t) || NOT_FC.test(t)) return '';
     const subj = subjectOf(t); return subj.length >= 2 && subj.split(' ').length <= 8 && !/^(bu|şu|o|bunlar|şunlar|onlar|ne|kim|hangisi)$/i.test(subj) ? subj : '';

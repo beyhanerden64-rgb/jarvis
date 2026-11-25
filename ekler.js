@@ -37,8 +37,8 @@
     hit(/\bTR\s?\d{2}(?:\s?\d{4}){5}\s?\d{2}\b/gi, () => 'TR•••• [IBAN gizlendi]');
     hit(/\b\d(?:[ -]?\d){12,18}\b/g, m => (luhn(m) ? '•••• [kart no gizlendi]' : m));
     hit(/\b\d{11}\b/g, m => (tcOk(m) ? '[TC kimlik gizlendi]' : m));
-    hit(/\b(cvv|cvc|güvenlik kodu)\s*[:=]?\s*\d{3,4}\b/gi, (m, a) => a + ': [gizlendi]');
-    hit(/\b(şifre|şifrem|parola|parolam|password|pin|pin kodu)(\s*(?:si|m|mız)?\s*(?:[:=]|olarak|şu|:)?\s*)(\S{3,})/gi, (m, a, b) => a + b + '[gizlendi]');
+    hit(/(^|[^\p{L}])(cvv|cvc|güvenlik kodu)\s*[:=]?\s*\d{3,4}(?!\d)/giu, (m, p0, a) => p0 + a + ': [gizlendi]');
+    hit(/(^|[^\p{L}])(şifre|şifrem|şifresi|parola|parolam|parolası|password|pin|pin kodu)(\s*(?:[:=]|olarak|şu:?)\s*)(\S{3,})/giu, (m, p0, a, b) => p0 + a + b + '[gizlendi]'); // yalnız “şifrem: X”, “şifre = X”, “parola olarak X” (düz cümleye dokunmaz)
     return { text: t, n };
   }
   const _save = saveItem;
@@ -213,7 +213,7 @@
     if (guest()) return _lc(text0);
     try {
       if ((m = text0.match(/^\s*(?:kod çalıştır|js çalıştır|kodu çalıştır)[:\s]+([\s\S]{3,})$/i))) { runCode(m[1]).then(r => show('💻 ' + fmtRun(r))); return 'Kod kum havuzunda çalışıyor…'; }
-      if ((m = t.match(/^(?:kodla hesapla|kod yaz ve çalıştır|program yaz)[:\s]+([\s\S]{5,})$/i))) { codeTask(m[1]).catch(e => note(e.message)); return 'Kodu yazıp çalıştırıyorum…'; }
+      if ((m = t.match(/^(?:kodla hesapla|kod yaz ve çalıştır|program yaz)[:\s]+([\s\S]{1,})$/i))) { codeTask(m[1]).catch(e => note(e.message)); return 'Kodu yazıp çalıştırıyorum…'; }
       if (/^(belge kütüphanesi|belge ekle|belgelerimi yükle)$/i.test(t)) return docCard();
       if (/^(belgelerim|kütüphanem)$/i.test(t)) { docList().then(x => show(x)); return 'Belgeler listeleniyor…'; }
       if ((m = t.match(/^belge sil (\d{1,3})$/i))) { docDel(+m[1]).then(x => show(x)); return 'Siliniyor…'; }

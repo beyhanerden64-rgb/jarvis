@@ -81,8 +81,11 @@
   setInterval(() => briefAuto().catch(() => {}), 5 * MIN); setTimeout(() => briefAuto().catch(() => {}), 90000);
 
   /* ---------- izleme listesi ---------- */
-  const symOf = q => { const f = fold(q).replace(/['’].*$/, '').replace(/(yi|yı|i|ı|u|ü)$/, '').trim(); if (/altin|gold|paxg/.test(f)) return 'PAXGUSDT'; if (/dolar|usd/.test(f)) return 'USDTTRY'; const t = f.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/USDT$/, ''); return t.length >= 2 && t.length <= 10 ? t + 'USDT' : null; };
-  function watchAdd(q) { const s = symOf(q); if (!s) return 'Sembol anlaşılmadı. Örnek: “ETH’yi izle”, “DOGE izle”.'; const W = watch(); if (!W.includes(s)) W.push(s); store.set('watchList', W.slice(0, 20)); window.jarvisPicks?.liveSub?.([s]); return `👁 ${label(s)} izleme listesine eklendi. Ani hareket ve 24s zirve/dip kırılımında haber vereceğim.`; }
+  const COINS = new Set('BTC ETH SOL BNB XRP DOGE ADA AVAX LINK DOT TRX LTC SUI NEAR APT ARB OP INJ PEPE TON SHIB POL MATIC ATOM UNI FIL ETC BCH XLM HBAR ICP RENDER FET WIF BONK SEI TIA JUP AAVE MKR RUNE ALGO VET SAND MANA AXS GALA IMX STX FLOKI ENA ONDO TAO WLD PENDLE JTO PYTH'.split(' '));
+  const NAMES = { bitcoin: 'BTC', ethereum: 'ETH', eter: 'ETH', solana: 'SOL', ripple: 'XRP', dogecoin: 'DOGE', avalanche: 'AVAX', cardano: 'ADA', polkadot: 'DOT', litecoin: 'LTC', toncoin: 'TON', shiba: 'SHIB', chainlink: 'LINK', tron: 'TRX' };
+  // yalnız tanınan kripto/altın/dolar kabul edilir (“youtube izle”, “film izle” izleme listesine girmez)
+  const symOf = q => { const f = fold(q).replace(/['’].*$/, '').replace(/(yi|yı|i|ı|u|ü)$/, '').trim(); if (/^(altin|gram altin|ons|gold|paxg)$/.test(f)) return 'PAXGUSDT'; if (/^(dolar|usd|dolar kuru|usdtry)$/.test(f)) return 'USDTTRY'; const n = NAMES[f] || NAMES[fold(q).trim()]; if (n) return n + 'USDT'; const t = f.toUpperCase().replace(/USDT$/, ''); if (COINS.has(t) || (window.jarvisPicks?.live?.prices?.[t + 'USDT'])) return t + 'USDT'; return null; };
+  function watchAdd(q) { const s = symOf(q); if (!s) return null; const W = watch(); if (!W.includes(s)) W.push(s); store.set('watchList', W.slice(0, 20)); window.jarvisPicks?.liveSub?.([s]); return `👁 ${label(s)} izleme listesine eklendi. Ani hareket ve 24s zirve/dip kırılımında haber vereceğim.`; }
   function watchDel(q) { const s = symOf(q); const W = watch().filter(x => x !== s); store.set('watchList', W); return `${label(s || q)} izlemeden çıkarıldı.`; }
   function watchShow() {
     const P = L()?.prices || {};
@@ -109,7 +112,7 @@
 
   /* ---------- araçlar + komutlar ---------- */
   Object.assign(TOOLS, {
-    piyasa_izle: { d: 'piyasa_izle|ekle/cikar/liste|sembol (BTC, ETH, altın, dolar…) — sürekli izleme listesi; ani hareket ve zirve/dip kırılımında kendiliğinden haber verir', run: ([op, s]) => /ekle/.test(op || '') ? watchAdd(s) : /cikar|çıkar|sil/.test(op || '') ? watchDel(s) : watchShow() },
+    piyasa_izle: { d: 'piyasa_izle|ekle/cikar/liste|sembol (BTC, ETH, altın, dolar…) — sürekli izleme listesi; ani hareket ve zirve/dip kırılımında kendiliğinden haber verir', run: ([op, s]) => /ekle/.test(op || '') ? (watchAdd(s) || 'Sembol tanınmadı (kripto kısaltması, altın ya da dolar yaz).') : /cikar|çıkar|sil/.test(op || '') ? watchDel(s) : watchShow() },
     piyasa_ozet: { d: 'piyasa_ozet — anlık piyasa özeti (BTC, ETH, SOL, gram altın, dolar/TL, Korku-Açgözlülük)', run: () => brief() }
   });
   TOOL_GROUPS.push([/izle|takip|piyasa|özet|bitcoin|btc|eth|altın|dolar|kripto/i, /^(piyasa_izle|piyasa_ozet)$/]);
@@ -119,7 +122,7 @@
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/i, '').replace(/[?.!]+$/, ''); let m;
     if (guest()) return _lc(text0);
-    if ((m = t.match(/^(.{2,20}?)(?:['’]?(?:yi|yı|yu|yü|i|ı|u|ü))? (?:izle|takip et|izlemeye al)$/i)) && !/haber|video|film|dizi|maç/i.test(m[1])) return watchAdd(m[1]);
+    if ((m = t.match(/^(.{2,20}?)(?:['’]?(?:yi|yı|yu|yü|i|ı|u|ü))? (?:izle|takip et|izlemeye al)$/i)) && symOf(m[1])) return watchAdd(m[1]);
     if ((m = t.match(/^(.{2,20}?)(?:['’]?(?:yi|yı|i|ı))? (?:izlemeyi bırak|izlemeden çıkar|takibi bırak)$/i))) return watchDel(m[1]);
     if (/^(izleme listem|izleme listesi|neleri izliyorsun)$/i.test(t)) return watchShow();
     if (/^(arka plan bekçisi|kapalıyken (?:de )?haber ver|uygulama kapalıyken bildirim)$/i.test(t)) { const n = bubble('ai', `🌙 Arka plan bekçisi GitHub’da 10 dakikada bir çalışıyor. Telefona “ntfy” uygulamasını kur → “+” → konu: ${BG_TOPIC} → Abone ol. Sonra PİYASA → Piyasa bekçisi → “Abone oldum: Evet” seç.`); n.el.append(el('div', { class: 'tool' }, el('button', { type: 'button', onclick: async e => { try { await navigator.clipboard.writeText(BG_TOPIC); e.target.textContent = '✓ Konu kopyalandı'; } catch {} } }, '📋 Konuyu kopyala'))); return 'Arka plan bekçisi kurulum bilgisi.'; }

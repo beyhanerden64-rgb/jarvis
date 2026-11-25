@@ -42,7 +42,9 @@
   /* ================= 1) HAZIR METİNLER ================= */
   const snips = () => store.get('snippets', {});
   const snipKey = s => fold(String(s)).replace(/['’]/g, '').replace(/(imi|ımı|umu|ümü|imiz|ımız|ini|ını|unu|ünü|i|ı|u|ü|m)$/u, '').trim();
-  function snipSave(name, text) { const k = snipKey(name); if (!k || !String(text).trim()) throw Error('Örnek: “kaydet adres: Nur Mah. … Cizre”'); const S = snips(); S[k] = { ad: String(name).trim(), t: String(text).trim().slice(0, 1500) }; store.set('snippets', S); return `✓ “${S[k].ad}” kaydedildi. Göndermek için: “${S[k].ad}ımı gönder” ya da “${S[k].ad} kopyala”.`; }
+  // Türkçe iyelik + belirtme: adres → adresimi, iban → ibanımı, saatler → saatlerimi, not → notumu, ütü → ütümü, kahve → kahvemi
+  const poss = w => { const s = String(w).trim(), v = (s.match(/[aeıioöuüAEIİOÖUÜ](?=[^aeıioöuüAEIİOÖUÜ]*$)/) || ['e'])[0].toLocaleLowerCase('tr'), h = /[aı]/.test(v) ? 'ı' : /[ei]/.test(v) ? 'i' : /[ou]/.test(v) ? 'u' : 'ü'; return /[aeıioöuü]$/i.test(s) ? s + 'm' + h : s + h + 'm' + h; };
+  function snipSave(name, text) { const k = snipKey(name); if (!k || !String(text).trim()) throw Error('Örnek: “kaydet adres: Nur Mah. … Cizre”'); const S = snips(); S[k] = { ad: String(name).trim(), t: String(text).trim().slice(0, 1500) }; store.set('snippets', S); return `✓ “${S[k].ad}” kaydedildi. Göndermek için: “${poss(S[k].ad)} gönder” ya da “${S[k].ad} kopyala”.`; }
   function snipFind(name) { const S = snips(), k = snipKey(name); return S[k] || Object.values(S).find(x => fold(x.ad).includes(k) || k.includes(fold(x.ad))); }
   function snipSend(name) {
     const s = snipFind(name); if (!s) return null;

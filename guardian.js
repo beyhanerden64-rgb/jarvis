@@ -107,6 +107,9 @@
     t('Haftalık seçim niyeti', () => window.jarvisPicks.isPick('bana haftada 3 token öner') && !window.jarvisPicks.isPick('hasta öner'));
     t('Tahmin niyeti', () => window.jarvisForecast.isForecast('bitcoin ne olacak') === 'bitcoin' && !window.jarvisForecast.isForecast('yarın hava nasıl olacak'));
     t('Vade çözümleme', () => window.jarvisForecast.horizon('1 hafta') === 7 && window.jarvisForecast.horizon('3 ay') === 90);
+    t('Hassas bilgi maskeleme', () => !window.jarvisEkler || (window.jarvisEkler.mask('kimlik 10000000146 şifre: Abc12345').n === 2 && window.jarvisEkler.mask('şifrem çok zayıf').n === 0));
+    t('Tablo algılama', () => !window.jarvisAnaliz || (window.jarvisAnaliz.looksTable('a;b\n1;2\n3;4\n5;6') && !window.jarvisAnaliz.looksTable('Merhaba, nasılsın\nyarın 10:00, ok\nselam\nbye')));
+    t('Tahmin konusu (endeks adı korunur)', () => window.jarvisForecast.isForecast('BIST 100 yıl sonuna kadar ne olur') === 'BIST 100');
     t('Araç kayıtları', () => ['haftalik_secim', 'senaryo_tahmin', 'piyasa_tara', 'fiyat', 'web_arastir', 'gorsel_olustur'].every(k => TOOLS[k]?.run));
     return T;
   }
@@ -261,8 +264,8 @@
   // “tam sistem taraması yap”, “sistemini tara”, “kendini kontrol et”, “bütün sistemleri test et”… — bilgisayar GEREKMEZ, telefonda çalışır
   const isScan = t => t.length <= 80 && !/(bilgisayar|pc|laptop|virüs|antivir|disk|windows|mac)/i.test(t) && (
     /^(sağlık raporu|bekçi raporu|sistem raporu)$/i.test(t) ||
-    /\b(sistem|sistemi|sistemini|sistemleri|sistemlerini|kendini|kendi kendini|tüm sistem|bütün sistem|veri kaynaklarını|kaynakları)\b[^.?!]{0,30}\b(tara|taraması|taramasını|taramayı|kontrol et|kontrol|test et|denetle|denetimi|incele)/i.test(t) ||
-    /\b(tam|full|genel|komple|detaylı)\s+(sistem\s+)?(tarama|taraması|kontrol|kontrolü|denetim|denetimi)\b/i.test(t));
+    /(^|[^\p{L}])(sistem|sistemi|sistemini|sistemleri|sistemlerini|kendini|kendi kendini|tüm sistem|bütün sistem|veri kaynaklarını|kaynakları)(?![\p{L}])[^.?!]{0,30}(^|[^\p{L}])(tara|taraması|taramasını|taramayı|kontrol et|kontrol|test et|denetle|denetimi|incele)/iu.test(t) ||
+    /(^|[^\p{L}])(tam|full|genel|komple|detaylı)\s+(sistem\s+)?(tarama|taraması|kontrol|kontrolü|denetim|denetimi)(?![\p{L}])/iu.test(t));
   const _lc = localCommand;
   localCommand = text0 => {
     const t = text0.trim().replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn|ultron)[,\s]+/i, '').replace(/[?.!]+$/, '');

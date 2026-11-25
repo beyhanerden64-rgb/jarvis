@@ -62,6 +62,16 @@
     if (ai && window.jarvisResearch?.ask) { try { const c = await withTimeout(aiComment(A), 30000, 'zaman aşımı'); if (c) bubble('ai', '🧠 YORUM\n' + String(c).trim()); } catch {} }
     return t;
   }
+  // yapıştırılan metin GERÇEKTEN tablo mu? ≥4 satır, her satırda aynı ayraç sayısı (≥1), veri hücrelerinin ≥%40’ı sayı
+  function looksTable(t) {
+    const L = String(t).split('\n').map(x => x.trim()).filter(Boolean); if (L.length < 4) return false;
+    for (const d of ['\t', ';', ',', '|']) {
+      const n = L.map(l => l.split(d).length); if (n[0] < 2 || !n.every(x => x === n[0])) continue;
+      const cells = L.slice(1).flatMap(l => l.split(d)); const numeric = cells.filter(c => Number.isFinite(parseNum(c))).length;
+      if (numeric / cells.length >= 0.4) return true;
+    }
+    return false;
+  }
   const fileIn = el('input', { type: 'file', accept: '.csv,.tsv,.txt,text/csv,text/plain', hidden: true });
   document.body.append(fileIn);
   function card() {
@@ -81,8 +91,8 @@
     if (/^(?:satürn[, ]+)?(veri analizi|csv analiz|tablo analiz|excel analiz|verimi analiz et)$/i.test(t)) return card();
     const m = t.match(/^(?:analiz et|bunu analiz et|veriyi analiz et|tabloyu analiz et)[:\s]*\n([\s\S]{10,})$/i);
     if (m) { run(m[1]).catch(e => note(e.message)); return 'Tablo analiz ediliyor…'; }
-    if (/\n/.test(t) && t.split('\n').length >= 4 && /[\t;,]/.test(t.split('\n')[0]) && t.split('\n').slice(1, 4).every(l => /\d/.test(l))) { run(t).catch(e => note(e.message)); return 'Yapıştırdığın tabloyu analiz ediyorum…'; }
+    if (looksTable(t)) { run(t).catch(e => note(e.message)); return 'Yapıştırdığın tabloyu analiz ediyorum…'; }
     return _lc(text0);
   };
-  window.jarvisAnaliz = { parse, parseNum, analyze, text, run, card };
+  window.jarvisAnaliz = { looksTable, parse, parseNum, analyze, text, run, card };
 })();
