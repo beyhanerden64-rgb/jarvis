@@ -12,7 +12,7 @@
   const OZ = 31.1034768;
   const nf = (v, d = 2) => Number(v).toLocaleString('tr-TR', { maximumFractionDigits: d, minimumFractionDigits: Math.min(d, Number(v) >= 1000 ? 0 : d) });
   const pct = v => (v >= 0 ? '+' : '') + nf(v, 2) + '%';
-  const getJ = async (url, ms = 12000) => { const r = await withTimeout(fetch(url), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); };
+  const getJ = async (url, ms = 12000) => { const r = await withTimeout(fetch(url, { cache: 'no-store' }), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); }; // canlı fiyat: tarayıcı önbelleği dünkü veriyi vermesin
   const cache = new Map();
   const cached = async (k, ms, fn) => { const c = cache.get(k); if (c && Date.now() - c.t < ms) return c.v; const v = await fn(); cache.set(k, { t: Date.now(), v }); return v; };
 
@@ -32,7 +32,7 @@
       const ons = +p.lastPrice, gram = ons / OZ * u;
       const out = { ons, onsCh: +p.priceChangePercent, gram, ceyrek: gram * 1.604, yarim: gram * 3.208, tam: gram * 6.416, kaynak: 'PAXG ons × USDT/TRY (has altın karşılığı)' };
       try { // Kapalıçarşı/kuyumcu fiyatı (varsa)
-        const t = await getJ('https://finans.truncgil.com/v4/today.json', 7000);
+        const t = await getJ('https://finans.truncgil.com/v4/today.json?_=' + Math.floor(Date.now() / 60000), 7000);
         const pick = re => { const k = Object.keys(t).find(x => re.test(fold(x))); const v = k && t[k]; const raw = v && (v.Selling ?? v.selling ?? v.Satış ?? ''); const n = v && (typeof raw === 'number' ? raw : +(String(raw).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'))); return n > 0 ? n : null; };
         const piyasa = { gram: pick(/^(gra|gram ?altin|gram-altin)$/), ceyrek: pick(/ceyrek/), yarim: pick(/yarim/), tam: pick(/^tam/), cumhuriyet: pick(/cumhuriyet/), gumus: pick(/gumus/) };
         if (piyasa.gram) out.piyasa = piyasa;

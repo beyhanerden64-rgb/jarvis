@@ -92,7 +92,9 @@ BİLGİSAYARA TAM HÂKİMİYET: Kurulu her programı pc|ac ile adından açabili
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'btn', onclick: () => { auto.value = '2'; store.set('set.autonomy', '2'); full.value = '1'; full.onchange(); note('TAM YETKİ açıldı: SATÜRN bilgisayarında yalnız geri alınamayan işler için (silme, kapatma, kurulum, süreç/servis durdurma, tehlikeli PowerShell) onay ister. ACİL DUR her zaman çalışır.'); } }, 'Tam yetkiyi aç')));
 
   // skills
-  SKILLS.pcagent = { label: 'Bilgisayarda yap…', run: () => { $('prompt').value = 'Bilgisayarımda şunu yap: '; autosize(); $('prompt').focus(); } };
+  // yazı kutusunu doldurup bekletmek yerine küçük form: görevi yaz → hemen başlar
+  SKILLS.pcagent = { label: 'Bilgisayarda yap…', form: { title: 'Bilgisayarda yapılacak iş', fields: [['gorev', 'Ne yapayım?', 'ör. Masaüstündeki PDF’leri Belgeler klasörüne taşı; Chrome’da YouTube Studio’yu aç', true]], build: v => 'Bilgisayarımda şunu yap: ' + v.gorev },
+    run: () => (typeof skillForm === 'function' ? skillForm(SKILLS.pcagent) : ($('prompt').value = 'Bilgisayarımda şunu yap: ', autosize(), $('prompt').focus())) };
   $('skills').append(el('button', { type: 'button', onclick: () => { window.jarvisUnlock(); SKILLS.pcagent.run(); } }, 'Bilgisayarda yap…'));
   SKILLS.pcscreen = { label: 'Bilgisayar ekranı', run: () => typedTurn('Bilgisayarımın ekranında şu an ne var? pc ekran ile bak.', false) };
   $('mobileSkills').append(el('button', { type: 'button', onclick: () => { window.jarvisUnlock(); SKILLS.pcscreen.run(); } }, 'Bilgisayar ekranı'));

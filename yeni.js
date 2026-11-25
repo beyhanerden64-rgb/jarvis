@@ -16,7 +16,7 @@
   const pct = v => (v >= 0 ? '+' : '') + nf(v, 2) + '%';
   const tl = v => Number(v).toLocaleString('tr-TR', { maximumFractionDigits: Math.abs(v) >= 100 ? 0 : 2 }) + ' TL';
   const num = s => { const t = fold(String(s ?? '')).replace(/\s+/g, ' ').trim(); const m = t.match(/(\d[\d.,]*)\s*(milyon|bin)?/); if (!m) return t.match(/^(bir|yarim)\b/) ? (t.startsWith('yarim') ? 0.5 : 1) : NaN; let v = Number(m[1].replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); if (m[2] === 'bin') v *= 1e3; if (m[2] === 'milyon') v *= 1e6; return v; };
-  const getJ = async (u, ms = 10000, o) => { const r = await withTimeout(fetch(u, o), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); };
+  const getJ = async (u, ms = 10000, o = { cache: 'no-store' }) => { const r = await withTimeout(fetch(u, o), ms, 'zaman aşımı'); if (!r.ok) throw Error('HTTP ' + r.status); return r.json(); };
   const retry = async (fn, n = 2) => { let e; for (let i = 0; i < n; i++) { try { return await fn(); } catch (x) { e = x; await new Promise(r => setTimeout(r, 900)); } } throw e; };
   const todayKey = () => isoLocal(now()).slice(0, 10);
   const show = (text, links) => { const b = bubble('ai', text); try { answerTools(b.el, text); } catch {} if (links?.length) try { addLinks(b.el, links); } catch {} return b; };
@@ -26,7 +26,7 @@
   let kcCache = null;
   async function kc() {
     if (kcCache && Date.now() - kcCache.t < 120000) return kcCache.v;
-    const t = await retry(() => getJ('https://finans.truncgil.com/v4/today.json', 9000));
+    const t = await retry(() => getJ('https://finans.truncgil.com/v4/today.json?_=' + Math.floor(Date.now() / 60000), 9000, { cache: 'no-store' }));
     const v = {};
     for (const [k, o] of Object.entries(t)) if (o && typeof o === 'object') { const s = typeof o.Selling === 'number' ? o.Selling : Number(String(o.Selling).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); const b = typeof o.Buying === 'number' ? o.Buying : Number(String(o.Buying).replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); if (s > 0) v[k] = { s, b: b > 0 ? b : null, ch: Number(o.Change) || 0, type: o.Type }; }
     v._date = t.Update_Date || '';

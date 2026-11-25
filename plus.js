@@ -727,10 +727,11 @@ function renderHistory() {
 /* ekranı incele: bilgisayar yardımcısı bağlıysa doğrudan ekran görüntüsü alır (paylaşım penceresi çıkmaz), değilse ekran paylaşımı; sonra hemen sorar */
 const SCREEN_Q = 'Ekranımda ne var? Hata veya dikkat etmem gereken bir şey varsa söyle.';
 async function screenShot() {
-  if (pcLocal || await pcPing()) {
+  const direct = pcLocal || await pcPing();
+  if (direct || (typeof sync !== 'undefined' && sync.ready())) { // yerel bağlantı yoksa telefon/ntfy köprüsüyle de dener
     setPhase('thinking', 'Ekran görüntüsü alınıyor…');
     try {
-      const d = await pcLocalCall('ekran', [], false);
+      const d = direct ? await pcLocalCall('ekran', [], false) : await withTimeout(pcCall('ekran', [], false), 25000, 'bilgisayar yanıt vermedi');
       if (d.image) {
         if (d.screen) window.jarvisLastScreen = d.screen;
         const mime = d.mime || 'image/jpeg', blob = new Blob([Uint8Array.from(atob(d.image), c => c.charCodeAt(0))], { type: mime }); // CSP data: fetch'e izin vermiyor
