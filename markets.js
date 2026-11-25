@@ -4,7 +4,7 @@
  *  • Altın/gümüş: PAXG (ons altın karşılığı, canlı) × USDT/TRY → gram, çeyrek, yarım, tam (has altın karşılığı); varsa Kapalıçarşı fiyatı (Truncgil)
  *  • Döviz: USD, EUR, GBP / TRY (Binance canlı + ECB)
  *  • Hisse, endeks, emtia: BIST 100, S&P 500, Nasdaq, DAX, Brent, gümüş vadeli, tek tek hisseler (THYAO, AAPL…)
- *      bilgisayar yardımcısı bağlıysa Yahoo verisi (gerçek), değilse Gemini web araması (gecikmeli olabilir; kaynağı belirtilir)
+ *      TradingView (anlık) → Yahoo (r.jina.ai geçidi / köprü / bilgisayar yardımcısı) → en son Gemini web araması (gecikmeli; kaynağı belirtilir)
  *  • Fırsat/risk radarı, takip listesi, fiyat alarmları (telefona bildirim), yapay zekâ piyasa yorumu */
 (() => {
   const BN = 'https://data-api.binance.vision/api/v3/';
@@ -76,7 +76,7 @@
     let j;
     try { if (!window.jarvisBridge?.on()) throw Error(); j = await getJ(window.jarvisBridge.wrap(url), 12000); if (!j.chart) throw Error(); } // kendi Google köprüsü
     catch {
-      try { j = await getJ(url, 6000); } // tarayıcı izin verirse doğrudan
+      try { j = await window.jarvisSrc.jinaJ(url, 12000); if (!j.chart) throw Error(); } // r.jina.ai geçidi (Yahoo doğrudan CORS'a takılır)
       catch { if (typeof pcLocal === 'undefined' || !pcLocal) throw Error('yardımcı yok'); j = JSON.parse((await pcCall('web_al', [url], false)).text); }
     }
     const m = j.chart?.result?.[0]?.meta; if (!m?.regularMarketPrice) throw Error('veri yok');
@@ -92,7 +92,10 @@
   const eqCache = new Map();
   async function equities(list) {
     const fresh = s => { const c = eqCache.get(s); return c && Date.now() - c.t < (c.v.web ? 15 : 3) * 60000 ? c.v : null; };
-    const need = list.filter(s => !fresh(s));
+    const need0 = list.filter(s => !fresh(s));
+    const tvGot = need0.length ? await window.jarvisSrc.tv(need0).catch(() => new Map()) : new Map(); // TradingView: anlık, anahtarsız
+    for (const v of tvGot.values()) eqCache.set(v.sym, { t: Date.now(), v });
+    const need = need0.filter(s => !tvGot.has(s));
     const got = await Promise.all(need.map(s => yahoo(s).catch(() => null)));
     const miss = need.filter((s, i) => !got[i]);
     const extra = miss.length ? await viaSearch(miss).catch(() => []) : [];
