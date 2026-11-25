@@ -8,8 +8,8 @@
  *  3) "Doğal ses kullanılamazsa" → Otomatik: cihazda kaliteli ses varsa onunla oku, yoksa ekranda göster. */
 (() => {
   /* ---------- 2) cihaz sesi: metin → konuşma dili ---------- */
-  const ABBR = [[/\bvb\./gi, 've benzeri'], [/\bvs\./gi, 've saire'], [/\börn\./gi, 'örneğin'], [/\byak\./gi, 'yaklaşık'], [/\bDr\./g, 'Doktor'], [/\bFzt\./g, 'Fizyoterapist'], [/\bProf\./g, 'Profesör'], [/\bDoç\./g, 'Doçent'], [/\bUzm\./g, 'Uzman'], [/\bTSİ\b/g, 'Türkiye saatiyle'],
-    [/\bAI\b/g, 'yapay zekâ'], [/\bMR\b/g, 'em ar'], [/\bRKÇ\b/g, 'randomize kontrollü çalışma'], [/\bDSÖ\b/g, 'Dünya Sağlık Örgütü'], [/\bABD\b/g, 'A Be De'], [/\bAB\b/g, 'Avrupa Birliği'], [/\bTCMB\b/g, 'Merkez Bankası'], [/\bBIST\b/g, 'Borsa İstanbul'], [/\bVKİ\b/g, 'vücut kitle indeksi']];
+  const ABBR = [[/\bvb\./gi, 've benzeri'], [/\bvs\./gi, 've saire'], [/(^|[\s(])örn\./gi, '$1örneğin'], [/\byak\./gi, 'yaklaşık'], [/\bDr\./g, 'Doktor'], [/\bFzt\./g, 'Fizyoterapist'], [/\bProf\./g, 'Profesör'], [/\bDoç\./g, 'Doçent'], [/\bUzm\./g, 'Uzman'], [/\bTSİ(?=[\s.,;:!?)]|$)/g, 'Türkiye saatiyle'],
+    [/\bAI\b/g, 'yapay zekâ'], [/\bMR\b/g, 'em ar'], [/\bRKÇ(?=[\s.,;:!?)]|$)/g, 'randomize kontrollü çalışma'], [/\bDSÖ(?=[\s.,;:!?)]|$)/g, 'Dünya Sağlık Örgütü'], [/\bABD\b/g, 'A Be De'], [/\bAB\b/g, 'Avrupa Birliği'], [/\bTCMB\b/g, 'Merkez Bankası'], [/\bBIST\b/g, 'Borsa İstanbul'], [/\bVKİ(?=[\s.,;:!?)]|$)/g, 'vücut kitle indeksi']];
   const UNIT = { km: 'kilometre', m: 'metre', cm: 'santimetre', mm: 'milimetre', kg: 'kilogram', g: 'gram', mg: 'miligram', ml: 'mililitre', lt: 'litre', dk: 'dakika', sn: 'saniye', sa: 'saat', kcal: 'kalori', bpm: 'atım', 'km/s': 'kilometre saat' };
   function speakable(s) {
     let t = String(s || '');

@@ -54,7 +54,7 @@
     return j;
   }
   function parseJob(text) {
-    const t = text.toLocaleLowerCase('tr-TR').replace(/^\s*(?:hey\s+)?jarvis[,\s]+/, '').replace(/[.!?]+$/, '').trim();
+    const t = text.toLocaleLowerCase('tr-TR').replace(/^\s*(?:hey\s+)?(?:jarvis|satürn|saturn)[,\s]+/, '').replace(/[.!?]+$/, '').trim();
     let m;
     if ((m = t.match(new RegExp('^' + NUMRE + '\\s*(saniye|sn|dakika|dk|saat)\\s+sonra\\s+(.{3,})$')))) {
       if (/^(?:bir\s+)?(?:sayaç|zamanlayıcı|alarm|geri sayım)/.test(m[3])) return null; // sayaç işi eski koda
@@ -195,7 +195,7 @@
       .replace(/\bTR\s?\d{2}(?:\s?\d{4}){5}\s?\d{2}\b/gi, '[IBAN GİZLİ]')
       .replace(/\b(?:\d[ -]?){13,19}\b/g, x => (luhn(x.replace(/\D/g, '')) ? '[KART GİZLİ]' : x))
       .replace(/\b\d{11}\b/g, x => (tckn(x) ? '[TC GİZLİ]' : x))
-      .replace(/((?:şifre(?:m|si)?|parola(?:m|sı)?|password|pin(?: kodu)?)\s*(?:[:=]|\bis\b|\bşu\b)?\s*)(\S{3,})/gi, (all, a) => a + '[GİZLİ]');
+      .replace(/((?:şifre(?:m|si)?|parola(?:m|sı)?|password|pin(?: kodu)?)\s*(?:[:=]|\bis\b|şu(?=\s))?\s*)(\S{3,})/gi, (all, a) => a + '[GİZLİ]');
   }
   window.jarvisRedact = redact;
   const _arch = archiveTurn;

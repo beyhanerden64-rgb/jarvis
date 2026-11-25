@@ -1,4 +1,19 @@
 'use strict';
+// GÜVENLİK AĞI: dış adrese giden ve kendi süre sınırı (signal) olmayan her istek 45 sn'de kesilir — takılan bir servis Satürn'ü dondurmasın.
+// Gemini (kendi uzun süre sınırları var), aynı köken ve veri/blob adresleri hariç.
+(() => {
+  const _f = window.fetch?.bind(window); if (!_f || window.__fetchGuard) return; window.__fetchGuard = true;
+  window.fetch = (input, init) => {
+    try {
+      const u = typeof input === 'string' ? input : input?.url || '';
+      if (!init?.signal && !input?.signal?.aborted && /^https?:\/\//.test(u) && !u.startsWith(location.origin) && !/generativelanguage\.googleapis\.com/.test(u)) {
+        const ac = new AbortController(), t = setTimeout(() => ac.abort(), 45000);
+        return _f(input, { ...(init || {}), signal: ac.signal }).finally(() => clearTimeout(t));
+      }
+    } catch {}
+    return _f(input, init);
+  };
+})();
 /* SATÜRN uygulama 1.0 — kurulabilir web uygulaması (PWA).
  * Konuşma: tarayıcının konuşma tanıması + SATÜRN 0.39 ses motoru (JarvisVoice, JarvisSpeechPlayer).
  * Beyin: kendi sunucumuzdaki /api/chat (Claude API). Anahtarlar yalnızca sunucuda. */

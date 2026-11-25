@@ -182,7 +182,7 @@
         if (!(p > 0) || !(usd > 0)) throw Error('Sembol veya tutar geçersiz');
         if (a === 'al') { if (usd > pf.cash) throw Error('Sanal bakiye yetersiz'); pf.cash -= usd; pf.pos[sym] = (pf.pos[sym] || 0) + usd * 0.999 / p; }
         else { const q = Math.min(pf.pos[sym] || 0, usd / p); if (!q) throw Error('Pozisyon yok'); pf.pos[sym] -= q; pf.cash += q * p * 0.999; }
-        pf.trades.push({ t: Date.now(), a, sym, usd, p }); store.set('portfolio', pf);
+        pf.trades.push({ t: Date.now(), a, sym, usd, p }); pf.trades = pf.trades.slice(-500); store.set('portfolio', pf);
       }
       let total = pf.cash; const rows = [];
       for (const [sym, q] of Object.entries(pf.pos)) if (q > 1e-9) { const p = await price(sym); total += q * p; rows.push(`${sym} ${q.toPrecision(4)} (${Math.round(q * p)}$)`); }

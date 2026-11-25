@@ -87,7 +87,7 @@
     if (t.length < 4 || t.length > 140 || PERSONAL.test(t) || /\b[\wçğıöşü]+(?:ım|im|um|üm|ımı|imi|umu|ümü|larım|lerim|larımı|lerimi)\b/i.test(t)) return ''; // “notlarımı / programımı göster” → kişisel
     if (!/(nedir|kimdir|neresi|nerede|nasıl bir|ne demek|hakkında|tarihçesi|göster|resmi|resmini|fotoğraf|görünüm|haritası|anlat|tanıt|bilgi ver|araştır|kim|ne zaman)/i.test(t)) return '';
     return t.replace(/[?!.]+$/g, '')
-      .replace(/\b(bana|lütfen|biraz|kısaca|hakkında|ile ilgili|bilgi ver|anlat|tanıt|nedir|kimdir|neresi|nerede|nasıl bir yer|nasıl bir|ne demek|ne zaman|kim|göster|bul|araştır|tarihçesi|resmini|resmi|fotoğrafını|fotoğrafları|fotoğrafı|görselini|görselleri|görüntüsü|haritasını|haritası)\b/gi, ' ')
+      .replace(/\b(bana|lütfen|biraz|kısaca|hakkında|ile ilgili|bilgi ver|anlat|tanıt|nedir|kimdir|neresi|nerede|nasıl bir yer|nasıl bir|ne demek|ne zaman|kim|göster|bul|araştır|tarihçesi|resmini|resmi|fotoğrafını|fotoğrafları|fotoğrafı|görselini|görselleri|görüntüsü|haritasını|haritası)(?=[\s.,!?]|$)/gi, ' ')
       .replace(/['’](n?[iıuü]n|n?[iıuü]|d[ae]|t[ae]|n?[ae])\b/gi, '').replace(/\s+/g, ' ').trim()
       .replace(/(\S{4,}?)(n[ıiuü]n)$/u, '$1') // “Eyfel kulesinin (resmi)” → “Eyfel kulesi”
       .replace(/(\S{4,}?)(?:n[ıiuü]|y[ıiuü])$/u, (m0, w) => (/göster\W*$/i.test(t) ? w : m0)); // yalnız “… kulesini göster” → “kulesi”

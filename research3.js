@@ -17,7 +17,7 @@
     if (!text && err) throw Error(err);
     return { text, sources: sources.filter(s => /^https?:\/\//.test(s.url || '')) };
   }
-  const MED = /(ağrı|hasta|tedavi|egzersiz|fizyoterapi|rehabilitasyon|kas\b|eklem|disk|tendon|bağ\b|ligament|menisküs|kırık|ameliyat|sendrom|hastalık|ilaç|doz|klinik|tanı|semptom|belirti|sinir|omurga|skolyoz|fıtık|artrit|artroz|osteo|nöro|inme|felç|diyabet|kanser|tümör|gen\b|genetik|mutasyon|mr\b|röntgen|pubmed|kanıt|meta-analiz)/i;
+  const MED = /(ağrı|hasta|tedavi|egzersiz|fizyoterapi|rehabilitasyon|kas\b|eklem|disk|tendon|bağ(?=[ıi\s.,!?]|lar|$)|ligament|menisküs|kırık|ameliyat|sendrom|hastalık|ilaç|doz|klinik|tanı|semptom|belirti|sinir|omurga|skolyoz|fıtık|artrit|artroz|osteo|nöro|inme|felç|diyabet|kanser|tümör|gen\b|genetik|mutasyon|mr\b|röntgen|pubmed|kanıt|meta-analiz)/i;
   const isMedical = q => MED.test(q);
   let busy = false;
   async function deepWeb(question, { depth = 1, prev = null } = {}) {

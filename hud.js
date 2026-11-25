@@ -384,5 +384,5 @@
     n.addEventListener('change', () => store.set('set.' + id, n.value));
   }
   window.jarvisRunRoutine = runRoutine;
-  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v25.0.1`;
+  $('edgeR').textContent = `ARAÇ ${Object.keys(TOOLS).length} · AJAN ${Object.keys(AGENTS).length} · v25.0.2`;
 })();
